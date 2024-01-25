@@ -1,0 +1,10 @@
+# Changes here will be overwritten by Copier
+_commit: v1.4.6
+_src_path: gh:lincc-frameworks/python-project-template
+author_email: m.schwamb@qub.ac.uk
+author_name: Adler Team
+custom_install: false
+package_name: adler
+project_license: none
+project_name: adler
+project_organization: lsst-uk
