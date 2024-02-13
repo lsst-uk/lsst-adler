@@ -1,10 +1,9 @@
 from lsst.rsp import get_tap_service, retrieve_query
 from DataSchema import Observations, MPCORB, SSObject
 
-class AdlerPlanetoid:
 
+class AdlerPlanetoid:
     def __init__(self, ssObjectId, sql_filename=None):
-        
         self.ssObjectId = ssObjectId
         self.sql_filename = sql_filename
         # can also include date ranges at some point
@@ -21,9 +20,7 @@ class AdlerPlanetoid:
         self.populate_MPCORB()
         self.populate_SSObject()
 
-
     def populate_observations(self):
-        
         observations_sql_query = f"""
             SELECT
                 ssObject.ssObjectId, mag, magErr, band, midpointMjdTai as mjd, ra, dec, phaseAngle,
@@ -35,12 +32,12 @@ class AdlerPlanetoid:
             WHERE
                 ssObject.ssObjectId = {self.ssObjectId} and band='r'
             """
-        
-        self.Observations = Observations(self.ssObjectId, observations_sql_query, self.service, self.sql_filename)
-    
-    
+
+        self.Observations = Observations(
+            self.ssObjectId, observations_sql_query, self.service, self.sql_filename
+        )
+
     def populate_MPCORB(self):
-        
         MPCORB_sql_query = f"""
             SELECT
                 ssObjectId, mpcDesignation, mpcNumber, mpcH, mpcG, epoch, peri, node, incl, e, n, q, 
@@ -50,12 +47,10 @@ class AdlerPlanetoid:
             WHERE
                 ssObjectId = {self.ssObjectId}
         """
-        
+
         self.MPCORB = MPCORB(self.ssObjectId, MPCORB_sql_query, self.service, self.sql_filename)
-        
-    
+
     def populate_SSObject(self):
-        
         SSObject_sql_query = f"""
             SELECT
                 discoverySubmissionDate, firstObservationDate, arc, numObs, 
@@ -66,6 +61,5 @@ class AdlerPlanetoid:
             WHERE
                 ssObjectId = {self.ssObjectId}
         """
-        
+
         self.SSObject = SSObject(self.ssObjectId, SSObject_sql_query, self.service, self.sql_filename)
-        

@@ -1,9 +1,11 @@
 import numpy as np
 
-class DataSchema():
+
+class DataSchema:
     """Parent class for Observations (a join of DiaSource and SSSource), MPCORB
     and SSObject data classes.
     """
+
     def __init__(self, ssObjectId, sql_query, service, sql_filename=None):
         self.ssObjectId = ssObjectId
         self.sql_query = sql_query
@@ -14,28 +16,23 @@ class DataSchema():
         else:
             self.data_table = self.get_SQL_table(self.sql_query)
 
-    
     def get_RSP_table(self, sql_query):
         rsp_table = self.service.search(sql_query).to_table()
         return rsp_table
 
-    
     def get_SQL_table(self, sql_query, testing_filename):
         pass
 
     # should be one function to get whatever from the table and type accordingly
     def get_array_from_table(self, column_name):
-        return np.array(self.data_table[column_name]) 
+        return np.array(self.data_table[column_name])
 
-    
     def get_string_from_table(self, column_name):
         return str(self.data_table[column_name][0])
 
-    
     def get_float_from_table(self, column_name):
         return float(self.data_table[column_name][0])
 
-    
     def get_int_from_table(self, column_name):
         return int(self.data_table[column_name][0])
 
@@ -44,8 +41,9 @@ class Observations(DataSchema):
     """This is a SQL join of DiaSource and SSSource which contains all of the
     observations of the object.
     """
+
     def __init__(self, ssObjectId, observations_query, service, sql_filename=None):
-        super().__init__(ssObjectId, observations_query, service, sql_filename) 
+        super().__init__(ssObjectId, observations_query, service, sql_filename)
 
         # This populates each of the variables with a numpy array of the specific column.
         # This should probably be moved to a constructor class method.
@@ -57,14 +55,13 @@ class Observations(DataSchema):
         self.phaseAngle = self.get_array_from_table("phaseAngle")
         self.topocentricDist = self.get_array_from_table("topocentricDist")
         self.heliocentricDist = self.get_array_from_table("heliocentricDist")
-        
+
         self.reduced_mag = self.mag - 5 * np.log10(self.topocentricDist * self.heliocentricDist)
 
 
 class MPCORB(DataSchema):
-    """Grabs information from MPCORB.
-    """
-    
+    """Grabs information from MPCORB."""
+
     def __init__(self, ssObjectId, observations_query, service, sql_filename=None):
         super().__init__(ssObjectId, observations_query, service, sql_filename)
 
@@ -86,9 +83,8 @@ class MPCORB(DataSchema):
 
 
 class SSObject(DataSchema):
-    """Grabs information from MPCORB.
-    """
-    
+    """Grabs information from MPCORB."""
+
     def __init__(self, ssObjectId, observations_query, service, sql_filename=None):
         super().__init__(ssObjectId, observations_query, service, sql_filename)
 
