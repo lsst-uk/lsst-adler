@@ -40,6 +40,9 @@ dev = [
     "ipython", # Also used in building notebooks into Sphinx
 ]
 
+[project.scripts]
+adler = "adler.adler:main"
+
 [build-system]
 requires = [
     "setuptools>=62", # Used to build and package the Python project
