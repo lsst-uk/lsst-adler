@@ -1,3 +1,2 @@
-from .example_module import greetings, meaning
-
-__all__ = ["greetings", "meaning"]
+from . import dataclasses
+from . import science

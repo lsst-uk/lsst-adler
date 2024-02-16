@@ -1,5 +1,6 @@
-from lsst.rsp import get_tap_service, retrieve_query
-from DataSchema import Observations, MPCORB, SSObject
+from lsst.rsp import get_tap_service
+from adler.dataclasses.DataSchema import Observations, MPCORB, SSObject
+from adler.science.DummyScience import DummyScience
 
 
 class AdlerPlanetoid:
@@ -63,3 +64,8 @@ class AdlerPlanetoid:
         """
 
         self.SSObject = SSObject(self.ssObjectId, SSObject_sql_query, self.service, self.sql_filename)
+
+    def do_pretend_science(self):
+        self.DummyScienceResult = DummyScience().science_result
+
+        print(self.DummyScienceResult)

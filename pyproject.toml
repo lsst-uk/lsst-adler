@@ -15,6 +15,7 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "ipykernel", # Support for Jupyter notebooks
+    "numpy"
 ]
 
 [project.urls]
