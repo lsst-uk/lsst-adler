@@ -60,3 +60,24 @@ Notes:
    into documentation for ReadTheDocs works as expected. For more information, see
    the Python Project Template documentation on
    [Sphinx and Python Notebooks](https://lincc-ppt.readthedocs.io/en/latest/practices/sphinx.html#python-notebooks)
+
+## Dev Guide - Updating pyproject.toml
+
+If you are adding code that requires a new dependency, this needs to be included in pyproject.toml under the `[project]' section:
+
+```
+dependencies = [
+    "ipykernel", # Support for Jupyter notebooks
+    "numpy",
+    "lsst-rsp"
+    "your-dependency-here"
+]
+```
+
+If you are adding code that should be run from the command line, this should be set up under `[project.scripts]`:
+
+```
+[project.scripts]
+adler = "adler.adler:main"
+my_command = "adler.module_folder.module_name:function_name"
+```
