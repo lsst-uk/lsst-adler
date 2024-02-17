@@ -11,17 +11,11 @@
 This project was automatically generated using the LINCC-Frameworks 
 [python-project-template](https://github.com/lincc-frameworks/python-project-template).
 
-A repository badge was added to show that this project uses the python-project-template, however it's up to
-you whether or not you'd like to display it!
-
-For more information about the project template see the 
-[documentation](https://lincc-ppt.readthedocs.io/en/latest/).
 
 ## Dev Guide - Getting Started
 
 Before installing any dependencies or writing code, it's a great idea to create a
-virtual environment. LINCC-Frameworks engineers primarily use `conda` to manage virtual
-environments. If you have conda installed locally, you can run the following to
+virtual environment. If you have conda installed locally, you can run the following to
 create and activate a new environment.
 
 ```
@@ -30,13 +24,31 @@ create and activate a new environment.
 ```
 
 Once you have created a new environment, you can install this project for local
-development using the following commands:
+development using the following commands from within the adler folder:
 
 ```
 >> pip install -e .'[dev]'
 >> pre-commit install
+```
+
+**WARNING:** If you're installing on the RSP, then use the following pip command instead:
+
+```
+>> pip install --user -e .'[dev]'
+```
+
+If you're also working on the docs:
+
+```
 >> conda install pandoc
 ```
+
+You can then test that everything works by running:
+
+```
+adler -s 8268570668335894776
+```
+This currently prints a friendly message to the terminal.
 
 Notes:
 1) The single quotes around `'[dev]'` may not be required for your operating system.
@@ -48,3 +60,24 @@ Notes:
    into documentation for ReadTheDocs works as expected. For more information, see
    the Python Project Template documentation on
    [Sphinx and Python Notebooks](https://lincc-ppt.readthedocs.io/en/latest/practices/sphinx.html#python-notebooks)
+
+## Dev Guide - Updating pyproject.toml
+
+If you are adding code that requires a new dependency, this needs to be included in pyproject.toml under the `[project]' section:
+
+```
+dependencies = [
+    "ipykernel", # Support for Jupyter notebooks
+    "numpy",
+    "lsst-rsp"
+    "your-dependency-here"
+]
+```
+
+If you are adding code that should be run from the command line, this should be set up under `[project.scripts]`:
+
+```
+[project.scripts]
+adler = "adler.adler:main"
+my_command = "adler.module_folder.module_name:function_name"
+```
