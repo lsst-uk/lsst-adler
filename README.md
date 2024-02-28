@@ -19,7 +19,7 @@ virtual environment. If you have conda installed locally, you can run the follow
 create and activate a new environment.
 
 ```
->> conda create env -n <env_name> python=3.10
+>> conda create --name <env_name> python=3.10
 >> conda activate <env_name>
 ```
 
