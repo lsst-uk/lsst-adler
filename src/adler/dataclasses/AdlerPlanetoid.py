@@ -1,19 +1,27 @@
-from lsst.rsp import get_tap_service
 from adler.dataclasses.DataSchema import Observations, MPCORB, SSObject
 from adler.science.DummyScience import DummyScience
 
 
 class AdlerPlanetoid:
-    def __init__(self, ssObjectId, sql_filename=None):
+    """AdlerPlanetoid class. Contains the Observations, MPCORB and SSObject objects."""
+
+    def __init__(self, ssObjectId, population_location="RSP", sql_filename=None):
+        """Initialises the AdlerPlanetoid object.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+        population_location : str
+            String delineating source of data. Should be "RSP" for Rubin Science Platform or "SQL" for a SQL table.
+        sql_filename: str, optional
+            Location of local SQL database, if using.
+
+        """
         self.ssObjectId = ssObjectId
+        self.population_location = population_location
         self.sql_filename = sql_filename
         # can also include date ranges at some point
-
-        # can draw from a local SQL database
-        if not sql_filename:
-            self.service = get_tap_service("ssotap")
-        else:
-            self.service = None
 
         # this creates the AdlerPlanetoid.Observations, AdlerPlanetoid.MPCORB and
         # AdlerPlanetoid.SSObject objects.
@@ -22,6 +30,7 @@ class AdlerPlanetoid:
         self.populate_SSObject()
 
     def populate_observations(self):
+        """Populates the Observations object class attribute."""
         observations_sql_query = f"""
             SELECT
                 ssObject.ssObjectId, mag, magErr, band, midpointMjdTai as mjd, ra, dec, phaseAngle,
@@ -35,10 +44,11 @@ class AdlerPlanetoid:
             """
 
         self.Observations = Observations(
-            self.ssObjectId, observations_sql_query, self.service, self.sql_filename
+            self.ssObjectId, self.population_location, observations_sql_query, sql_filename=self.sql_filename
         )
 
     def populate_MPCORB(self):
+        """Populates the MPCORB object class attribute."""
         MPCORB_sql_query = f"""
             SELECT
                 ssObjectId, mpcDesignation, mpcNumber, mpcH, mpcG, epoch, peri, node, incl, e, n, q, 
@@ -49,9 +59,12 @@ class AdlerPlanetoid:
                 ssObjectId = {self.ssObjectId}
         """
 
-        self.MPCORB = MPCORB(self.ssObjectId, MPCORB_sql_query, self.service, self.sql_filename)
+        self.MPCORB = MPCORB(
+            self.ssObjectId, self.population_location, MPCORB_sql_query, sql_filename=self.sql_filename
+        )
 
     def populate_SSObject(self):
+        """Populates the SSObject class attribute."""
         SSObject_sql_query = f"""
             SELECT
                 discoverySubmissionDate, firstObservationDate, arc, numObs, 
@@ -63,7 +76,12 @@ class AdlerPlanetoid:
                 ssObjectId = {self.ssObjectId}
         """
 
-        self.SSObject = SSObject(self.ssObjectId, SSObject_sql_query, self.service, self.sql_filename)
+        self.SSObject = SSObject(
+            self.ssObjectId,
+            self.population_location,
+            sql_query=SSObject_sql_query,
+            sql_filename=self.sql_filename,
+        )
 
     def do_pretend_science(self):
         self.DummyScienceResult = DummyScience().science_result
