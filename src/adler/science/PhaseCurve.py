@@ -1,3 +1,8 @@
+from sbpy.photometry import HG, HG1G2, HG12, HG12_Pen16, LinearPhaseFunc
+import astropy.units as u
+from astropy.modeling.fitting import LevMarLSQFitter
+
+
 class PhaseCurve:
     """
     Class to define the phasecurve model and associated functions

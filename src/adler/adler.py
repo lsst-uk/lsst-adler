@@ -1,12 +1,17 @@
 import argparse
 
 from adler.dataclasses.AdlerPlanetoid import AdlerPlanetoid
+from adler.science.PhaseCurve import PhaseCurve
 
 
 def runAdler(args):
     planetoid = AdlerPlanetoid(args.ssoid)
 
     planetoid.do_pretend_science()
+
+    # now let's do some phase curves!
+    pc = PhaseCurve(abs_mag=planetoid.SSObject.r_H, phase_param=0.2, model_name="HG")
+    print(pc)
 
 
 def main():
