@@ -1,4 +1,5 @@
 from adler.dataclasses.DataSchema import Observations, MPCORB, SSObject
+from adler.science.DummyScience import DummyScience
 
 
 class AdlerPlanetoid:
@@ -81,3 +82,8 @@ class AdlerPlanetoid:
             sql_query=SSObject_sql_query,
             sql_filename=self.sql_filename,
         )
+
+    def do_pretend_science(self):
+        self.DummyScienceResult = DummyScience().science_result
+
+        print(self.DummyScienceResult)
