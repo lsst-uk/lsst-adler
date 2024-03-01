@@ -1,3 +1,7 @@
+from adler.dataclasses.DataSchema import Observations, MPCORB, SSObject
+from adler.science.DummyScience import DummyScience
+
+
 class AdlerPlanetoid:
     """AdlerPlanetoid class. Contains the Observations, MPCORB and SSObject objects."""
 
