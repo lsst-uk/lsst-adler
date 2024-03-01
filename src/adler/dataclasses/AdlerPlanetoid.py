@@ -1,7 +1,3 @@
-from adler.dataclasses.DataSchema import Observations, MPCORB, SSObject
-from adler.science.DummyScience import DummyScience
-
-
 class AdlerPlanetoid:
     """AdlerPlanetoid class. Contains the Observations, MPCORB and SSObject objects."""
 
@@ -33,7 +29,7 @@ class AdlerPlanetoid:
         """Populates the Observations object class attribute."""
         observations_sql_query = f"""
             SELECT
-                ssObject.ssObjectId, mag, magErr, band, midpointMjdTai as mjd, ra, dec, phaseAngle,
+                ssObject.ssObjectId, mag, magErr, band, midpointMjdTai, ra, dec, phaseAngle,
                 topocentricDist, heliocentricDist
             FROM
                 dp03_catalogs_10yr.ssObject
