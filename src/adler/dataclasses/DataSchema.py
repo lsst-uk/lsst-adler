@@ -94,31 +94,31 @@ class Observations(DataSchema):
     ssObjectId: str
         Id of the ssObject this source was associated with, if any. If not, it is set to NULL.
 
-    mag: np.array
+    mag: array_like
         Magnitude. This is a placeholder and will be replaced by flux.
 
-    magErr: np.array
+    magErr: array_like
         Magnitude error. This is a placeholder and will be replaced by flux error.
 
-    midpointMjdTai: np.array
+    midpointMjdTai: array_like
         Effective mid-visit time for this diaSource, expressed as Modified Julian Date, International Atomic Time.
 
-    ra: np.array
+    ra: array_like
         Right ascension coordinate of the center of this diaSource.
 
-    dec: np.array
+    dec: array_like
         Declination coordinate of the center of this diaSource.
 
-    phaseAngle: np.array
+    phaseAngle: array_like
         Phase angle.
 
-    topocentricDist: np.array
+    topocentricDist: array_like
         Topocentric distance.
 
-    heliocentricDist: np.array
+    heliocentricDist: array_like
         Heliocentric distance.
 
-    reduced_mag: np.array
+    reduced_mag: array_like
         The reduced magnitude.
 
     """
