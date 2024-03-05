@@ -18,7 +18,8 @@ dependencies = [
     "numpy",
     "lsst-rsp",
     "astropy",
-    "sbpy"
+    "sbpy",
+    "matplotlib" # for plotting
 ]
 
 [project.urls]
