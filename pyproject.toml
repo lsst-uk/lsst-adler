@@ -19,7 +19,7 @@ dependencies = [
     "lsst-rsp",
     "astropy",
     "sbpy",
-    "matplotlib" # plotting for demo notebooks
+    "matplotlib" # for plotting
 ]
 
 [project.urls]
