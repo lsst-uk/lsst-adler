@@ -157,7 +157,7 @@ class Observations(DataSchema):
         self.ssObjectId = ssObjectId
         self.population_location = population_location
         self.populate(self.population_location, sql_query, sql_filename)
-        self.num_obs = len(midpointMjdTai)
+        self.num_obs = len(self.midpointMjdTai)
         self.calculate_reduced_mag()
 
     def populate_from_table(self, data_table):
