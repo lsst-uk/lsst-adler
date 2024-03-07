@@ -13,9 +13,8 @@ class AdlerData:
         List of filters under investigation.
 
     model_lists : list
-        List of lists of models per-filter. Length = len(filter_list). For example, if the filters are ['u', 'g', 'i'],
-        and HG has been calculated for all three and HG1G2 for 'u' only, model_lists = [ ['HG', 'HG1G2'], ['HG'], ['HG'] ].
-        This list of lists is used to track the parameters in the H and phase_parameter attributes, which will take an identical shape.
+        List of lists of models per-filter. Length = len(filter_list) such that [[filter1_model1, filter1_model2], [filter2_model1]]. Used to index values
+        in the H_adler, phase_parameter_1, phase_parameter_1_err, phase_parameter_2 and phase_parameter_2_err list structures.
 
     phaseAngle_min_adler : array_like
         Minimum phase angle of observations used in fitting model (degrees). Size = len(filter_list).
@@ -35,17 +34,12 @@ class AdlerData:
     H_err_adler : list
         Error in absolute magnitude. List of lists arranged identically to model_lists, with per-filter and per-model values.
 
-    phase_parameter_1 : list
-        First phase parameter of the model in question. List of lists arranged identically to model_lists, with per-filter and per-model values.
+    phase_parameters : list
+        Phase parameters of the model in question. List of lists arranged as model_lists, with per-filter and per-model values: however, phase_parameters[filter_index][model_index] is itself a
+        list of either one or two values, depending on the number of phase parameters.
 
-    phase_parameter_1_err : list
-        Error in the first phase parameter. List of lists arranged identically to model_lists, with per-filter and per-model values.
-
-    phase_parameter_2 : list
-        Second phase parameter of the model in question. List of lists arranged identically to model_lists, with per-filter and per-model values.
-
-    phase_parameter_2_err : list
-        Error in the second phase parameter. List of lists arranged identically to model_lists, with per-filter and per-model values.
+    phase_parameter_err : list
+        Error in the first phase parameter. List of lists arranged identically to phase_parameters.
 
     """
 
@@ -61,10 +55,8 @@ class AdlerData:
     # They can be cast to Numpy arrays later if needed.
     H_adler: list = field(default_factory=list, init=False)
     H_err_adler: list = field(default_factory=list, init=False)
-    phase_parameter_1: list = field(default_factory=list, init=False)
-    phase_parameter_2: list = field(default_factory=list, init=False)
-    phase_parameter_1_err: list = field(default_factory=list, init=False)
-    phase_parameter_2_err: list = field(default_factory=list, init=False)
+    phase_parameters: list = field(default_factory=list, init=False)
+    phase_parameters_err: list = field(default_factory=list, init=False)
 
     def __post_init__(self):
         """This runs post-initialisation and creates all of the class attributes where one dimension is "filters" to ensure the arrays
@@ -81,10 +73,8 @@ class AdlerData:
 
         self.H_adler = [[] for a in range(0, filter_length)]
         self.H_err_adler = [[] for a in range(0, filter_length)]
-        self.phase_parameter_1 = [[] for a in range(0, filter_length)]
-        self.phase_parameter_2 = [[] for a in range(0, filter_length)]
-        self.phase_parameter_1_err = [[] for a in range(0, filter_length)]
-        self.phase_parameter_2_err = [[] for a in range(0, filter_length)]
+        self.phase_parameters = [[] for a in range(0, filter_length)]
+        self.phase_parameters_err = [[] for a in range(0, filter_length)]
 
     def populate_phase_parameters(
         self,
@@ -96,10 +86,8 @@ class AdlerData:
         arc,
         H,
         H_err,
-        parameter_1,
-        parameter_1_err,
-        parameter_2=None,
-        parameter_2_err=None,
+        parameters,
+        parameters_err,
     ):
         """Convenience method to correctly populate phase curve arrays/lists.
 
@@ -130,25 +118,13 @@ class AdlerData:
         H_err : float
             Error on the absolute magnitude.
 
-        parameter_1 : float
-            First phase parameter of the model.
+        parameters : list
+            Phase parameters of the model.
 
-        parameter_1_err : float
-            Error of the first phase parameter.
-
-        parameter_2 : float, optional
-            Second phase parameter of the model. Default is None.
-
-        parameter_2_err : float, optional
-            Error of the second phase parameter. Default is None.
+        parameters_err : list
+            Phase parameter errors.
 
         """
-
-        # Raise an exception if only one of parameter_2 and parameter_2_err is given.
-        if (parameter_2 is None) != (parameter_2_err is None):
-            raise Exception(
-                "If using a model with 2 phase parameters, both parameter_2 and parameter_2_err must be supplied."
-            )
 
         # Make sure the supplied filter is in the filter list.
         try:
@@ -156,28 +132,27 @@ class AdlerData:
         except ValueError:
             raise Exception("Filter {} is not in supplied filter list.".format(filter_name))
 
+        # If parameters and/or parameters_err are not lists, error out.
+        if not isinstance(parameters, list) or not isinstance(parameters_err, list):
+            raise TypeError("Both parameters and parameters_err arguments must be lists.")
+
         self.phaseAngle_min_adler[filter_index] = phaseAngle_min
         self.phaseAngle_range_adler[filter_index] = phaseAngle_range
         self.nobs_adler[filter_index] = nobs
         self.arc_adler[filter_index] = arc
 
-        # Check and see if the model has already been calculated for this filter.
         if model_name not in self.model_lists[filter_index]:
             self.model_lists[filter_index].append(model_name)
 
             self.H_adler[filter_index].append(H)
             self.H_err_adler[filter_index].append(H_err)
-            self.phase_parameter_1[filter_index].append(parameter_1)
-            self.phase_parameter_1_err[filter_index].append(parameter_1_err)
-            self.phase_parameter_2[filter_index].append(parameter_2)
-            self.phase_parameter_2_err[filter_index].append(parameter_2_err)
+            self.phase_parameters[filter_index].append(parameters)
+            self.phase_parameters_err[filter_index].append(parameters_err)
 
         else:
             model_index = self.model_lists[filter_index].index(model_name)
 
             self.H_adler[filter_index][model_index] = H
             self.H_err_adler[filter_index][model_index] = H_err
-            self.phase_parameter_1[filter_index][model_index] = parameter_1
-            self.phase_parameter_1_err[filter_index][model_index] = parameter_1_err
-            self.phase_parameter_2[filter_index][model_index] = parameter_2
-            self.phase_parameter_2_err[filter_index][model_index] = parameter_2_err
+            self.phase_parameters[filter_index][model_index] = parameters
+            self.phase_parameters_err[filter_index][model_index] = parameters_err

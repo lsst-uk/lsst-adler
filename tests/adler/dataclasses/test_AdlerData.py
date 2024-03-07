@@ -7,13 +7,13 @@ def test_populate_phase_parameters():
 
     test_object = AdlerData(["u", "g", "r"])
 
-    test_object.populate_phase_parameters("u", "model_1", 11.0, 12.0, 13, 14.0, 15.0, 16.0, 17.0, 18.0)
+    test_object.populate_phase_parameters("u", "model_1", 11.0, 12.0, 13, 14.0, 15.0, 16.0, [17.0], [18.0])
     test_object.populate_phase_parameters(
-        "u", "model_2", 21.0, 22.0, 23, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0
+        "u", "model_2", 21.0, 22.0, 23, 24.0, 25.0, 26.0, [27.0, 27.5], [28.0, 28.5]
     )
-    test_object.populate_phase_parameters("g", "model_1", 31.0, 32.0, 33, 34.0, 35.0, 36.0, 37.0, 38.0)
+    test_object.populate_phase_parameters("g", "model_1", 31.0, 32.0, 33, 34.0, 35.0, 36.0, [37.0], [38.0])
     test_object.populate_phase_parameters(
-        "r", "model_2", 41.0, 42.0, 43, 44.0, 45.0, 46.0, 47.0, 48.0, 49.0, 50.0
+        "r", "model_2", 41.0, 42.0, 43, 44.0, 45.0, 46.0, [47.0, 47.5], [48.0, 48.5]
     )
 
     assert test_object.filter_list == ["u", "g", "r"]
@@ -27,21 +27,14 @@ def test_populate_phase_parameters():
     # test to make sure the object is correctly populated
     assert test_object.H_adler == [[15.0, 25.0], [35.0], [45.0]]
     assert test_object.H_err_adler == [[16.0, 26.0], [36.0], [46.0]]
-    assert test_object.phase_parameter_1 == [[17.0, 27.0], [37.0], [47.0]]
-    assert test_object.phase_parameter_1_err == [[18.0, 28.0], [38.0], [48.0]]
-    assert test_object.phase_parameter_2 == [[None, 29.0], [None], [49.0]]
-    assert test_object.phase_parameter_2_err == [[None, 30.0], [None], [50.0]]
+    assert test_object.phase_parameters == [[[17.0], [27.0, 27.5]], [[37.0]], [[47.0, 47.5]]]
+    assert test_object.phase_parameters_err == [[[18.0], [28.0, 28.5]], [[38.0]], [[48.0, 48.5]]]
 
     # testing to make sure the correct error messages trigger
-    with pytest.raises(Exception) as error_info_1:
-        test_object.populate_phase_parameters(
-            "u", "model_1", 11.0, 12.0, 13, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0
-        )
+    with pytest.raises(TypeError) as error_info_1:
+        test_object.populate_phase_parameters("u", "model_1", 11.0, 12.0, 13, 14.0, 15.0, 16.0, 17.0, 18.0)
 
-    assert (
-        error_info_1.value.args[0]
-        == "If using a model with 2 phase parameters, both parameter_2 and parameter_2_err must be supplied."
-    )
+    assert error_info_1.value.args[0] == "Both parameters and parameters_err arguments must be lists."
 
     with pytest.raises(Exception) as error_info_2:
         test_object.populate_phase_parameters("y", "model_1", 11.0, 12.0, 13, 14.0, 15.0, 16.0, 17.0, 18.0)
