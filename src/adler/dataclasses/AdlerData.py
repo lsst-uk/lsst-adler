@@ -101,7 +101,48 @@ class AdlerData:
         parameter_2=None,
         parameter_2_err=None,
     ):
-        """Convenience method to correctly populate phase curve arrays/lists."""
+        """Convenience method to correctly populate phase curve arrays/lists.
+
+        Parameters
+        -----------
+
+        filter_name : str
+            The one-letter name of the filter in which the phase curve was calculated.
+
+        model_name : str
+            The name of the model used to calculate the phase curve.
+
+        phaseAngle_min : float
+            Minimum phase angle of observations used in fitting model (degrees)
+
+        phaseAngle_range : float
+            Max minus min phase angle range of observations used in fitting model (degrees).
+
+        nobs : int
+            Number of observations used in fitting model.
+
+        arc : float
+            Observational arc used to fit model (days).
+
+        H : float
+            Absolute magnitude in model.
+
+        H_err : float
+            Error on the absolute magnitude.
+
+        parameter_1 : float
+            First phase parameter of the model.
+
+        parameter_1_err : float
+            Error of the first phase parameter.
+
+        parameter_2 : float, optional
+            Second phase parameter of the model. Default is None.
+
+        parameter_2_err : float, optional
+            Error of the second phase parameter. Default is None.
+
+        """
 
         # Raise an exception if only one of parameter_2 and parameter_2_err is given.
         if (parameter_2 is None) != (parameter_2_err is None):
