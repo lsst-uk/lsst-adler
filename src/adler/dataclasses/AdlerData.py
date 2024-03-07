@@ -38,13 +38,13 @@ class AdlerData:
     phase_parameter_1 : list
         First phase parameter of the model in question. List of lists arranged identically to model_lists, with per-filter and per-model values.
 
-    phase_parameter_err : list
+    phase_parameter_1_err : list
         Error in the first phase parameter. List of lists arranged identically to model_lists, with per-filter and per-model values.
 
     phase_parameter_2 : list
         Second phase parameter of the model in question. List of lists arranged identically to model_lists, with per-filter and per-model values.
 
-    phase_parameter_err : list
+    phase_parameter_2_err : list
         Error in the second phase parameter. List of lists arranged identically to model_lists, with per-filter and per-model values.
 
     """
