@@ -24,8 +24,8 @@ class AdlerPlanetoid:
         self.sql_filename = sql_filename
         # can also include date ranges at some point
 
-        # create empty AdlerData dataclass object. will replace dummy list as soon as filter functionality is included.
-        self.AdlerData = AdlerData(["dummy_filter"])
+        # create empty AdlerData dataclass object.
+        self.AdlerData = AdlerData(["r"])
 
         # this creates the AdlerPlanetoid.Observations, AdlerPlanetoid.MPCORB and
         # AdlerPlanetoid.SSObject objects.
