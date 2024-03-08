@@ -188,6 +188,28 @@ class AdlerPlanetoid:
 
         return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table)
 
+    def observations_in_filter(self, filter_name):
+        """User-friendly helper function. Returns the Observations object for a given filter.
+
+        Parameters
+        -----------
+        filter_name : str
+            The desired filter.
+
+        Returns
+        -----------
+        Observations object
+            The Observations object in self.observations_by_filter corresponding to the desired filter.
+
+        """
+
+        try:
+            filter_index = self.filter_list.index(filter_name)
+        except ValueError:
+            raise ValueError("Filter {} is not in AdlerPlanetoid.filter_list.".format(filter_name))
+
+        return self.observations_by_filter[filter_index]
+
     def do_pretend_science(self):
         self.DummyScienceResult = DummyScience().science_result
 
