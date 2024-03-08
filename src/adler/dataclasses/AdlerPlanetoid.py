@@ -109,7 +109,7 @@ class AdlerPlanetoid:
             data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
 
             observations_by_filter.append(
-                Observations.construct_from_data_table(ssObjectId, filter, data_table)
+                Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
             )
 
         return observations_by_filter
