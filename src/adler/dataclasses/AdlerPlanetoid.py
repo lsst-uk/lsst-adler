@@ -1,4 +1,5 @@
 from adler.dataclasses.DataSchema import Observations, MPCORB, SSObject
+from adler.dataclasses.AdlerData import AdlerData
 from adler.science.DummyScience import DummyScience
 
 
@@ -22,6 +23,9 @@ class AdlerPlanetoid:
         self.population_location = population_location
         self.sql_filename = sql_filename
         # can also include date ranges at some point
+
+        # create empty AdlerData dataclass object.
+        self.AdlerData = AdlerData(["r"])
 
         # this creates the AdlerPlanetoid.Observations, AdlerPlanetoid.MPCORB and
         # AdlerPlanetoid.SSObject objects.

@@ -1,5 +1,4 @@
 import numpy as np
-import sys
 from dataclasses import dataclass, field
 from lsst.rsp import get_tap_service
 
@@ -28,7 +27,7 @@ class DataSchema:
         elif population_location == "SQL":
             data_table = self.get_SQL_table(sql_query, sql_filename)
         else:
-            sys.exit(
+            raise Exception(
                 "Population source not recognised. Please supply either 'RSP' or 'SQL' for population_location argument."
             )
 
@@ -46,7 +45,7 @@ class DataSchema:
 
         self.service = get_tap_service("ssotap")
 
-        return self.service.search(sql_query).to_table()
+        return self.service.search(sql_query)
 
     def get_SQL_table(self, sql_query, sql_filename):
         pass
@@ -94,32 +93,35 @@ class Observations(DataSchema):
     ssObjectId: str
         Id of the ssObject this source was associated with, if any. If not, it is set to NULL.
 
-    mag: np.array
+    mag: array_like
         Magnitude. This is a placeholder and will be replaced by flux.
 
-    magErr: np.array
+    magErr: array_like
         Magnitude error. This is a placeholder and will be replaced by flux error.
 
-    midpointMjdTai: np.array
+    midpointMjdTai: array_like
         Effective mid-visit time for this diaSource, expressed as Modified Julian Date, International Atomic Time.
 
-    ra: np.array
+    ra: array_like
         Right ascension coordinate of the center of this diaSource.
 
-    dec: np.array
+    dec: array_like
         Declination coordinate of the center of this diaSource.
 
-    phaseAngle: np.array
+    phaseAngle: array_like
         Phase angle.
 
-    topocentricDist: np.array
+    topocentricDist: array_like
         Topocentric distance.
 
-    heliocentricDist: np.array
+    heliocentricDist: array_like
         Heliocentric distance.
 
-    reduced_mag: np.array
+    reduced_mag: array_like
         The reduced magnitude.
+
+    num_obs : int
+        The number of observations contained in this structure.
 
     """
 
@@ -133,6 +135,7 @@ class Observations(DataSchema):
     topocentricDist: np.ndarray = field(default_factory=np.zeros(0))
     heliocentricDist: np.ndarray = field(default_factory=np.zeros(0))
     reduced_mag: np.ndarray = field(default_factory=np.zeros(0))
+    num_obs: int = 0
 
     def __init__(self, ssObjectId, population_location, sql_query, sql_filename=None):
         """Initialises the Observations object.
@@ -154,6 +157,7 @@ class Observations(DataSchema):
         self.ssObjectId = ssObjectId
         self.population_location = population_location
         self.populate(self.population_location, sql_query, sql_filename)
+        self.num_obs = len(self.midpointMjdTai)
         self.calculate_reduced_mag()
 
     def populate_from_table(self, data_table):
@@ -334,7 +338,7 @@ class SSObject(DataSchema):
     r_H: float = 0.0
     r_G12: float = 0
     r_Herr: float = 0.0
-    r_G12_err: float = 0.0
+    r_G12err: float = 0.0
     r_nData: int = 0
     maxExtendedness: float = 0.0
     minExtendedness: float = 0.0
