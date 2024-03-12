@@ -79,17 +79,18 @@ class AdlerData:
     def populate_phase_parameters(
         self,
         filter_name,
-        model_name,
-        phaseAngle_min,
-        phaseAngle_range,
-        nobs,
-        arc,
-        H,
-        H_err,
-        parameters,
-        parameters_err,
+        model_name=None,
+        phaseAngle_min=None,
+        phaseAngle_range=None,
+        nobs=None,
+        arc=None,
+        H=None,
+        H_err=None,
+        parameters=[],
+        parameters_err=[],
     ):
-        """Convenience method to correctly populate phase curve arrays/lists.
+        """Convenience method to correctly populate phase curve arrays/lists. Only the supplied arguments to the method will
+        be updated, allowing for only some values to be populated if desired.
 
         Parameters
         -----------
@@ -97,31 +98,31 @@ class AdlerData:
         filter_name : str
             The one-letter name of the filter in which the phase curve was calculated.
 
-        model_name : str
-            The name of the model used to calculate the phase curve.
+        model_name : str, optional
+            The name of the model used to calculate the phase curve. If not supplied, no model-dependent parameters will be updated.
 
-        phaseAngle_min : float
+        phaseAngle_min : float, optional
             Minimum phase angle of observations used in fitting model (degrees)
 
-        phaseAngle_range : float
+        phaseAngle_range : float, optional
             Max minus min phase angle range of observations used in fitting model (degrees).
 
-        nobs : int
+        nobs : int, optional
             Number of observations used in fitting model.
 
-        arc : float
+        arc : float, optional
             Observational arc used to fit model (days).
 
-        H : float
+        H : float, optional
             Absolute magnitude in model.
 
-        H_err : float
+        H_err : float, optional
             Error on the absolute magnitude.
 
-        parameters : list
+        parameters : list, optional
             Phase parameters of the model.
 
-        parameters_err : list
+        parameters_err : list, optional
             Phase parameter errors.
 
         """
@@ -136,12 +137,24 @@ class AdlerData:
         if not isinstance(parameters, list) or not isinstance(parameters_err, list):
             raise TypeError("Both parameters and parameters_err arguments must be lists.")
 
-        self.phaseAngle_min_adler[filter_index] = phaseAngle_min
-        self.phaseAngle_range_adler[filter_index] = phaseAngle_range
-        self.nobs_adler[filter_index] = nobs
-        self.arc_adler[filter_index] = arc
+        self.phaseAngle_min_adler[filter_index] = self.update_value(
+            self.phaseAngle_min_adler[filter_index], phaseAngle_min
+        )
+        self.phaseAngle_range_adler[filter_index] = self.update_value(
+            self.phaseAngle_range_adler[filter_index], phaseAngle_range
+        )
+        self.nobs_adler[filter_index] = self.update_value(self.nobs_adler[filter_index], nobs)
+        self.arc_adler[filter_index] = self.update_value(self.arc_adler[filter_index], arc)
 
-        if model_name not in self.model_lists[filter_index]:
+        if model_name is None and (
+            any(v is not None for v in [H, H_err]) or len(parameters) != 0 or len(parameters_err) != 0
+        ):
+            raise Exception("No model name given. Cannot update model-specific parameters.")
+
+        elif model_name is None:
+            pass
+
+        elif model_name not in self.model_lists[filter_index]:
             self.model_lists[filter_index].append(model_name)
 
             self.H_adler[filter_index].append(H)
@@ -152,10 +165,41 @@ class AdlerData:
         else:
             model_index = self.model_lists[filter_index].index(model_name)
 
-            self.H_adler[filter_index][model_index] = H
-            self.H_err_adler[filter_index][model_index] = H_err
-            self.phase_parameters[filter_index][model_index] = parameters
-            self.phase_parameters_err[filter_index][model_index] = parameters_err
+            self.H_adler[filter_index][model_index] = self.update_value(
+                self.H_adler[filter_index][model_index], H
+            )
+            self.H_err_adler[filter_index][model_index] = self.update_value(
+                self.H_err_adler[filter_index][model_index], H_err
+            )
+            self.phase_parameters[filter_index][model_index] = self.update_value(
+                self.phase_parameters[filter_index][model_index], parameters
+            )
+            self.phase_parameters_err[filter_index][model_index] = self.update_value(
+                self.phase_parameters_err[filter_index][model_index], parameters_err
+            )
+
+    def update_value(self, original_value, new_value):
+        """Returns one of two values depending on whether one of them is None. Used to update class attributes.
+
+        Parameters
+        -----------
+        original_value : any
+            Original value of the attribute.
+
+        new_value : any or None
+            The value to replace it with, if this is not None.
+
+
+        Returns
+        -----------
+        any
+            Either original_value (if new_value is None) or new_value.
+
+        """
+        if not new_value:
+            return original_value
+        else:
+            return new_value
 
     def print_data(self):
         """Convenience method to clearly print the stored values."""
