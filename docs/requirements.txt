@@ -5,3 +5,6 @@ nbsphinx
 ipython
 jupytext
 jupyter
+astropy
+sbpy
+matplotlib

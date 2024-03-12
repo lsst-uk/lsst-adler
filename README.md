@@ -81,3 +81,49 @@ If you are adding code that should be run from the command line, this should be 
 adler = "adler.adler:main"
 my_command = "adler.module_folder.module_name:function_name"
 ```
+
+## Dev Guide - Docstrings
+
+The docstrings use the numpydoc format. This is the format expected by the LINCC Frameworks template and results
+in docstrings which compile neatly and automatically for the docs. 
+
+An example is below. Don't include the Returns section if your code returns nothing.
+
+```
+"""Here is a function that does some cool sciency stuff.
+
+- Perhaps you want to add some bullet points.
+- You can do that like this!
+
+Parameters
+-----------
+arg1 : int
+   The first argument to the function.
+arg2 : str
+   The second argument to the function. Default = "foo".
+
+Returns
+----------
+
+return_value : float
+   The thing your function returns.
+
+"""
+
+```
+
+For classes:
+
+```
+"""A class that contains some important science information.
+
+Attibutes
+-----------
+attr1 : int
+   The first class attribute.
+
+attr2: np.array
+   The second class attribute.
+
+"""
+```

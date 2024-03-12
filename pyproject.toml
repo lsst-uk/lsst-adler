@@ -16,7 +16,10 @@ dynamic = ["version"]
 dependencies = [
     "ipykernel", # Support for Jupyter notebooks
     "numpy",
-    "lsst-rsp"
+    "lsst-rsp",
+    "astropy",
+    "sbpy",
+    "matplotlib" # for plotting
 ]
 
 [project.urls]
