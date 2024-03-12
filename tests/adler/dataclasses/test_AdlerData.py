@@ -85,3 +85,15 @@ def test_get_phase_parameters_in_filter():
         error_dict_2 = test_object.get_phase_parameters_in_filter("r", model_name="model_1")
 
     assert error_info_2.value.args[0] == "Model model_1 does not exist for filter r in AdlerData.model_lists."
+
+
+# here the capsys fixture captures any output to the terminal
+def test_print_data(capsys):
+    test_object.print_data()
+
+    # get what was printed to the terminal
+    captured = capsys.readouterr()
+
+    expected = "Phase parameters (per filter):\n\nFilter: u\nPhase angle minimum: 21.0\nPhase angle range: 22.0\nNumber of observations: 23\nArc: 24.0\nModel: model_1.\n\tH: 15.0\n\tH error: 16.0\n\tPhase parameter(s): [17.0]\n\tPhase parameter(s) error: [18.0]\nModel: model_2.\n\tH: 25.0\n\tH error: 26.0\n\tPhase parameter(s): [27.0, 27.5]\n\tPhase parameter(s) error: [28.0, 28.5]\n\n\nFilter: g\nPhase angle minimum: 31.0\nPhase angle range: 32.0\nNumber of observations: 33\nArc: 34.0\nModel: model_1.\n\tH: 35.0\n\tH error: 36.0\n\tPhase parameter(s): [37.0]\n\tPhase parameter(s) error: [38.0]\n\n\nFilter: r\nPhase angle minimum: 41.0\nPhase angle range: 42.0\nNumber of observations: 43\nArc: 44.0\nModel: model_2.\n\tH: 45.0\n\tH error: 46.0\n\tPhase parameter(s): [47.0, 47.5]\n\tPhase parameter(s) error: [48.0, 48.5]\n\n\n"
+
+    assert captured.out == expected
