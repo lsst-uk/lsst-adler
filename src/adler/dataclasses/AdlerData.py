@@ -86,8 +86,8 @@ class AdlerData:
         arc=None,
         H=None,
         H_err=None,
-        parameters=[],
-        parameters_err=[],
+        phase_parameters=[],
+        phase_parameters_err=[],
     ):
         """Convenience method to correctly populate phase curve arrays/lists. Only the supplied arguments to the method will
         be updated, allowing for only some values to be populated if desired.
@@ -119,10 +119,10 @@ class AdlerData:
         H_err : float, optional
             Error on the absolute magnitude.
 
-        parameters : list, optional
+        phase_parameters : list, optional
             Phase parameters of the model.
 
-        parameters_err : list, optional
+        phase_parameters_err : list, optional
             Phase parameter errors.
 
         """
@@ -134,8 +134,8 @@ class AdlerData:
             raise ValueError("Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
 
         # If parameters and/or parameters_err are not lists, error out.
-        if not isinstance(parameters, list) or not isinstance(parameters_err, list):
-            raise TypeError("Both parameters and parameters_err arguments must be lists.")
+        if not isinstance(phase_parameters, list) or not isinstance(phase_parameters_err, list):
+            raise TypeError("Both phase_parameters and phase_parameters_err arguments must be lists.")
 
         self.phaseAngle_min_adler[filter_index] = self.update_value(
             self.phaseAngle_min_adler[filter_index], phaseAngle_min
@@ -147,9 +147,11 @@ class AdlerData:
         self.arc_adler[filter_index] = self.update_value(self.arc_adler[filter_index], arc)
 
         if model_name is None and (
-            any(v is not None for v in [H, H_err]) or len(parameters) != 0 or len(parameters_err) != 0
+            any(v is not None for v in [H, H_err])
+            or len(phase_parameters) != 0
+            or len(phase_parameters_err) != 0
         ):
-            raise Exception("No model name given. Cannot update model-specific parameters.")
+            raise Exception("No model name given. Cannot update model-specific phase_parameters.")
 
         elif model_name is None:
             pass
@@ -159,8 +161,8 @@ class AdlerData:
 
             self.H_adler[filter_index].append(H)
             self.H_err_adler[filter_index].append(H_err)
-            self.phase_parameters[filter_index].append(parameters)
-            self.phase_parameters_err[filter_index].append(parameters_err)
+            self.phase_parameters[filter_index].append(phase_parameters)
+            self.phase_parameters_err[filter_index].append(phase_parameters_err)
 
         else:
             model_index = self.model_lists[filter_index].index(model_name)
@@ -172,10 +174,10 @@ class AdlerData:
                 self.H_err_adler[filter_index][model_index], H_err
             )
             self.phase_parameters[filter_index][model_index] = self.update_value(
-                self.phase_parameters[filter_index][model_index], parameters
+                self.phase_parameters[filter_index][model_index], phase_parameters
             )
             self.phase_parameters_err[filter_index][model_index] = self.update_value(
-                self.phase_parameters_err[filter_index][model_index], parameters_err
+                self.phase_parameters_err[filter_index][model_index], phase_parameters_err
             )
 
     def update_value(self, original_value, new_value):
