@@ -10,7 +10,12 @@ test_object = AdlerData(["u", "g", "r"])
 
 test_object.populate_phase_parameters("u", "model_1", 11.0, 12.0, 13, 14.0, 15.0, 16.0, [17.0], [18.0])
 test_object.populate_phase_parameters(
-    "u", model_name="model_2", H=25.0, H_err=26.0, parameters=[27.0, 27.5], parameters_err=[28.0, 28.5]
+    "u",
+    model_name="model_2",
+    H=25.0,
+    H_err=26.0,
+    phase_parameters=[27.0, 27.5],
+    phase_parameters_err=[28.0, 28.5],
 )
 test_object.populate_phase_parameters("g", "model_1", 31.0, 32.0, 33, 34.0, 35.0, 36.0, [37.0], [38.0])
 test_object.populate_phase_parameters(
@@ -47,7 +52,10 @@ def test_populate_phase_parameters():
     with pytest.raises(TypeError) as error_info_1:
         test_object.populate_phase_parameters("u", "model_1", 11.0, 12.0, 13, 14.0, 15.0, 16.0, 17.0, 18.0)
 
-    assert error_info_1.value.args[0] == "Both parameters and parameters_err arguments must be lists."
+    assert (
+        error_info_1.value.args[0]
+        == "Both phase_parameters and phase_parameters_err arguments must be lists."
+    )
 
     with pytest.raises(ValueError) as error_info_2:
         test_object.populate_phase_parameters("y", "model_1", 11.0, 12.0, 13, 14.0, 15.0, 16.0, 17.0, 18.0)
@@ -57,7 +65,7 @@ def test_populate_phase_parameters():
     with pytest.raises(Exception) as error_info_3:
         test_object.populate_phase_parameters("u", H=4.0)
 
-    assert error_info_3.value.args[0] == "No model name given. Cannot update model-specific parameters."
+    assert error_info_3.value.args[0] == "No model name given. Cannot update model-specific phase_parameters."
 
 
 def test_get_phase_parameters_in_filter():
