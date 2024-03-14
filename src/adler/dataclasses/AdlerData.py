@@ -46,10 +46,10 @@ class AdlerData:
     filter_list: list
     model_lists: list = field(default_factory=list)
 
-    phaseAngle_min_adler: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=float))
-    phaseAngle_range_adler: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=float))
-    nobs_adler: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=int))
-    arc_adler: np.ndarray = field(default_factory=lambda: np.empty(0, dtype=float))
+    phaseAngle_min_adler: np.ndarray = field(default_factory=lambda: np.full(0, np.nan, dtype=float))
+    phaseAngle_range_adler: np.ndarray = field(default_factory=lambda: np.full(0, np.nan, dtype=float))
+    nobs_adler: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=int))
+    arc_adler: np.ndarray = field(default_factory=lambda: np.full(0, np.nan, dtype=float))
 
     # Note that these are lists and not arrays because appending to Numpy arrays (i.e. to add parameters for a different model) is not recommended.
     # They can be cast to Numpy arrays later if needed.
@@ -66,10 +66,10 @@ class AdlerData:
 
         self.model_lists = [[] for a in range(0, filter_length)]
 
-        self.phaseAngle_min_adler = np.empty(filter_length, dtype=float)
-        self.phaseAngle_range_adler = np.empty(filter_length, dtype=float)
-        self.nobs_adler = np.empty(filter_length, dtype=int)
-        self.arc_adler = np.empty(filter_length, dtype=float)
+        self.phaseAngle_min_adler = np.full(filter_length, np.nan, dtype=float)
+        self.phaseAngle_range_adler = np.full(filter_length, np.nan, dtype=float)
+        self.nobs_adler = np.zeros(filter_length, dtype=int)
+        self.arc_adler = np.full(filter_length, np.nan, dtype=float)
 
         self.H_adler = [[] for a in range(0, filter_length)]
         self.H_err_adler = [[] for a in range(0, filter_length)]
@@ -248,7 +248,16 @@ class AdlerData:
         except ValueError:
             raise ValueError("Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
 
-        if model_name:
+        parameters_dict = {
+            "phaseAngle_min": self.phaseAngle_min_adler[filter_index],
+            "phaseAngle_range": self.phaseAngle_range_adler[filter_index],
+            "nobs": self.nobs_adler[filter_index],
+            "arc": self.arc_adler[filter_index],
+        }
+
+        if not model_name:
+            print("No model name specified. Returning non-model-dependent phase parameters.")
+        else:
             try:
                 model_index = self.model_lists[filter_index].index(model_name)
             except ValueError:
@@ -257,23 +266,10 @@ class AdlerData:
                         model_name, filter_name
                     )
                 )
-        else:
-            model_index = 0
-            print(
-                "No model name specified. Returning phase parameters for first model in list: {}.".format(
-                    self.model_lists[filter_index][model_index]
-                )
-            )
 
-        parameters_dict = {
-            "phaseAngle_min": self.phaseAngle_min_adler[filter_index],
-            "phaseAngle_range": self.phaseAngle_range_adler[filter_index],
-            "nobs": self.nobs_adler[filter_index],
-            "arc": self.arc_adler[filter_index],
-            "H": self.H_adler[filter_index][model_index],
-            "H_err": self.H_err_adler[filter_index][model_index],
-            "phase_parameters": self.phase_parameters[filter_index][model_index],
-            "phase_parameters_err": self.phase_parameters_err[filter_index][model_index],
-        }
+            parameters_dict["H"] = self.H_adler[filter_index][model_index]
+            parameters_dict["H_err"] = self.H_err_adler[filter_index][model_index]
+            parameters_dict["phase_parameters"] = self.phase_parameters[filter_index][model_index]
+            parameters_dict["phase_parameters_err"] = self.phase_parameters_err[filter_index][model_index]
 
         return parameters_dict

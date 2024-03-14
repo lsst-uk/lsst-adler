@@ -91,12 +91,12 @@ def test_get_phase_parameters_in_filter():
         "phase_parameters_err": [18.0],
     }
 
+    u_independent = {"phaseAngle_min": 11.0, "phaseAngle_range": 12.0, "nobs": 13, "arc": 14.0}
+
     # making sure the correct parameters are retreived
     assert test_object.get_phase_parameters_in_filter("u", model_name="model_2") == u_model2
-    assert test_object.get_phase_parameters_in_filter("u") == u_model1
-    assert test_object.get_phase_parameters_in_filter(
-        "r", "model_2"
-    ) == test_object.get_phase_parameters_in_filter("r")
+    assert test_object.get_phase_parameters_in_filter("u", model_name="model_1") == u_model1
+    assert test_object.get_phase_parameters_in_filter("u") == u_independent
 
     # checking the error messages
     with pytest.raises(ValueError) as error_info_1:
