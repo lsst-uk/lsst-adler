@@ -122,7 +122,7 @@ class AdlerPlanetoid:
                     JOIN dp03_catalogs_10yr.diaSource ON dp03_catalogs_10yr.ssObject.ssObjectId   = dp03_catalogs_10yr.diaSource.ssObjectId
                     JOIN dp03_catalogs_10yr.ssSource  ON dp03_catalogs_10yr.diaSource.diaSourceId = dp03_catalogs_10yr.ssSource.diaSourceId
                 WHERE
-                    ssObject.ssObjectId = {ssObjectId} AND band = '{filter_name} AND midpointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}'
+                    ssObject.ssObjectId = {ssObjectId} AND band = '{filter_name}' AND midpointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
                 """
 
             data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
