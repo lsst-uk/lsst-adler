@@ -90,7 +90,7 @@ class MPCORB:
         mpcDesignation = get_from_table(data_table, "mpcDesignation", "str")
         mpcNumber = get_from_table(data_table, "mpcNumber", "int")
         mpcH = get_from_table(data_table, "mpcH", "float")
-        mpcG = get_from_table(data_table, "mpcH", "float")
+        mpcG = get_from_table(data_table, "mpcG", "float")
         epoch = get_from_table(data_table, "epoch", "float")
         peri = get_from_table(data_table, "peri", "float")
         node = get_from_table(data_table, "node", "float")
