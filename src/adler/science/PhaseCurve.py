@@ -4,27 +4,33 @@ from astropy.modeling.fitting import LevMarLSQFitter
 
 
 class PhaseCurve:
-    """
-    Class to define the phasecurve model and associated functions
-
+    """A class to define the phasecurve model and associated functions.
     Units - by default no units are set but astropy units can be passed.
-    It is up to the user to ensure that units are correct for the relevant phasecurve model
+    It is up to the user to ensure that units are correct for the relevant phasecurve model.
+
+    Attibutes
+    -----------
+    abs_mag : float
+       Absolute magnitude, H, of the phasecurve model (often units of mag).
+
+    phase_param: float
+       The first phase parameter of the phasecurve model, e.g. G from HG
+       (often dimensionless units unless S from LinearPhaseFunc, which has units mag/deg or mag/rad).
+
+    phase_param2: float
+       The second phase parameter, only used for the 3 parameter HG1G2 phasecurve model.
+
+    model_name: str
+       Label for the phasecurve model to be used.
+       Choice of: "HG", "HG1G2", "HG12", "HG12_Pen16", "LinearPhaseFunc"
+
     """
 
     def __init__(self, abs_mag=18, phase_param=0.2, phase_param2=None, model_name="HG"):
-        """
-        abs_mag - absolute magnitude, H, of the phasecurve model (often units of mag)
-        phase_param - the first phase parameter of the phasecurve model, e.g. G from HG
-        (often dimensionless units unless S from LinearPhaseFunc, which has units mag/deg or mag/rad)
-        phase_param2 - the second phase parameter, only used for the 3 parameter HG1G2 phasecurve model
-        model_name - the phasecurve model to be used
-
-        """
-
         self.abs_mag = abs_mag
         self.phase_param = phase_param
-        self.phase_param2 = phase_param2  # second phase parameter, G2, when required for the HG1G2 model
-        self.model_name = model_name  # ["HG", "HG1G2", "HG12", "HG12_Pen16", "LinearPhaseFunc"]
+        self.phase_param2 = phase_param2
+        self.model_name = model_name
 
         if model_name == "HG":
             self.model_function = HG(H=abs_mag, G=self.phase_param)
@@ -39,20 +45,34 @@ class PhaseCurve:
         else:
             print("no model selected")
 
-        # print(self.model_function.parameters)
-
     def ReturnModelDict(self):
-        """
-        Return the values for the PhaseCurve class as a dict
+        """Return the values for the PhaseCurve class as a dict
+
+        Returns
+        ----------
+
+        self.__dict__ : dict
+           The dict of PhaseCurve object parameters.
+
         """
 
         return self.__dict__
 
     def InitModelDict(self, model_dict):
-        """
-        Set up a new PhaseCurve model object from a dictionary
+        """Set up a new PhaseCurve model object from a dictionary.
+        This could be written by the user or generated from another PhaseCurve object using ReturnModelDict
 
-        model_dict - dictionary containing relevant PhaseCurve parameters
+        Parameters
+        -----------
+        model_dict : dict
+           Dictionary containing the PhaseCurve parameters you wish to set, e.g. abs_mag, phase_param
+
+        Returns
+        ----------
+
+        model : object
+           The new PhaseCurve class object
+
         """
 
         model = PhaseCurve()
@@ -61,13 +81,21 @@ class PhaseCurve:
         return model
 
     def InitModelSbpy(self, model_sbpy):
-        """
-        Set up a new PhaseCurve model object from an existing sbpy model
+        """Set up a new PhaseCurve model object from an existing sbpy model
         ### or create dict from sbpy model and then use InitModelDict?
 
-        model_sbpy
-        """
+        Parameters
+        -----------
+        model_sbpy : object
+           The sbpy model object, e.g. HG()
 
+        Returns
+        ----------
+
+        model : object
+           The new PhaseCurve class object
+
+        """
         # get model name from the sbpy model object
         model_name = model_sbpy.__class__.name
 
@@ -89,26 +117,55 @@ class PhaseCurve:
         return model
 
     def ReducedMag(self, phase_angle):
-        """
-        Return the reduced magnitude of the phasecurve model for a given phase angle(s)
+        """Return the reduced magnitude of the phasecurve model for a given phase angle(s)
 
         phase_angle - value or array, must have astropy units of degrees
+
+        Parameters
+        -----------
+        phase_angle : float or array
+           value or array of phase angles at which to evaluate the phasecurve model, must have astropy units of degrees.
+
+        Returns
+        ----------
+
+        return_value : float or array
+           The phasecurve model reduced magnitude at the given phase angle(s)
+
         """
 
-        ### add check to require phase angle units of deg
-        # return self.model_function.evaluate(phase_angle,*self.model_function.parameters)
         return self.model_function(phase_angle)
 
     def FitModel(self, phase_angle, reduced_mag, mag_err=None, fitter=None):
-        """
-        Fit the phasecurve model parameters to observations
-        starts with a phase curve model as an initial guess for parameters
-        fits model to phase angle and reduced magnitude
+        """Fit the phasecurve model parameters to observations.
+        starts with a phase curve model as an initial guess for parameters.
+        fits model to phase angle and reduced magnitude.
 
         phase_angle - phase angle of each observations
         reduced_mag - distance corrected reduced magnitudes
         mag_err - photometric uncertainties to weight the measurements
         fitter - can pass a fitting function from astropy.modeling.fitting, defaults to astropy.modeling.fitting.LevMarLSQFitter
+
+        Parameters
+        -----------
+        phase_angle : float or array
+           The Sun-object-observer phase angles of the observations.
+
+        reduced_mag : float or array
+           The observed reduced magnitudes at the corresponding phase angles.
+
+        mag_err : float or array
+           Uncertainty on the reduced magnitude, used to weight the fit.
+
+        fitter : object
+           Select a fitting function from astropy.modeling.fitting, defaults to astropy.modeling.fitting.LevMarLSQFitter
+
+        Returns
+        ----------
+
+        return_value : float or array
+           The phasecurve model reduced magnitude at the given phase angle(s)
+
         """
 
         # use the LevMarLSQFitter by default
@@ -121,7 +178,7 @@ class PhaseCurve:
         else:  # unweighted fit
             model_fit = fitter(self.model_function, phase_angle, reduced_mag)
 
-        ### if overwrite_model:
+        ### if overwrite_model: # add an overwrite option?
         # redo __init__ with the new fitted parameters
 
         return model_fit
