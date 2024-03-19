@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+import sqlite3
 
 
 def get_data_table(sql_query, service=None, sql_filename=None):
@@ -11,16 +13,16 @@ def get_data_table(sql_query, service=None, sql_filename=None):
     sql_query : str
         The SQL query made to the RSP or SQL database.
 
-    service : pyvo.dal.tap.TAPService object
+    service : pyvo.dal.tap.TAPService object or None
         TAPService object linked to the RSP. Default=None.
 
-    sql_filename : str
+    sql_filename : str or None
         Filepath to a SQL database. Default=None.
 
     Returns
     -----------
 
-    data_table : DALResultsTable
+    data_table : DALResultsTable or Pandas dataframe
         Data table containing the results of the SQL query.
 
     """
@@ -28,8 +30,16 @@ def get_data_table(sql_query, service=None, sql_filename=None):
     if service:
         data_table = service.search(sql_query)
     elif sql_filename:
-        # to-do
-        pass
+        cnx = sqlite3.connect(sql_filename)
+        data_table = pd.read_sql_query(
+            sql_query, cnx
+        )  # would really like to move away from Pandas for this...
+        with pd.option_context(
+            "future.no_silent_downcasting", True
+        ):  # suppresses a useless FutureWarning: the below line accounts for the warned behaviour already
+            data_table = data_table.fillna(value=np.nan).infer_objects(
+                copy=False
+            )  # changes Nones to NaNs because None forces dtype=object: bad.
 
     return data_table
 

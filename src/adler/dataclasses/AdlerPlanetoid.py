@@ -49,9 +49,51 @@ class AdlerPlanetoid:
         self.AdlerData = adler_data
 
     @classmethod
-    def construct_from_SQL(cls):
-        # to-do
-        pass
+    def construct_from_SQL(
+        cls,
+        ssObjectId,
+        sql_filename,
+        filter_list=["u", "g", "r", "i", "z", "y"],
+        date_range=[60000.0, 67300.0],
+        schema=None,
+    ):
+        """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects from
+        a local SQL database. Mostly used for testing.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        sql_filename : str
+            Filepath to the local SQL database.
+
+        filter_list : list of str
+            A comma-separated list of the filters of interest.
+
+        date_range : list of int
+            The minimum and maximum dates of the desired observations.
+
+        schema : str or None
+            Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
+
+        """
+
+        if len(date_range) != 2:
+            raise Exception("date_range argument must be of length 2.")
+
+        observations_by_filter = cls.populate_observations(
+            cls, ssObjectId, filter_list, date_range, sql_filename=sql_filename, schema=schema
+        )
+
+        mpcorb = cls.populate_MPCORB(cls, ssObjectId, sql_filename=sql_filename, schema=schema)
+        ssobject = cls.populate_SSObject(
+            cls, ssObjectId, filter_list, sql_filename=sql_filename, schema=schema
+        )
+
+        adler_data = AdlerData(filter_list)
+
+        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
 
     @classmethod
     def construct_from_RSP(
@@ -87,7 +129,15 @@ class AdlerPlanetoid:
 
         return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
 
-    def populate_observations(self, ssObjectId, filter_list, date_range, service=None, sql_filename=None):
+    def populate_observations(
+        self,
+        ssObjectId,
+        filter_list,
+        date_range,
+        service=None,
+        sql_filename=None,
+        schema="dp03_catalogs_10yr",
+    ):
         """Populates the observations_by_filter class attribute. Can populate from either the RSP for a SQL database:
         this behaviour is controlled by the service and sql_filename parameters, one of which must be supplied.
 
@@ -102,27 +152,35 @@ class AdlerPlanetoid:
         date_range : list of int
             The minimum and maximum dates of the desired observations.
 
-        service : pyvo.dal.tap.TAPService object
+        service : pyvo.dal.tap.TAPService object or None
             TAPService object linked to the RSP. Default=None.
 
-        sql_filename : str
+        sql_filename : str or None
             Filepath to a SQL database. Default=None.
 
+        schema : str or None
+            Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
+
         """
+
+        if schema:
+            schema = schema + "."
+        else:
+            schema = ""
 
         observations_by_filter = []
 
         for filter_name in filter_list:
             observations_sql_query = f"""
                 SELECT
-                    ssObject.ssObjectId, mag, magErr, band, midpointMjdTai, ra, dec, phaseAngle,
+                    ssObject.ssObjectId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
                     topocentricDist, heliocentricDist
                 FROM
-                    dp03_catalogs_10yr.ssObject
-                    JOIN dp03_catalogs_10yr.diaSource ON dp03_catalogs_10yr.ssObject.ssObjectId   = dp03_catalogs_10yr.diaSource.ssObjectId
-                    JOIN dp03_catalogs_10yr.ssSource  ON dp03_catalogs_10yr.diaSource.diaSourceId = dp03_catalogs_10yr.ssSource.diaSourceId
+                    {schema}ssObject
+                    JOIN {schema}diaSource ON {schema}ssObject.ssObjectId   = {schema}diaSource.ssObjectId
+                    JOIN {schema}ssSource  ON {schema}diaSource.diaSourceId = {schema}ssSource.diaSourceId
                 WHERE
-                    ssObject.ssObjectId = {ssObjectId} AND band = '{filter_name}' AND midpointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
+                    ssObject.ssObjectId = {ssObjectId} AND band = '{filter_name}' AND midPointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
                 """
 
             data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
@@ -133,7 +191,7 @@ class AdlerPlanetoid:
 
         return observations_by_filter
 
-    def populate_MPCORB(self, ssObjectId, service=None, sql_filename=None):
+    def populate_MPCORB(self, ssObjectId, service=None, sql_filename=None, schema="dp03_catalogs_10yr"):
         """Populates the MPCORB object class attribute. Can populate from either the RSP for a SQL database:
         this behaviour is controlled by the service and sql_filename parameters, one of which must be supplied.
 
@@ -142,19 +200,28 @@ class AdlerPlanetoid:
         ssObjectId : str
             ssObjectId of the object of interest.
 
-        service : pyvo.dal.tap.TAPService object
+        service : pyvo.dal.tap.TAPService object or None
             TAPService object linked to the RSP. Default=None.
 
-        sql_filename : str
+        sql_filename : str or None
             Filepath to a SQL database. Default=None.
 
+        schema : str or None
+            Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
+
         """
+
+        if schema:
+            schema = schema + "."
+        else:
+            schema = ""
+
         MPCORB_sql_query = f"""
             SELECT
                 ssObjectId, mpcDesignation, mpcNumber, mpcH, mpcG, epoch, peri, node, incl, e, n, q, 
                 uncertaintyParameter, flags
             FROM
-                dp03_catalogs_10yr.MPCORB
+                {schema}MPCORB
             WHERE
                 ssObjectId = {ssObjectId}
         """
@@ -163,7 +230,9 @@ class AdlerPlanetoid:
 
         return MPCORB.construct_from_data_table(ssObjectId, data_table)
 
-    def populate_SSObject(self, ssObjectId, filter_list, service=None, sql_filename=None):
+    def populate_SSObject(
+        self, ssObjectId, filter_list, service=None, sql_filename=None, schema="dp03_catalogs_10yr"
+    ):
         """Populates the SSObject class attribute. Can populate from either the RSP for a SQL database:
         this behaviour is controlled by the service and sql_filename parameters, one of which must be supplied.
 
@@ -175,18 +244,26 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        service : pyvo.dal.tap.TAPService object
+        service : pyvo.dal.tap.TAPService object or None
             TAPService object linked to the RSP. Default=None.
 
-        sql_filename : str
+        sql_filename : str or None
             Filepath to a SQL database. Default=None.
 
+        schema : str or None
+            Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
+
         """
+
+        if schema:
+            schema = schema + "."
+        else:
+            schema = ""
 
         filter_dependent_columns = ""
 
         for filter_name in filter_list:
-            filter_string = "{}_H, {}_G12, {}_Herr, {}_G12err, {}_nData, ".format(
+            filter_string = "{}_H, {}_G12, {}_HErr, {}_G12Err, {}_Ndata, ".format(
                 filter_name, filter_name, filter_name, filter_name, filter_name
             )
 
@@ -198,7 +275,7 @@ class AdlerPlanetoid:
                 {filter_dependent_columns}
                 maxExtendedness, minExtendedness, medianExtendedness
             FROM
-                dp03_catalogs_10yr.SSObject
+                {schema}SSObject
             WHERE
                 ssObjectId = {ssObjectId}
         """

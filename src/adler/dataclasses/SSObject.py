@@ -86,9 +86,9 @@ class SSObject:
         for i, filter in enumerate(filter_list):
             H[i] = get_from_table(data_table, filter + "_H", "float")
             G12[i] = get_from_table(data_table, filter + "_G12", "float")
-            Herr[i] = get_from_table(data_table, filter + "_Herr", "float")
-            G12err[i] = get_from_table(data_table, filter + "_G12err", "float")
-            nData[i] = get_from_table(data_table, filter + "_nData", "int")
+            Herr[i] = get_from_table(data_table, filter + "_HErr", "float")
+            G12err[i] = get_from_table(data_table, filter + "_G12Err", "float")
+            nData[i] = get_from_table(data_table, filter + "_Ndata", "int")
 
         maxExtendedness = get_from_table(data_table, "maxExtendedness", "float")
         minExtendedness = get_from_table(data_table, "minExtendedness", "float")
@@ -110,19 +110,3 @@ class SSObject:
             minExtendedness,
             medianExtendedness,
         )
-
-    def populate_from_table(self, data_table):
-        """Populates the SSObject object from the data_table class variable created on initialisation."""
-
-        self.discoverySubmissionDate = self.get_from_table(data_table, "discoverySubmissionDate", "float")
-        self.firstObservationDate = self.get_from_table(data_table, "firstObservationDate", "float")
-        self.arc = self.get_from_table(data_table, "arc", "float")
-        self.numObs = self.get_from_table(data_table, "numObs", "int")
-        self.r_H = self.get_from_table(data_table, "r_H", "float")
-        self.r_G12 = self.get_from_table(data_table, "r_G12", "float")
-        self.r_Herr = self.get_from_table(data_table, "r_Herr", "float")
-        self.r_G12Err = self.get_from_table(data_table, "r_G12err", "float")
-        self.r_nData = self.get_from_table(data_table, "r_nData", "int")
-        self.maxExtendedness = self.get_from_table(data_table, "maxExtendedness", "float")
-        self.minExtendedness = self.get_from_table(data_table, "minExtendedness", "float")
-        self.medianExtendedness = self.get_from_table(data_table, "medianExtendedness", "float")
