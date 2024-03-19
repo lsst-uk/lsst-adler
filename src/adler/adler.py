@@ -1,12 +1,35 @@
 import argparse
+import astropy.units as u
 
 from adler.dataclasses.AdlerPlanetoid import AdlerPlanetoid
+from adler.science.PhaseCurve import PhaseCurve
 
 
 def runAdler(args):
     planetoid = AdlerPlanetoid.construct_from_RSP(args.ssoid, args.filter_list, args.date_range)
 
     planetoid.do_pretend_science()
+
+    # now let's do some phase curves!
+
+    # get the RSP r filter model
+    pc = PhaseCurve(
+        abs_mag=planetoid.SSObject.H[2] * u.mag,
+        phase_param=planetoid.SSObject.G12[2],
+        model_name="HG12_Pen16",
+    )
+    print(pc)
+    print(pc.abs_mag, pc.phase_param)
+
+    # get the r filter observations
+    obs_r = planetoid.observations_in_filter("r")
+    alpha = obs_r.phaseAngle * u.deg
+    red_mag = obs_r.reduced_mag * u.mag
+    mag_err = obs_r.magErr * u.mag
+
+    # do a simple fit to all data
+    pc_fit = pc.FitModel(alpha, red_mag, mag_err)
+    print(pc_fit)
 
 
 def main():
