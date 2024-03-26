@@ -74,6 +74,8 @@ def get_from_table(data_table, column_name, data_type):
         elif data_type == "array":
             return np.array(data_table[column_name])
         else:
-            print("Type not recognised.")
+            raise TypeError(
+                "Type for argument data_type not recognised: must be one of 'str', 'float', 'int', 'array'."
+            )
     except ValueError:
         raise ValueError("Could not cast column name to type.")
