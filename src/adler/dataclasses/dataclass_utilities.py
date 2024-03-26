@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import sqlite3
+import warnings
 
 
 def get_data_table(sql_query, service=None, sql_filename=None):
@@ -34,9 +35,12 @@ def get_data_table(sql_query, service=None, sql_filename=None):
         data_table = pd.read_sql_query(
             sql_query, cnx
         )  # would really like to move away from Pandas for this...
-        with pd.option_context(
-            "future.no_silent_downcasting", True
-        ):  # suppresses a useless FutureWarning: the below line accounts for the warned behaviour already
+
+        # Pandas is triggering a useless FutureWarning here which I am choosing to suppress.
+        # The code is already written to account for the FutureWarning, but it triggers anyway. Thanks, Pandas.
+        # Note that pd.option_context("future.no_silent_downcasting", True) would also work, but only for Pandas >2.0.3.
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=FutureWarning)
             data_table = data_table.fillna(value=np.nan).infer_objects(
                 copy=False
             )  # changes Nones to NaNs because None forces dtype=object: bad.
