@@ -3,12 +3,13 @@ from pathlib import Path
 
 
 def get_test_data_path():
-    # This file's path: `<base_directory>/src/sorcha/utilities/test_data_utilities.py`
-    # THIS_DIR = `<base_directory>/`
-    THIS_DIR = Path(__file__).parent.parent.parent.parent
+    # where is this file?
+    path_to_file = os.path.abspath(__file__)
 
-    # Returned path: `<base_directory>/tests/data/filename`
-    return os.path.join(THIS_DIR, "tests/data")
+    # the test data folder is thus:
+    path_to_data = os.path.join(str(Path(path_to_file).parents[3]), "tests/data/")
+
+    return path_to_data
 
 
 def get_test_data_filepath(filename):
