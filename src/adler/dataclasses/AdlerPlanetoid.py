@@ -98,7 +98,7 @@ class AdlerPlanetoid:
     @classmethod
     def construct_from_RSP(
         cls, ssObjectId, filter_list=["u", "g", "r", "i", "z", "y"], date_range=[60000.0, 67300.0]
-    ):
+    ):  # pragma: no cover
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects
         from the RSP.
 
