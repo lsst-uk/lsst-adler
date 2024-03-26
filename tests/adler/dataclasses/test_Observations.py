@@ -6,7 +6,7 @@ from adler.dataclasses.dataclass_utilities import get_data_table
 from adler.utilities.tests_utilities import get_test_data_filepath
 
 
-def test_populate_from_data_table():
+def test_construct_observations_from_data_table():
     ssoid = 8268570668335894776
     test_db_path = get_test_data_filepath("testing_database.db")
     schema = ""
