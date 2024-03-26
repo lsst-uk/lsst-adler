@@ -52,15 +52,15 @@ class Observations:
 
     ssObjectId: str = ""
     filter_name: str = ""
-    mag: np.ndarray = field(default_factory=np.zeros(0))
-    magErr: np.ndarray = field(default_factory=np.zeros(0))
-    midpointMjdTai: np.ndarray = field(default_factory=np.zeros(0))
-    ra: np.ndarray = field(default_factory=np.zeros(0))
-    dec: np.ndarray = field(default_factory=np.zeros(0))
-    phaseAngle: np.ndarray = field(default_factory=np.zeros(0))
-    topocentricDist: np.ndarray = field(default_factory=np.zeros(0))
-    heliocentricDist: np.ndarray = field(default_factory=np.zeros(0))
-    reduced_mag: np.ndarray = field(default_factory=np.zeros(0))
+    mag: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    magErr: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    midpointMjdTai: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    ra: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    dec: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    phaseAngle: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    topocentricDist: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    heliocentricDist: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    reduced_mag: np.ndarray = field(default_factory=lambda: np.zeros(0))
     num_obs: int = 0
 
     @classmethod
