@@ -9,14 +9,13 @@ from adler.utilities.tests_utilities import get_test_data_filepath
 def test_construct_MPCORB_from_data_table():
     ssoid = 8268570668335894776
     test_db_path = get_test_data_filepath("testing_database.db")
-    schema = ""
 
     test_query = f"""
                 SELECT
                     ssObjectId, mpcDesignation, mpcNumber, mpcH, mpcG, epoch, peri, node, incl, e, n, q, 
                     uncertaintyParameter, flags
                 FROM
-                    {schema}MPCORB
+                    MPCORB
                 WHERE
                     ssObjectId = {ssoid}
             """

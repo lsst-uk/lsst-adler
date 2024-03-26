@@ -61,11 +61,11 @@ class SSObject:
     firstObservationDate: float = 0.0
     arc: float = 0.0
     numObs: int = 0
-    H: np.ndarray = field(default_factory=np.zeros(0))
-    G12: np.ndarray = field(default_factory=np.zeros(0))
-    Herr: np.ndarray = field(default_factory=np.zeros(0))
-    G12err: np.ndarray = field(default_factory=np.zeros(0))
-    nData: np.ndarray = field(default_factory=np.zeros(0))
+    H: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    G12: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    Herr: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    G12err: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    nData: np.ndarray = field(default_factory=lambda: np.zeros(0))
     maxExtendedness: float = 0.0
     minExtendedness: float = 0.0
     medianExtendedness: float = 0.0

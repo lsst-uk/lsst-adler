@@ -9,7 +9,6 @@ from adler.utilities.tests_utilities import get_test_data_filepath
 def test_construct_observations_from_data_table():
     ssoid = 8268570668335894776
     test_db_path = get_test_data_filepath("testing_database.db")
-    schema = ""
     filter_name = "r"
     date_range = [61000.0, 62000.0]
 
@@ -19,8 +18,8 @@ def test_construct_observations_from_data_table():
                         topocentricDist, heliocentricDist
                     FROM
                         ssObject
-                        JOIN {schema}diaSource ON {schema}ssObject.ssObjectId   = {schema}diaSource.ssObjectId
-                        JOIN {schema}ssSource  ON {schema}diaSource.diaSourceId = {schema}ssSource.diaSourceId
+                        JOIN diaSource ON ssObject.ssObjectId   = diaSource.ssObjectId
+                        JOIN ssSource  ON diaSource.diaSourceId = ssSource.diaSourceId
                     WHERE
                         ssObject.ssObjectId = {ssoid} AND band = '{filter_name}' AND midPointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
                     """
