@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 from numpy.testing import assert_almost_equal
 
@@ -99,6 +100,11 @@ def test_observations_in_filter():
     assert test_planetoid.observations_in_filter("z") == test_planetoid.observations_by_filter[4]
     assert test_planetoid.observations_in_filter("y") == test_planetoid.observations_by_filter[5]
 
+    with pytest.raises(ValueError) as error_info_1:
+        test_planetoid.observations_in_filter("f")
+
+    assert error_info_1.value.args[0] == "Filter f is not in AdlerPlanetoid.filter_list."
+
 
 def test_SSObject_in_filter():
     test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path)
@@ -109,3 +115,8 @@ def test_SSObject_in_filter():
     assert test_planetoid.SSObject_in_filter("i") == test_planetoid.SSObject.filter_dependent_values[3]
     assert test_planetoid.SSObject_in_filter("z") == test_planetoid.SSObject.filter_dependent_values[4]
     assert test_planetoid.SSObject_in_filter("y") == test_planetoid.SSObject.filter_dependent_values[5]
+
+    with pytest.raises(ValueError) as error_info_1:
+        test_planetoid.SSObject_in_filter("f")
+
+    assert error_info_1.value.args[0] == "Filter f is not in AdlerPlanetoid.filter_list."
