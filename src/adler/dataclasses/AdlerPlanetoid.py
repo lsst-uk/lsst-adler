@@ -6,7 +6,6 @@ from adler.dataclasses.MPCORB import MPCORB
 from adler.dataclasses.SSObject import SSObject
 from adler.dataclasses.AdlerData import AdlerData
 from adler.dataclasses.dataclass_utilities import get_data_table
-from adler.science.DummyScience import DummyScience
 
 
 class AdlerPlanetoid:
