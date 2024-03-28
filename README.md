@@ -48,7 +48,7 @@ You can then test that everything works by running:
 ```
 adler -s 8268570668335894776
 ```
-This currently prints a friendly message to the terminal.
+This will currently print some phase curve information to the terminal.
 
 Notes:
 1) The single quotes around `'[dev]'` may not be required for your operating system.
