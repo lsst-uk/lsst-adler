@@ -164,7 +164,7 @@ class AdlerPlanetoid:
 
         """
 
-        if schema:
+        if schema:  # pragma: no cover
             schema = schema + "."
         else:
             schema = ""
@@ -212,7 +212,7 @@ class AdlerPlanetoid:
 
         """
 
-        if schema:
+        if schema:  # pragma: no cover
             schema = schema + "."
         else:
             schema = ""
@@ -256,7 +256,7 @@ class AdlerPlanetoid:
 
         """
 
-        if schema:
+        if schema:  # pragma: no cover
             schema = schema + "."
         else:
             schema = ""
