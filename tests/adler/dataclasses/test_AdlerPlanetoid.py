@@ -88,6 +88,13 @@ def test_construct_with_date_range():
 
     assert_almost_equal(test_planetoid.observations_by_filter[0].midpointMjdTai, expected_dates)
 
+    with pytest.raises(ValueError) as error_info_1:
+        test_planetoid = AdlerPlanetoid.construct_from_SQL(
+            ssoid, test_db_path, date_range=[61000.0, 62000.0, 63000.0]
+        )
+
+    assert error_info_1.value.args[0] == "date_range attribute must be of length 2."
+
 
 def test_observations_in_filter():
     test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path)

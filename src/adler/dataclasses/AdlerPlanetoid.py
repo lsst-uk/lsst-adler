@@ -80,7 +80,7 @@ class AdlerPlanetoid:
         """
 
         if len(date_range) != 2:
-            raise Exception("date_range argument must be of length 2.")
+            raise ValueError("date_range attribute must be of length 2.")
 
         observations_by_filter = cls.populate_observations(
             cls, ssObjectId, filter_list, date_range, sql_filename=sql_filename, schema=schema
