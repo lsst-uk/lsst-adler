@@ -33,18 +33,6 @@ class SSObject:
         A list of FilterDependentSSO objects storing the filter-dependent values H, Herr, G12, G12err and nData,
         in same order as filter_list. See documentation for FilterDependentSSO object for descriptions of these variables.
 
-    G12: array_like of floats
-        Best fit G12 slope parameters per-filter, in same order as filter_list.
-
-    Herr : array_like of floats
-        Uncertainty of H per-filter, in same order as filter_list.
-
-    G12Err : array_like of floats
-        Uncertainty of G12 per-filter, in same order as filter_list.
-
-    nData: array_like of ints
-        The number of data points used to fit the phase curve per-filter, in same order as filter_list.
-
     maxExtendedness: float
         maximum `extendedness` value from the DIASource
 
@@ -133,7 +121,7 @@ class FilterDependentSSO:
     G12Err : float
         Uncertainty of G12.
 
-    nData: array_like of ints
+    nData: int
         The number of data points used to fit the phase curve in this filter.
     """
 

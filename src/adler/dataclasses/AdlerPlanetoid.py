@@ -328,8 +328,3 @@ class AdlerPlanetoid:
             raise ValueError("Filter {} is not in AdlerPlanetoid.filter_list.".format(filter_name))
 
         return self.SSObject.filter_dependent_values[filter_index]
-
-    def do_pretend_science(self):
-        self.DummyScienceResult = DummyScience().science_result
-
-        print(self.DummyScienceResult)
