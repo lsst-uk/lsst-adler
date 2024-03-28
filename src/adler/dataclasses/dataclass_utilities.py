@@ -1,4 +1,7 @@
 import numpy as np
+import pandas as pd
+import sqlite3
+import warnings
 
 
 def get_data_table(sql_query, service=None, sql_filename=None):
@@ -11,16 +14,16 @@ def get_data_table(sql_query, service=None, sql_filename=None):
     sql_query : str
         The SQL query made to the RSP or SQL database.
 
-    service : pyvo.dal.tap.TAPService object
+    service : pyvo.dal.tap.TAPService object or None
         TAPService object linked to the RSP. Default=None.
 
-    sql_filename : str
+    sql_filename : str or None
         Filepath to a SQL database. Default=None.
 
     Returns
     -----------
 
-    data_table : DALResultsTable
+    data_table : DALResultsTable or Pandas dataframe
         Data table containing the results of the SQL query.
 
     """
@@ -28,8 +31,19 @@ def get_data_table(sql_query, service=None, sql_filename=None):
     if service:
         data_table = service.search(sql_query)
     elif sql_filename:
-        # to-do
-        pass
+        cnx = sqlite3.connect(sql_filename)
+        data_table = pd.read_sql_query(
+            sql_query, cnx
+        )  # would really like to move away from Pandas for this...
+
+        # Pandas is triggering a useless FutureWarning here which I am choosing to suppress.
+        # The code is already written to account for the FutureWarning, but it triggers anyway. Thanks, Pandas.
+        # Note that pd.option_context("future.no_silent_downcasting", True) would also work, but only for Pandas >2.0.3.
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=FutureWarning)
+            data_table = data_table.fillna(value=np.nan).infer_objects(
+                copy=False
+            )  # changes Nones to NaNs because None forces dtype=object: bad.
 
     return data_table
 
@@ -60,6 +74,8 @@ def get_from_table(data_table, column_name, data_type):
         elif data_type == "array":
             return np.array(data_table[column_name])
         else:
-            print("Type not recognised.")
+            raise TypeError(
+                "Type for argument data_type not recognised: must be one of 'str', 'float', 'int', 'array'."
+            )
     except ValueError:
         raise ValueError("Could not cast column name to type.")

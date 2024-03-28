@@ -52,15 +52,15 @@ class Observations:
 
     ssObjectId: str = ""
     filter_name: str = ""
-    mag: np.ndarray = field(default_factory=np.zeros(0))
-    magErr: np.ndarray = field(default_factory=np.zeros(0))
-    midpointMjdTai: np.ndarray = field(default_factory=np.zeros(0))
-    ra: np.ndarray = field(default_factory=np.zeros(0))
-    dec: np.ndarray = field(default_factory=np.zeros(0))
-    phaseAngle: np.ndarray = field(default_factory=np.zeros(0))
-    topocentricDist: np.ndarray = field(default_factory=np.zeros(0))
-    heliocentricDist: np.ndarray = field(default_factory=np.zeros(0))
-    reduced_mag: np.ndarray = field(default_factory=np.zeros(0))
+    mag: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    magErr: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    midpointMjdTai: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    ra: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    dec: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    phaseAngle: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    topocentricDist: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    heliocentricDist: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    reduced_mag: np.ndarray = field(default_factory=lambda: np.zeros(0))
     num_obs: int = 0
 
     @classmethod
@@ -85,21 +85,28 @@ class Observations:
 
         """
 
-        reduced_mag = cls.calculate_reduced_mag(
-            cls, data_table["mag"], data_table["topocentricDist"], data_table["heliocentricDist"]
-        )
+        mag = get_from_table(data_table, "mag", "array")
+        magErr = get_from_table(data_table, "magErr", "array")
+        midpointMjdTai = get_from_table(data_table, "midPointMjdTai", "array")
+        ra = get_from_table(data_table, "ra", "array")
+        dec = get_from_table(data_table, "dec", "array")
+        phaseAngle = get_from_table(data_table, "phaseAngle", "array")
+        topocentricDist = get_from_table(data_table, "topocentricDist", "array")
+        heliocentricDist = get_from_table(data_table, "heliocentricDist", "array")
+
+        reduced_mag = cls.calculate_reduced_mag(cls, mag, topocentricDist, heliocentricDist)
 
         return cls(
             ssObjectId,
             filter_name,
-            data_table["mag"],
-            data_table["magErr"],
-            data_table["midpointMjdTai"],
-            data_table["ra"],
-            data_table["dec"],
-            data_table["phaseAngle"],
-            data_table["topocentricDist"],
-            data_table["heliocentricDist"],
+            mag,
+            magErr,
+            midpointMjdTai,
+            ra,
+            dec,
+            phaseAngle,
+            topocentricDist,
+            heliocentricDist,
             reduced_mag,
             len(data_table),
         )
