@@ -29,8 +29,9 @@ class SSObject:
     numObs: int
         Number of LSST observations of this object
 
-    H: array_like of floats
-        Best fit absolute magnitudes per-filter, in same order as filter_list.
+    filter_dependent_values: list of FilterDependentSSO objects
+        A list of FilterDependentSSO objects storing the filter-dependent values H, Herr, G12, G12err and nData,
+        in same order as filter_list. See documentation for FilterDependentSSO object for descriptions of these variables.
 
     G12: array_like of floats
         Best fit G12 slope parameters per-filter, in same order as filter_list.
@@ -61,11 +62,7 @@ class SSObject:
     firstObservationDate: float = 0.0
     arc: float = 0.0
     numObs: int = 0
-    H: np.ndarray = field(default_factory=lambda: np.zeros(0))
-    G12: np.ndarray = field(default_factory=lambda: np.zeros(0))
-    Herr: np.ndarray = field(default_factory=lambda: np.zeros(0))
-    G12err: np.ndarray = field(default_factory=lambda: np.zeros(0))
-    nData: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    filter_dependent_values: list = field(default_factory=list)
     maxExtendedness: float = 0.0
     minExtendedness: float = 0.0
     medianExtendedness: float = 0.0
@@ -83,12 +80,19 @@ class SSObject:
         G12err = np.zeros(len(filter_list))
         nData = np.zeros(len(filter_list))
 
-        for i, filter in enumerate(filter_list):
-            H[i] = get_from_table(data_table, filter + "_H", "float")
-            G12[i] = get_from_table(data_table, filter + "_G12", "float")
-            Herr[i] = get_from_table(data_table, filter + "_HErr", "float")
-            G12err[i] = get_from_table(data_table, filter + "_G12Err", "float")
-            nData[i] = get_from_table(data_table, filter + "_Ndata", "int")
+        filter_dependent_values = []
+
+        for i, filter_name in enumerate(filter_list):
+            filter_dept_object = FilterDependentSSO(
+                filter_name=filter_name,
+                H=get_from_table(data_table, filter_name + "_H", "float"),
+                G12=get_from_table(data_table, filter_name + "_G12", "float"),
+                Herr=get_from_table(data_table, filter_name + "_HErr", "float"),
+                G12err=get_from_table(data_table, filter_name + "_G12Err", "float"),
+                nData=get_from_table(data_table, filter_name + "_Ndata", "int"),
+            )
+
+            filter_dependent_values.append(filter_dept_object)
 
         maxExtendedness = get_from_table(data_table, "maxExtendedness", "float")
         minExtendedness = get_from_table(data_table, "minExtendedness", "float")
@@ -101,12 +105,41 @@ class SSObject:
             firstObservationDate,
             arc,
             numObs,
-            H,
-            G12,
-            Herr,
-            G12err,
-            nData,
+            filter_dependent_values,
             maxExtendedness,
             minExtendedness,
             medianExtendedness,
         )
+
+
+@dataclass
+class FilterDependentSSO:
+    """Filter-dependent object information from SSObject. All attributes carry the same names as the column names from the SSObject table.
+
+    Attributes:
+    -----------
+    filter_name : str
+        Single-letter name of the filter for which these values are relevant.
+
+    H : float
+        Best fit absolute magnitude in filter.
+
+    G12: float
+        Best fit G12 slope parameters in filter.
+
+    Herr : float
+        Uncertainty of H.
+
+    G12Err : float
+        Uncertainty of G12.
+
+    nData: array_like of ints
+        The number of data points used to fit the phase curve in this filter.
+    """
+
+    filter_name: str
+    H: float
+    G12: float
+    Herr: float
+    G12err: float
+    nData: int = 0

@@ -1,4 +1,5 @@
 from lsst.rsp import get_tap_service
+import pandas as pd
 
 from adler.dataclasses.Observations import Observations
 from adler.dataclasses.MPCORB import MPCORB
@@ -305,6 +306,28 @@ class AdlerPlanetoid:
             raise ValueError("Filter {} is not in AdlerPlanetoid.filter_list.".format(filter_name))
 
         return self.observations_by_filter[filter_index]
+
+    def SSObject_in_filter(self, filter_name):
+        """User-friendly helper function. Returns the filter-dependent values from SSObject for a given filter.
+
+        Parameters
+        -----------
+        filter_name : str
+            The desired filter.
+
+        Returns
+        -----------
+        ssobject_in_filter : SSObject
+
+
+        """
+
+        try:
+            filter_index = self.filter_list.index(filter_name)
+        except ValueError:
+            raise ValueError("Filter {} is not in AdlerPlanetoid.filter_list.".format(filter_name))
+
+        return self.SSObject.filter_dependent_values[filter_index]
 
     def do_pretend_science(self):
         self.DummyScienceResult = DummyScience().science_result

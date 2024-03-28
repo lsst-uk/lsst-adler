@@ -36,17 +36,35 @@ def test_construct_SSObject_from_data_table():
     data_table = get_data_table(test_query, sql_filename=test_db_path)
     test_SSObject = SSObject.construct_from_data_table(ssoid, filter_list, data_table)
 
+    test_values_r = [
+        test_SSObject.filter_dependent_values[0].H,
+        test_SSObject.filter_dependent_values[0].G12,
+        test_SSObject.filter_dependent_values[0].Herr,
+        test_SSObject.filter_dependent_values[0].G12err,
+        test_SSObject.filter_dependent_values[0].nData,
+    ]
+
+    test_values_g = [
+        test_SSObject.filter_dependent_values[1].H,
+        test_SSObject.filter_dependent_values[1].G12,
+        test_SSObject.filter_dependent_values[1].Herr,
+        test_SSObject.filter_dependent_values[1].G12err,
+        test_SSObject.filter_dependent_values[1].nData,
+    ]
+
+    expected_values_g = [20.292325973510742, 1.7233933210372925, 0.030210301280021667, 0.0404973067343235, 9]
+
+    expected_values_r = [19.805892944335938, 1.52932608127594, 0.01974303089082241, 0.05071713775396347, 38]
+
     assert test_SSObject.ssObjectId == 8268570668335894776
     assert test_SSObject.filter_list == filter_list
     assert_almost_equal(test_SSObject.discoverySubmissionDate, 60218.0, decimal=6)
     assert_almost_equal(test_SSObject.firstObservationDate, 60220.01958, decimal=6)
     assert_almost_equal(test_SSObject.arc, 3342.05859375, decimal=6)
     assert test_SSObject.numObs == 94
-    assert_almost_equal(test_SSObject.H, [19.80589294, 20.29232597], decimal=6)
-    assert_almost_equal(test_SSObject.G12, [1.52932608, 1.72339332], decimal=6)
-    assert_almost_equal(test_SSObject.Herr, [0.01974303, 0.0302103], decimal=6)
-    assert_almost_equal(test_SSObject.G12err, [0.05071714, 0.04049731], decimal=6)
-    assert_equal(test_SSObject.nData, [38.0, 9.0])
     assert_equal(test_SSObject.maxExtendedness, 0.0)
     assert_equal(test_SSObject.minExtendedness, 0.0)
     assert_equal(test_SSObject.medianExtendedness, 0.0)
+
+    assert_almost_equal(test_values_r, expected_values_r)
+    assert_almost_equal(test_values_g, expected_values_g)
