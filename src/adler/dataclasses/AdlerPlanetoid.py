@@ -1,11 +1,11 @@
 from lsst.rsp import get_tap_service
+import pandas as pd
 
 from adler.dataclasses.Observations import Observations
 from adler.dataclasses.MPCORB import MPCORB
 from adler.dataclasses.SSObject import SSObject
 from adler.dataclasses.AdlerData import AdlerData
 from adler.dataclasses.dataclass_utilities import get_data_table
-from adler.science.DummyScience import DummyScience
 
 
 class AdlerPlanetoid:
@@ -80,7 +80,7 @@ class AdlerPlanetoid:
         """
 
         if len(date_range) != 2:
-            raise Exception("date_range argument must be of length 2.")
+            raise ValueError("date_range attribute must be of length 2.")
 
         observations_by_filter = cls.populate_observations(
             cls, ssObjectId, filter_list, date_range, sql_filename=sql_filename, schema=schema
@@ -163,7 +163,7 @@ class AdlerPlanetoid:
 
         """
 
-        if schema:
+        if schema:  # pragma: no cover
             schema = schema + "."
         else:
             schema = ""
@@ -211,7 +211,7 @@ class AdlerPlanetoid:
 
         """
 
-        if schema:
+        if schema:  # pragma: no cover
             schema = schema + "."
         else:
             schema = ""
@@ -255,7 +255,7 @@ class AdlerPlanetoid:
 
         """
 
-        if schema:
+        if schema:  # pragma: no cover
             schema = schema + "."
         else:
             schema = ""
@@ -306,7 +306,24 @@ class AdlerPlanetoid:
 
         return self.observations_by_filter[filter_index]
 
-    def do_pretend_science(self):
-        self.DummyScienceResult = DummyScience().science_result
+    def SSObject_in_filter(self, filter_name):
+        """User-friendly helper function. Returns the filter-dependent values from SSObject for a given filter.
 
-        print(self.DummyScienceResult)
+        Parameters
+        -----------
+        filter_name : str
+            The desired filter.
+
+        Returns
+        -----------
+        ssobject_in_filter : SSObject
+
+
+        """
+
+        try:
+            filter_index = self.filter_list.index(filter_name)
+        except ValueError:
+            raise ValueError("Filter {} is not in AdlerPlanetoid.filter_list.".format(filter_name))
+
+        return self.SSObject.filter_dependent_values[filter_index]

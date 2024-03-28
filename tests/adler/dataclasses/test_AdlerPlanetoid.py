@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 from numpy.testing import assert_almost_equal
 
@@ -32,7 +33,7 @@ def test_construct_from_SQL():
 
     # did we pick up all the filters?
     assert len(test_planetoid.observations_by_filter) == 6
-    assert len(test_planetoid.SSObject.H) == 6
+    assert len(test_planetoid.SSObject.filter_dependent_values) == 6
     assert test_planetoid.filter_list == ["u", "g", "r", "i", "z", "y"]
 
     # checking the date range to ensure it's the default
@@ -44,7 +45,7 @@ def test_construct_with_single_filter():
 
     # should only be one filter in here now
     assert len(test_planetoid.observations_by_filter) == 1
-    assert len(test_planetoid.SSObject.H) == 1
+    assert len(test_planetoid.SSObject.filter_dependent_values) == 1
     assert test_planetoid.filter_list == ["g"]
 
     assert_almost_equal(
@@ -87,21 +88,42 @@ def test_construct_with_date_range():
 
     assert_almost_equal(test_planetoid.observations_by_filter[0].midpointMjdTai, expected_dates)
 
+    with pytest.raises(ValueError) as error_info_1:
+        test_planetoid = AdlerPlanetoid.construct_from_SQL(
+            ssoid, test_db_path, date_range=[61000.0, 62000.0, 63000.0]
+        )
+
+    assert error_info_1.value.args[0] == "date_range attribute must be of length 2."
+
 
 def test_observations_in_filter():
     test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path)
 
-    assert_almost_equal(
-        test_planetoid.observations_in_filter("g").mag,
-        [
-            21.33099937,
-            22.67099953,
-            23.5359993,
-            22.85000038,
-            22.97599983,
-            22.94499969,
-            23.13599968,
-            23.19400024,
-            23.1609993,
-        ],
-    )
+    # Python dataclasses create an __eq__ for you so object-to-object comparison just works, isn't that nice?
+    assert test_planetoid.observations_in_filter("u") == test_planetoid.observations_by_filter[0]
+    assert test_planetoid.observations_in_filter("g") == test_planetoid.observations_by_filter[1]
+    assert test_planetoid.observations_in_filter("r") == test_planetoid.observations_by_filter[2]
+    assert test_planetoid.observations_in_filter("i") == test_planetoid.observations_by_filter[3]
+    assert test_planetoid.observations_in_filter("z") == test_planetoid.observations_by_filter[4]
+    assert test_planetoid.observations_in_filter("y") == test_planetoid.observations_by_filter[5]
+
+    with pytest.raises(ValueError) as error_info_1:
+        test_planetoid.observations_in_filter("f")
+
+    assert error_info_1.value.args[0] == "Filter f is not in AdlerPlanetoid.filter_list."
+
+
+def test_SSObject_in_filter():
+    test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path)
+
+    assert test_planetoid.SSObject_in_filter("u") == test_planetoid.SSObject.filter_dependent_values[0]
+    assert test_planetoid.SSObject_in_filter("g") == test_planetoid.SSObject.filter_dependent_values[1]
+    assert test_planetoid.SSObject_in_filter("r") == test_planetoid.SSObject.filter_dependent_values[2]
+    assert test_planetoid.SSObject_in_filter("i") == test_planetoid.SSObject.filter_dependent_values[3]
+    assert test_planetoid.SSObject_in_filter("z") == test_planetoid.SSObject.filter_dependent_values[4]
+    assert test_planetoid.SSObject_in_filter("y") == test_planetoid.SSObject.filter_dependent_values[5]
+
+    with pytest.raises(ValueError) as error_info_1:
+        test_planetoid.SSObject_in_filter("f")
+
+    assert error_info_1.value.args[0] == "Filter f is not in AdlerPlanetoid.filter_list."

@@ -8,8 +8,6 @@ from adler.science.PhaseCurve import PhaseCurve
 def runAdler(args):
     planetoid = AdlerPlanetoid.construct_from_RSP(args.ssoid, args.filter_list, args.date_range)
 
-    planetoid.do_pretend_science()
-
     # now let's do some phase curves!
 
     # get the RSP r filter model

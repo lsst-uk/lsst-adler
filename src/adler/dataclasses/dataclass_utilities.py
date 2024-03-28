@@ -28,7 +28,7 @@ def get_data_table(sql_query, service=None, sql_filename=None):
 
     """
 
-    if service:
+    if service:  # pragma: no cover
         data_table = service.search(sql_query)
     elif sql_filename:
         cnx = sqlite3.connect(sql_filename)

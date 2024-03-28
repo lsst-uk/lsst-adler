@@ -1,3 +1,5 @@
 [report]
 exclude_also =
     # pragma: no cover
+
+omit = src/adler/adler.py
