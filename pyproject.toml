@@ -19,8 +19,8 @@ dependencies = [
     "lsst-rsp",
     "astropy",
     "sbpy",
-    "matplotlib" # for plotting
-    "pandas"
+    "matplotlib", # for plotting
+    "pandas",
 ]
 
 [project.urls]
