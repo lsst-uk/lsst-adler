@@ -2,6 +2,17 @@ from dataclasses import dataclass, field
 import numpy as np
 
 
+FILTER_DEPENDENT_KEYS = ["phaseAngle_min", "phaseAngle_range", "nobs", "arc"]
+MODEL_DEPENDENT_KEYS = [
+    "H",
+    "H_err",
+    "phase_parameter_1",
+    "phase_parameter_1_err",
+    "phase_parameter_2",
+    "phase_parameter_2_err",
+]
+
+
 @dataclass
 class AdlerData:
     """
@@ -9,217 +20,120 @@ class AdlerData:
 
     Attributes:
     -----------
-    filter_list : list
+    ssObjectId : str
+        ssObjectId of the object of interest.
+
+    filter_list : list of str
         List of filters under investigation.
 
-    model_lists : list
-        List of lists of models per-filter. Length = len(filter_list) such that [[filter1_model1, filter1_model2], [filter2_model1]]. Used to index values
-        in the H_adler, phase_parameter_1, phase_parameter_1_err, phase_parameter_2 and phase_parameter_2_err list structures.
-
-    phaseAngle_min_adler : array_like
-        Minimum phase angle of observations used in fitting model (degrees). Size = len(filter_list).
-
-    phaseAngle_range_adler : array_like
-        Max minus min phase angle range of observations used in fitting model (degrees). Size = len(filter_list).
-
-    nobs_adler : array_like
-        Number of observations used in fitting model. Size = len(filter_list).
-
-    arc_adler : array_like
-        Observational arc used to fit model (days). Size = len(filter_list).
-
-    H_adler : list
-        Absolute magnitude. List of lists arranged identically to model_lists, with per-filter and per-model values.
-
-    H_err_adler : list
-        Error in absolute magnitude. List of lists arranged identically to model_lists, with per-filter and per-model values.
-
-    phase_parameters : list
-        Phase parameters of the model in question. List of lists arranged as model_lists, with per-filter and per-model values: however, phase_parameters[filter_index][model_index] is itself a
-        list of either one or two values, depending on the number of phase parameters.
-
-    phase_parameter_err : list
-        Error in the first phase parameter. List of lists arranged identically to phase_parameters.
+    filter_dependent_values : list of FilterDependentAdler objects, optional
+        List of FilterDependentAdler objects containing filter-dependent data in order of filter_list. Default empty list.
 
     """
 
+    ssObjectId: str
     filter_list: list
-    model_lists: list = field(default_factory=list)
 
-    phaseAngle_min_adler: np.ndarray = field(default_factory=lambda: np.full(0, np.nan, dtype=float))
-    phaseAngle_range_adler: np.ndarray = field(default_factory=lambda: np.full(0, np.nan, dtype=float))
-    nobs_adler: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=int))
-    arc_adler: np.ndarray = field(default_factory=lambda: np.full(0, np.nan, dtype=float))
-
-    # Note that these are lists and not arrays because appending to Numpy arrays (i.e. to add parameters for a different model) is not recommended.
-    # They can be cast to Numpy arrays later if needed.
-    H_adler: list = field(default_factory=list, init=False)
-    H_err_adler: list = field(default_factory=list, init=False)
-    phase_parameters: list = field(default_factory=list, init=False)
-    phase_parameters_err: list = field(default_factory=list, init=False)
+    filter_dependent_values: list = field(default_factory=list)
 
     def __post_init__(self):
-        """This runs post-initialisation and creates all of the class attributes where one dimension is "filters" to ensure the arrays
-        and lists have the correct size. This makes population a little easier.
+        """This runs post-initialisation and creates the class attribute where one dimension is "filters" to ensure the array
+        has the correct size. This makes population a little easier.
         """
-        filter_length = len(self.filter_list)
 
-        self.model_lists = [[] for a in range(0, filter_length)]
+        # note that we don't do the same for model-dependent values as we don't know a priori how many models the user wishes
+        # to calculate, but we do know how many filters the AdlerPlanetoid object was generated with
+        self.filter_dependent_values = [FilterDependentAdler(filter_name) for filter_name in self.filter_list]
 
-        self.phaseAngle_min_adler = np.full(filter_length, np.nan, dtype=float)
-        self.phaseAngle_range_adler = np.full(filter_length, np.nan, dtype=float)
-        self.nobs_adler = np.zeros(filter_length, dtype=int)
-        self.arc_adler = np.full(filter_length, np.nan, dtype=float)
-
-        self.H_adler = [[] for a in range(0, filter_length)]
-        self.H_err_adler = [[] for a in range(0, filter_length)]
-        self.phase_parameters = [[] for a in range(0, filter_length)]
-        self.phase_parameters_err = [[] for a in range(0, filter_length)]
-
-    def populate_phase_parameters(
-        self,
-        filter_name,
-        model_name=None,
-        phaseAngle_min=None,
-        phaseAngle_range=None,
-        nobs=None,
-        arc=None,
-        H=None,
-        H_err=None,
-        phase_parameters=[],
-        phase_parameters_err=[],
-    ):
-        """Convenience method to correctly populate phase curve arrays/lists. Only the supplied arguments to the method will
-        be updated, allowing for only some values to be populated if desired.
+    def populate_phase_parameters(self, filter_name, **kwargs):
+        """Convenience method to correctly populate phase curve parameters for a given filter and (if desired) model.
+        Only the supplied arguments to the method will be updated, allowing for only some values to be populated if desired.
 
         Parameters
         -----------
 
         filter_name : str
             The one-letter name of the filter in which the phase curve was calculated.
-
-        model_name : str, optional
-            The name of the model used to calculate the phase curve. If not supplied, no model-dependent parameters will be updated.
-
-        phaseAngle_min : float, optional
-            Minimum phase angle of observations used in fitting model (degrees)
-
-        phaseAngle_range : float, optional
-            Max minus min phase angle range of observations used in fitting model (degrees).
-
-        nobs : int, optional
-            Number of observations used in fitting model.
-
-        arc : float, optional
-            Observational arc used to fit model (days).
-
-        H : float, optional
-            Absolute magnitude in model.
-
-        H_err : float, optional
-            Error on the absolute magnitude.
-
-        phase_parameters : list, optional
-            Phase parameters of the model.
-
-        phase_parameters_err : list, optional
-            Phase parameter errors.
+        **kwargs : FilterDependentAdler and PhaseModelDependentAdler attributes
+            The attribute names of the parameters you wish to update. See docs for FilterDependentAdler and PhaseModelDependentAdler
+            classes for definitions of each attribute.
+            Valid keyword arguments are: model_name, phaseAngle_min, phaseAngle_range, nobs, arc, H, H_err, phase_parameter_1,
+            phase_parameter_1_err, phase_parameter_2, phase_parameter_2_err.
+            Note that to update any of the model-dependent parameters (H, H_err, etc.), you WILL need to supply a model_name.
 
         """
 
-        # Make sure the supplied filter is in the filter list.
+        # make sure the supplied filter is in the filter list
         try:
             filter_index = self.filter_list.index(filter_name)
         except ValueError:
             raise ValueError("Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
 
-        # If parameters and/or parameters_err are not lists, error out.
-        if not isinstance(phase_parameters, list) or not isinstance(phase_parameters_err, list):
-            raise TypeError("Both phase_parameters and phase_parameters_err arguments must be lists.")
+        # if model-dependent parameters exist without a model name, return an error
+        if not kwargs.get("model_name") and any(name in kwargs for name in MODEL_DEPENDENT_KEYS):
+            raise NameError("No model name given. Cannot update model-specific phase parameters.")
 
-        self.phaseAngle_min_adler[filter_index] = self.update_value(
-            self.phaseAngle_min_adler[filter_index], phaseAngle_min
-        )
-        self.phaseAngle_range_adler[filter_index] = self.update_value(
-            self.phaseAngle_range_adler[filter_index], phaseAngle_range
-        )
-        self.nobs_adler[filter_index] = self.update_value(self.nobs_adler[filter_index], nobs)
-        self.arc_adler[filter_index] = self.update_value(self.arc_adler[filter_index], arc)
+        # update the value if it's in **kwargs
+        for filter_key in FILTER_DEPENDENT_KEYS:
+            if kwargs.get(filter_key):
+                setattr(self.filter_dependent_values[filter_index], filter_key, kwargs.get(filter_key))
 
-        if model_name is None and (
-            any(v is not None for v in [H, H_err])
-            or len(phase_parameters) != 0
-            or len(phase_parameters_err) != 0
-        ):
-            raise Exception("No model name given. Cannot update model-specific phase_parameters.")
-
-        elif model_name is None:
-            pass
-
-        elif model_name not in self.model_lists[filter_index]:
-            self.model_lists[filter_index].append(model_name)
-
-            self.H_adler[filter_index].append(H)
-            self.H_err_adler[filter_index].append(H_err)
-            self.phase_parameters[filter_index].append(phase_parameters)
-            self.phase_parameters_err[filter_index].append(phase_parameters_err)
-
-        else:
-            model_index = self.model_lists[filter_index].index(model_name)
-
-            self.H_adler[filter_index][model_index] = self.update_value(
-                self.H_adler[filter_index][model_index], H
-            )
-            self.H_err_adler[filter_index][model_index] = self.update_value(
-                self.H_err_adler[filter_index][model_index], H_err
-            )
-            self.phase_parameters[filter_index][model_index] = self.update_value(
-                self.phase_parameters[filter_index][model_index], phase_parameters
-            )
-            self.phase_parameters_err[filter_index][model_index] = self.update_value(
-                self.phase_parameters_err[filter_index][model_index], phase_parameters_err
+        # if no model_name is supplied, just end here
+        # else, if the model does not exist for this filter, create it
+        if not kwargs.get("model_name"):
+            return
+        elif kwargs.get("model_name") not in self.filter_dependent_values[filter_index].model_list:
+            self.filter_dependent_values[filter_index].model_list.append(kwargs.get("model_name"))
+            self.filter_dependent_values[filter_index].model_dependent_values.append(
+                PhaseModelDependentAdler(filter_name, kwargs.get("model_name"))
             )
 
-    def update_value(self, original_value, new_value):
-        """Returns one of two values depending on whether one of them is None. Used to update class attributes.
+        # then get the model index
+        model_index = self.filter_dependent_values[filter_index].model_list.index(kwargs.get("model_name"))
 
-        Parameters
-        -----------
-        original_value : any
-            Original value of the attribute.
-
-        new_value : any or None
-            The value to replace it with, if this is not None.
-
-
-        Returns
-        -----------
-        any
-            Either original_value (if new_value is None) or new_value.
-
-        """
-        if not new_value:
-            return original_value
-        else:
-            return new_value
+        # update the value if it's in **kwargs
+        for model_key in MODEL_DEPENDENT_KEYS:
+            if kwargs.get(model_key):
+                setattr(
+                    self.filter_dependent_values[filter_index].model_dependent_values[model_index],
+                    model_key,
+                    kwargs.get(model_key),
+                )
 
     def print_data(self):
         """Convenience method to clearly print the stored values."""
 
-        print("Phase parameters (per filter):\n")
         for f, filter_name in enumerate(self.filter_list):
             print("Filter: {}".format(filter_name))
-            print("Phase angle minimum: {}".format(self.phaseAngle_min_adler[f]))
-            print("Phase angle range: {}".format(self.phaseAngle_range_adler[f]))
-            print("Number of observations: {}".format(self.nobs_adler[f]))
-            print("Arc: {}".format(self.arc_adler[f]))
+            print("Phase angle minimum: {}".format(self.filter_dependent_values[f].phaseAngle_min))
+            print("Phase angle range: {}".format(self.filter_dependent_values[f].phaseAngle_range))
+            print("Number of observations: {}".format(self.filter_dependent_values[f].nobs))
+            print("Arc: {}".format(self.filter_dependent_values[f].arc))
 
-            for m, model_name in enumerate(self.model_lists[f]):
+            for m, model_name in enumerate(self.filter_dependent_values[f].model_list):
                 print("Model: {}.".format(model_name))
-                print("\tH: {}".format(self.H_adler[f][m]))
-                print("\tH error: {}".format(self.H_err_adler[f][m]))
-                print("\tPhase parameter(s): {}".format(self.phase_parameters[f][m]))
-                print("\tPhase parameter(s) error: {}".format(self.phase_parameters_err[f][m]))
+                print("\tH: {}".format(self.filter_dependent_values[f].model_dependent_values[m].H))
+                print("\tH error: {}".format(self.filter_dependent_values[f].model_dependent_values[m].H_err))
+                print(
+                    "\tPhase parameter 1: {}".format(
+                        self.filter_dependent_values[f].model_dependent_values[m].phase_parameter_1
+                    )
+                )
+                print(
+                    "\tPhase parameter 1 error: {}".format(
+                        self.filter_dependent_values[f].model_dependent_values[m].phase_parameter_1_err
+                    )
+                )
+                print(
+                    "\tPhase parameter 2: {}".format(
+                        self.filter_dependent_values[f].model_dependent_values[m].phase_parameter_2
+                    )
+                )
+                print(
+                    "\tPhase parameter 2 error: {}".format(
+                        self.filter_dependent_values[f].model_dependent_values[m].phase_parameter_2_err
+                    )
+                )
 
             print("\n")
 
@@ -232,14 +146,14 @@ class AdlerData:
             The filter of interest.
 
         model_name : str, optional
-            The model name of the model of interest. If this is not supplied, the code automatically returns the
-            parameters for the first model in the list.
+            The model name of the model of interest. If this is not supplied, the code will not return any model-dependent
+            parameters. Default None.
 
 
         Returns
         -----------
-        parameters_dict : dict
-            Dictionary of the phase curve parameters for the specified filter and model.
+        output_obj : PhaseParameterOutput object
+            Object containing phase curve parameters for the specified filter and model.
 
         """
 
@@ -248,18 +162,18 @@ class AdlerData:
         except ValueError:
             raise ValueError("Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
 
-        parameters_dict = {
-            "phaseAngle_min": self.phaseAngle_min_adler[filter_index],
-            "phaseAngle_range": self.phaseAngle_range_adler[filter_index],
-            "nobs": self.nobs_adler[filter_index],
-            "arc": self.arc_adler[filter_index],
-        }
+        output_obj = PhaseParameterOutput()
+        output_obj.filter_name = filter_name
+        output_obj.phaseAngle_min = self.filter_dependent_values[filter_index].phaseAngle_min
+        output_obj.phaseAngle_range = self.filter_dependent_values[filter_index].phaseAngle_range
+        output_obj.nobs = self.filter_dependent_values[filter_index].nobs
+        output_obj.arc = self.filter_dependent_values[filter_index].arc
 
         if not model_name:
             print("No model name specified. Returning non-model-dependent phase parameters.")
         else:
             try:
-                model_index = self.model_lists[filter_index].index(model_name)
+                model_index = self.filter_dependent_values[filter_index].model_list.index(model_name)
             except ValueError:
                 raise ValueError(
                     "Model {} does not exist for filter {} in AdlerData.model_lists.".format(
@@ -267,9 +181,116 @@ class AdlerData:
                     )
                 )
 
-            parameters_dict["H"] = self.H_adler[filter_index][model_index]
-            parameters_dict["H_err"] = self.H_err_adler[filter_index][model_index]
-            parameters_dict["phase_parameters"] = self.phase_parameters[filter_index][model_index]
-            parameters_dict["phase_parameters_err"] = self.phase_parameters_err[filter_index][model_index]
+            output_obj.model_name = model_name
+            output_obj.H = self.filter_dependent_values[filter_index].model_dependent_values[model_index].H
+            output_obj.H_err = (
+                self.filter_dependent_values[filter_index].model_dependent_values[model_index].H_err
+            )
+            output_obj.phase_parameter_1 = (
+                self.filter_dependent_values[filter_index]
+                .model_dependent_values[model_index]
+                .phase_parameter_1
+            )
+            output_obj.phase_parameter_1_err = (
+                self.filter_dependent_values[filter_index]
+                .model_dependent_values[model_index]
+                .phase_parameter_1_err
+            )
+            output_obj.phase_parameter_2 = (
+                self.filter_dependent_values[filter_index]
+                .model_dependent_values[model_index]
+                .phase_parameter_2
+            )
+            output_obj.phase_parameter_2_err = (
+                self.filter_dependent_values[filter_index]
+                .model_dependent_values[model_index]
+                .phase_parameter_2_err
+            )
 
-        return parameters_dict
+        return output_obj
+
+
+@dataclass
+class FilterDependentAdler:
+    """Dataclass containing filter-dependent values generated by Adler. Note that NaN indicates a value that has not yet been populated.
+
+    Attributes:
+    -----------
+    filter_name : str
+        The filter for which these values are calculated.
+
+    phaseAngle_min : float, optional
+        Minimum phase angle of observations used in fitting model (degrees).
+
+    phaseAngle_range : float, optional
+        Max minus min phase angle range of observations used in fitting model (degrees).
+
+    nobs : int, optional
+        Number of observations used in fitting model.
+
+    arc: float, optional
+        Observational arc used to fit model (days).
+
+    model_list: list of str, optional
+        List of the models for which phase curve parameters have been calculated. Default: empty list
+
+    model_dependent_values: list of PhaseModelDependentAdler objects, optional
+        List of PhaseModelDependentAdler objects storing phase-model parameters for each model, given in order of model_list. Default: empty list.
+
+    """
+
+    filter_name: str
+    phaseAngle_min: float = np.nan
+    phaseAngle_range: float = np.nan
+    nobs: int = 0
+    arc: float = np.nan
+    model_list: list = field(default_factory=list)
+    model_dependent_values: list = field(default_factory=list)
+
+
+@dataclass
+class PhaseModelDependentAdler:
+    """Dataclass containing phase-model-dependent values generated by Adler. Note that NaN indicates a value that has not yet been populated.
+
+    Attributes:
+    -----------
+    filter_name : str
+        The filter for which these values are calculated.
+
+    model_name : str
+        The phase model for which these values were calculated. Example: "HG", "HG1G2", "linear".
+
+    H : float, optional
+        The absolute magnitude. Default NaN.
+
+    H_err : float, optional
+        Error in absolute magnitude. Default NaN.
+
+    phase_parameter_1 : float, optional
+        The first parameter of the phase model. May be the only parameter. For example, G in the HG model. Default NaN.
+
+    phase_parameter_1_err : float, optional
+        The error on the first parameter of the phase model. Default NaN.
+
+    phase_parameter_2 : float, optional
+        The second parameter of the phase model. May not exist for this model. Default NaN.
+
+    phase_parameter_2_err : float, optional
+        The error on the second parameter of the phase model. Default NaN.
+
+    """
+
+    filter_name: str
+    model_name: str
+    H: float = np.nan
+    H_err: float = np.nan
+    phase_parameter_1: float = np.nan
+    phase_parameter_1_err: float = np.nan
+    phase_parameter_2: float = np.nan
+    phase_parameter_2_err: float = np.nan
+
+
+class PhaseParameterOutput:
+    """Empty convenience class so that the output of AdlerData.get_phase_parameters_in_filter is an object."""
+
+    pass
