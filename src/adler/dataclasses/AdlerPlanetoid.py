@@ -91,7 +91,7 @@ class AdlerPlanetoid:
             cls, ssObjectId, filter_list, sql_filename=sql_filename, schema=schema
         )
 
-        adler_data = AdlerData(filter_list)
+        adler_data = AdlerData(ssObjectId, filter_list)
 
         return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
 
@@ -125,7 +125,7 @@ class AdlerPlanetoid:
         mpcorb = cls.populate_MPCORB(cls, ssObjectId, service=service)
         ssobject = cls.populate_SSObject(cls, ssObjectId, filter_list, service=service)
 
-        adler_data = AdlerData(filter_list)
+        adler_data = AdlerData(ssObjectId, filter_list)
 
         return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
 
