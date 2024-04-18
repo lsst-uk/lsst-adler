@@ -1,9 +1,13 @@
-from numpy.testing import assert_array_equal
+import os
 import pytest
 import numpy as np
+import pandas as pd
+import sqlite3
+
+from numpy.testing import assert_array_equal
 
 from adler.dataclasses.AdlerData import AdlerData
-
+from adler.utilities.tests_utilities import get_test_data_filepath
 
 # setting up the AdlerData object to be used for testing
 
@@ -126,6 +130,9 @@ def test_populate_phase_parameters():
     test_object.populate_phase_parameters("u", model_name="model_1", H=15.0)
 
     # check to make sure filter-dependent parameter is correctly updated (then return it to previous)
+    test_object.populate_phase_parameters("u", nobs=99)
+    assert test_object.filter_dependent_values[0].nobs == 99
+    test_object.populate_phase_parameters("u", nobs=13)
 
     # testing to make sure the correct error messages trigger
     with pytest.raises(ValueError) as error_info_1:
@@ -222,3 +229,24 @@ def test_print_data(capsys):
     expected = "Filter: u\nPhase angle minimum: 11.0\nPhase angle range: 12.0\nNumber of observations: 13\nArc: 14.0\nModel: model_1.\n\tH: 15.0\n\tH error: 16.0\n\tPhase parameter 1: 17.0\n\tPhase parameter 1 error: 18.0\n\tPhase parameter 2: nan\n\tPhase parameter 2 error: nan\nModel: model_2.\n\tH: 25.0\n\tH error: 26.0\n\tPhase parameter 1: 27.0\n\tPhase parameter 1 error: 28.0\n\tPhase parameter 2: 29.0\n\tPhase parameter 2 error: 30.0\n\n\nFilter: g\nPhase angle minimum: 31.0\nPhase angle range: 32.0\nNumber of observations: 33\nArc: 34.0\nModel: model_1.\n\tH: 35.0\n\tH error: 36.0\n\tPhase parameter 1: 37.0\n\tPhase parameter 1 error: 38.0\n\tPhase parameter 2: nan\n\tPhase parameter 2 error: nan\n\n\nFilter: r\nPhase angle minimum: 41.0\nPhase angle range: 42.0\nNumber of observations: 43\nArc: 44.0\nModel: model_2.\n\tH: 45.0\n\tH error: 46.0\n\tPhase parameter 1: 47.0\n\tPhase parameter 1 error: 48.0\n\tPhase parameter 2: 49.0\n\tPhase parameter 2 error: 50.0\n\n\n"
 
     assert captured.out == expected
+
+
+def test_write_row_to_database(tmp_path):
+    db_location = os.path.join(tmp_path, "test_AdlerData_database.db")
+    test_object.write_row_to_database(db_location)
+
+    con = sqlite3.connect(db_location)
+    written_data = pd.read_sql_query("SELECT * from AdlerData", con)
+    con.close()
+
+    expected_data_filepath = get_test_data_filepath("test_SQL_database_table.csv")
+    expected_data = pd.read_csv(expected_data_filepath)
+
+    # we don't expect the timestamp column to be the same, obviously
+    expected_data = expected_data.drop(columns="timestamp")
+    written_data = written_data.drop(columns="timestamp")
+
+    # note that because I'm using Pandas there's some small dtype and np.nan/None stuff to clear up
+    # but this makes for a quick streamlined test anyway
+    expected_data = expected_data.replace({np.nan: None})
+    pd.testing.assert_frame_equal(expected_data, written_data, check_dtype=False)

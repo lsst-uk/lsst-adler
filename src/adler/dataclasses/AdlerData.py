@@ -1,5 +1,8 @@
-from dataclasses import dataclass, field
+import os
+import sqlite3
 import numpy as np
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 
 FILTER_DEPENDENT_KEYS = ["phaseAngle_min", "phaseAngle_range", "nobs", "arc"]
@@ -208,6 +211,148 @@ class AdlerData:
             )
 
         return output_obj
+
+    def _get_database_connection(self, filepath):
+        """Returns the connection to the output SQL database, creating it if it does not exist.
+
+        Parameters
+        -----------
+        filepath : path-like object
+            Filepath with the location of the output SQL database.
+
+        Returns
+        ----------
+        con : sqlite3 Connection object
+            The connection to the output database.
+
+        """
+
+        database_exists = os.path.isfile(
+            filepath
+        )  # check this FIRST as the next statement creates the db if it doesn't exist
+        con = sqlite3.connect(filepath)
+
+        if not database_exists:  # we need to make the table and a couple of starter columns
+            cur = con.cursor()
+            cur.execute("CREATE TABLE AdlerData(ssObjectId, timestamp)")
+
+        return con
+
+    def _get_database_columns(self, con, table_name):
+        """Gets a list of the current columns in a given table in a SQL database.
+
+        Parameters
+        -----------
+        con : sqlite3 Connection object
+            The connection to the output SQL database.
+
+        table_name : str
+            The name of the relevant table in the database.
+
+
+        Returns
+        ----------
+        list of str
+            List of current columns existing in the table.
+
+        """
+
+        cur = con.cursor()
+        cur.execute(f"""SELECT * from {table_name} where 1=0""")
+        return [d[0] for d in cur.description]
+
+    def _get_row_data_and_columns(self):
+        """Collects all of the data present in the AdlerData object as a list with a corresponding list of column names,
+        in preparation for a row to be written to a SQL database table.
+
+        Returns
+        -----------
+        row_data : list
+            A list containing all of the relevant data present in the AdlerData object.
+
+        required_columns : list of str
+            A list of the corresponding column names in the same order.
+
+        """
+        required_columns = ["ssObjectId", "timestamp"]
+        row_data = [self.ssObjectId, str(datetime.now(timezone.utc))]
+
+        for f, filter_name in enumerate(self.filter_list):
+            columns_by_filter = ["_".join([filter_name, filter_key]) for filter_key in FILTER_DEPENDENT_KEYS]
+            data_by_filter = [
+                getattr(self.filter_dependent_values[f], filter_key) for filter_key in FILTER_DEPENDENT_KEYS
+            ]
+
+            required_columns.extend(columns_by_filter)
+            row_data.extend(data_by_filter)
+
+            for m, model_name in enumerate(self.filter_dependent_values[f].model_list):
+                columns_by_model = [
+                    "_".join([filter_name, model_name, model_key]) for model_key in MODEL_DEPENDENT_KEYS
+                ]
+                data_by_model = [
+                    getattr(self.filter_dependent_values[f].model_dependent_values[m], model_key)
+                    for model_key in MODEL_DEPENDENT_KEYS
+                ]
+
+                required_columns.extend(columns_by_model)
+                row_data.extend(data_by_model)
+
+        return row_data, required_columns
+
+    def _ensure_columns(self, con, table_name, current_columns, required_columns):
+        """Creates new columns in a given table of a SQL database as needed by checking the list of current columns against a list
+        of required columns.
+
+
+        Parameters
+        -----------
+        con : sqlite3 Connection object
+            The connection to the output SQL database.
+
+        table_name : str
+            The name of the relevant table in the database.
+
+        current_columns : list of str
+            A list of the columns already existing in the database table.
+
+        required_columns : list of str
+            A list of the columns needed in the database table.
+
+        """
+
+        cur = con.cursor()
+        for column_name in required_columns:
+            if column_name not in current_columns:
+                cur.execute(f"""ALTER TABLE {table_name} ADD COLUMN {column_name}""")
+
+    def write_row_to_database(self, filepath, table_name="AdlerData"):
+        """Writes all of the relevant data contained within the AdlerData object to a timestamped row in a SQLite database.
+
+        Parameters
+        -----------
+        filepath : path-like object
+            Filepath with the location of the output SQL database.
+
+        table_name : str, optiona
+            String containing the table name to write the data to. Default is "AdlerData".
+
+        """
+
+        con = self._get_database_connection(filepath)
+
+        row_data, required_columns = self._get_row_data_and_columns()
+        current_columns = self._get_database_columns(con, table_name)
+        self._ensure_columns(con, table_name, current_columns, required_columns)
+
+        column_names = ",".join(required_columns)
+        column_spaces = ",".join(["?"] * len(required_columns))
+        sql_command = "INSERT INTO %s (%s) values(%s)" % (table_name, column_names, column_spaces)
+
+        cur = con.cursor()
+        cur.execute(sql_command, row_data)
+        con.commit()
+        con.close()
 
 
 @dataclass
