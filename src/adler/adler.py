@@ -39,9 +39,14 @@ def runAdler(cli_args):
 def main():
     parser = argparse.ArgumentParser(description="Runs Adler for a select planetoid and given user input.")
 
-    parser.add_argument("-s", "--ssoid", help="SSObject ID of planetoid.", type=str, required=True)
+    parser.add_argument("-s", "--ssObjectId", help="SSObject ID of planetoid.", type=str, required=True)
     parser.add_argument(
-        "-f", "--filter_list", help="Filters required.", nargs="*", type=str, default=["u", "g", "r", "i", "z", "y"]
+        "-f",
+        "--filter_list",
+        help="Filters required.",
+        nargs="*",
+        type=str,
+        default=["u", "g", "r", "i", "z", "y"],
     )
     parser.add_argument(
         "-d",

@@ -6,6 +6,7 @@ from numpy.testing import assert_equal
 
 from adler.dataclasses.dataclass_utilities import get_data_table
 from adler.dataclasses.dataclass_utilities import get_from_table
+from adler.dataclasses.dataclass_utilities import check_value_populated
 from adler.utilities.tests_utilities import get_test_data_filepath
 
 
@@ -55,3 +56,16 @@ def test_get_from_table():
         error_info_2.value.args[0]
         == "Type for argument data_type not recognised for column string_col in table default: must be str, float, int or np.ndarray."
     )
+
+
+def test_check_value_populated():
+    populated_value = check_value_populated(3, int, "column", "table")
+    assert populated_value == 3
+
+    array_length_zero = check_value_populated(np.array([]), np.ndarray, "column", "table")
+    number_is_nan = check_value_populated(np.nan, float, "column", "table")
+    str_is_empty = check_value_populated("", str, "column", "table")
+
+    assert np.isnan(array_length_zero)
+    assert np.isnan(number_is_nan)
+    assert np.isnan(str_is_empty)
