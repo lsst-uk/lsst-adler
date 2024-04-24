@@ -10,10 +10,13 @@ def runAdler(args):
 
     # now let's do some phase curves!
 
+    # get the r filter SSObject metadata
+    sso_r = planetoid.SSObject_in_filter("r")
+
     # get the RSP r filter model
     pc = PhaseCurve(
-        abs_mag=planetoid.SSObject.H[2] * u.mag,
-        phase_param=planetoid.SSObject.G12[2],
+        abs_mag=sso_r.H * u.mag,
+        phase_param=sso_r.G12,
         model_name="HG12_Pen16",
     )
     print(pc)

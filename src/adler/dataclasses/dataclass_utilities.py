@@ -48,8 +48,8 @@ def get_data_table(sql_query, service=None, sql_filename=None):
     return data_table
 
 
-def get_from_table(data_table, column_name, data_type):
-    """Retrieves information from the data_table class variable and forces it to be a specified type.
+def get_from_table(data_table, column_name, data_type, table_name):
+    """Retrieves information from the data_table and forces it to be a specified type.
 
     Parameters
     -----------
@@ -64,18 +64,33 @@ def get_from_table(data_table, column_name, data_type):
         The data requested from the table cast to the type required.
 
     """
-    try:
-        if data_type == "str":
-            return str(data_table[column_name][0])
-        elif data_type == "float":
-            return float(data_table[column_name][0])
-        elif data_type == "int":
-            return int(data_table[column_name][0])
-        elif data_type == "array":
-            return np.array(data_table[column_name])
-        else:
-            raise TypeError(
-                "Type for argument data_type not recognised: must be one of 'str', 'float', 'int', 'array'."
-            )
-    except ValueError:
-        raise ValueError("Could not cast column name to type.")
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning) # RSP tables mask unpopulated elements, which get converted to NaN here and trigger a warning we don't care about.
+        try:
+            if data_type == str:
+                data_val = str(data_table[column_name][0])
+            elif data_type == float:
+                data_val = float(data_table[column_name][0])
+            elif data_type == int:
+                data_val = int(data_table[column_name][0])
+            elif data_type == np.ndarray:
+                data_val = np.array(data_table[column_name])
+            else:
+                raise TypeError(
+                    "Type for argument data_type not recognised for column {} in table {}: must be str, float, int or np.ndarray.".format(column_name, table_name)
+                )
+        except ValueError:
+            raise ValueError("Could not cast column name to type.")
+
+    # here we alert the user if one of the values is NaN
+    check_value_for_nan(column_name, data_val, data_type, table_name)
+
+    return data_val
+
+
+def check_value_for_nan(column_name, data_val, data_type, table_name):
+
+    if data_type == np.ndarray and np.isnan(data_val).any():
+        print("WARNING: {} unpopulated in {} table for this object. Storing NaN instead.".format(column_name, table_name))
+    elif data_type in [float, int] and np.isnan(data_val):
+        print("WARNING: {} unpopulated in {} table for this object. Storing NaN instead.".format(column_name, table_name))

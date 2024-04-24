@@ -2,9 +2,22 @@ from dataclasses import dataclass
 
 from adler.dataclasses.dataclass_utilities import get_from_table
 
+MPCORB_KEYS = {"mpcDesignation": str,
+            "mpcNumber": int,
+            "mpcH": float,
+            "mpcG": float,
+            "epoch": float,
+            "peri": float,
+            "node": float,
+            "incl": float,
+            "e": float,
+            "n": float,
+            "q": float,
+            "uncertaintyParameter": str,
+            "flags": str}
 
 @dataclass
-class MPCORB:
+class MPCORB():
     """Object information from MPCORB. All attributes carry the same names as the column names from the MPCORB table.
 
     Attributes:
@@ -87,33 +100,9 @@ class MPCORB:
 
         """
 
-        mpcDesignation = get_from_table(data_table, "mpcDesignation", "str")
-        mpcNumber = get_from_table(data_table, "mpcNumber", "int")
-        mpcH = get_from_table(data_table, "mpcH", "float")
-        mpcG = get_from_table(data_table, "mpcG", "float")
-        epoch = get_from_table(data_table, "epoch", "float")
-        peri = get_from_table(data_table, "peri", "float")
-        node = get_from_table(data_table, "node", "float")
-        incl = get_from_table(data_table, "incl", "float")
-        e = get_from_table(data_table, "e", "float")
-        n = get_from_table(data_table, "n", "float")
-        q = get_from_table(data_table, "q", "float")
-        uncertaintyParameter = get_from_table(data_table, "uncertaintyParameter", "str")
-        flags = get_from_table(data_table, "flags", "str")
+        mpcorb_dict = {"ssObjectId": ssObjectId}
+        
+        for mpcorb_key, mpcorb_type in MPCORB_KEYS.items():
+            mpcorb_dict[mpcorb_key] = get_from_table(data_table, mpcorb_key, mpcorb_type, "MPCORB")
 
-        return cls(
-            ssObjectId,
-            mpcDesignation,
-            mpcNumber,
-            mpcH,
-            mpcG,
-            epoch,
-            peri,
-            node,
-            incl,
-            e,
-            n,
-            q,
-            uncertaintyParameter,
-            flags,
-        )
+        return cls(**mpcorb_dict)
