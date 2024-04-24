@@ -1,5 +1,6 @@
 import pytest
 import pandas as pd
+import numpy as np
 from pandas.testing import assert_frame_equal
 from numpy.testing import assert_equal
 
@@ -37,13 +38,13 @@ def test_get_from_table():
         {"string_col": "a test string", "int_col": 4, "float_col": 4.5, "array_col": [5, 6]}
     )
 
-    assert get_from_table(test_table, "string_col", "str") == "a test string"
-    assert get_from_table(test_table, "int_col", "int") == 4
-    assert get_from_table(test_table, "float_col", "float") == 4.5
-    assert_equal(get_from_table(test_table, "array_col", "array"), [5, 6])
+    assert get_from_table(test_table, "string_col", str) == "a test string"
+    assert get_from_table(test_table, "int_col", int) == 4
+    assert get_from_table(test_table, "float_col", float) == 4.5
+    assert_equal(get_from_table(test_table, "array_col", np.ndarray), [5, 6])
 
     with pytest.raises(ValueError) as error_info_1:
-        get_from_table(test_table, "string_col", "int")
+        get_from_table(test_table, "string_col", int)
 
     assert error_info_1.value.args[0] == "Could not cast column name to type."
 
@@ -52,5 +53,5 @@ def test_get_from_table():
 
     assert (
         error_info_2.value.args[0]
-        == "Type for argument data_type not recognised: must be one of 'str', 'float', 'int', 'array'."
+        == "Type for argument data_type not recognised for column string_col in table default: must be str, float, int or np.ndarray."
     )

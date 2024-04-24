@@ -3,14 +3,17 @@ import numpy as np
 
 from adler.dataclasses.dataclass_utilities import get_from_table
 
-OBSERVATIONS_KEYS = {"mag": np.ndarray,
-                    "magErr": np.ndarray,
-                    "midPointMjdTai": np.ndarray,
-                    "ra": np.ndarray,
-                    "dec": np.ndarray,
-                    "phaseAngle": np.ndarray,
-                    "topocentricDist": np.ndarray,
-                    "heliocentricDist": np.ndarray}
+OBSERVATIONS_KEYS = {
+    "mag": np.ndarray,
+    "magErr": np.ndarray,
+    "midPointMjdTai": np.ndarray,
+    "ra": np.ndarray,
+    "dec": np.ndarray,
+    "phaseAngle": np.ndarray,
+    "topocentricDist": np.ndarray,
+    "heliocentricDist": np.ndarray,
+}
+
 
 @dataclass
 class Observations:
@@ -96,9 +99,12 @@ class Observations:
         obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "num_obs": len(data_table)}
 
         for obs_key, obs_type in OBSERVATIONS_KEYS.items():
+            print(obs_key, obs_type)
             obs_dict[obs_key] = get_from_table(data_table, obs_key, obs_type, "SSSource/DIASource")
-                
-        obs_dict["reduced_mag"] = cls.calculate_reduced_mag(cls, obs_dict["mag"], obs_dict["topocentricDist"], obs_dict["heliocentricDist"])
+
+        obs_dict["reduced_mag"] = cls.calculate_reduced_mag(
+            cls, obs_dict["mag"], obs_dict["topocentricDist"], obs_dict["heliocentricDist"]
+        )
 
         return cls(**obs_dict)
 
