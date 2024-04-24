@@ -3,10 +3,13 @@ import astropy.units as u
 
 from adler.dataclasses.AdlerPlanetoid import AdlerPlanetoid
 from adler.science.PhaseCurve import PhaseCurve
+from adler.utilities.AdlerCLIArguments import AdlerCLIArguments
 
 
 def runAdler(args):
-    planetoid = AdlerPlanetoid.construct_from_RSP(args.ssoid, args.filter_list, args.date_range)
+    planetoid = AdlerPlanetoid.construct_from_RSP(
+        cli_args.ssObjectId, cli_args.filter_list, cli_args.date_range
+    )
 
     # now let's do some phase curves!
 
@@ -51,9 +54,9 @@ def main():
 
     args = parser.parse_args()
 
-    args.filter_list = args.filters.split(",")
+    cli_args = AdlerCLIArguments(args)
 
-    runAdler(args)
+    runAdler(cli_args)
 
 
 if __name__ == "__main__":
