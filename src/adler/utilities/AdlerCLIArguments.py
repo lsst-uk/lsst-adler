@@ -1,7 +1,7 @@
 class AdlerCLIArguments:
     def __init__(self, args):
         self.ssObjectId = args.ssoid
-        self.filter_list = args.filters.split(",")
+        self.filter_list = args.filter_list
         self.date_range = args.date_range
 
         self.validate_arguments()

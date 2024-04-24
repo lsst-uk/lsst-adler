@@ -6,7 +6,7 @@ from adler.science.PhaseCurve import PhaseCurve
 from adler.utilities.AdlerCLIArguments import AdlerCLIArguments
 
 
-def runAdler(args):
+def runAdler(cli_args):
     planetoid = AdlerPlanetoid.construct_from_RSP(
         cli_args.ssObjectId, cli_args.filter_list, cli_args.date_range
     )
@@ -41,7 +41,7 @@ def main():
 
     parser.add_argument("-s", "--ssoid", help="SSObject ID of planetoid.", type=str, required=True)
     parser.add_argument(
-        "-f", "--filters", help="Comma-separated list of filters required.", type=str, default="u,g,r,i,z,y"
+        "-f", "--filter_list", help="Filters required.", nargs="*", type=str, default=["u", "g", "r", "i", "z", "y"]
     )
     parser.add_argument(
         "-d",
