@@ -99,7 +99,6 @@ class Observations:
         obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "num_obs": len(data_table)}
 
         for obs_key, obs_type in OBSERVATIONS_KEYS.items():
-            print(obs_key, obs_type)
             obs_dict[obs_key] = get_from_table(data_table, obs_key, obs_type, "SSSource/DIASource")
 
         obs_dict["reduced_mag"] = cls.calculate_reduced_mag(
