@@ -2,22 +2,25 @@ from dataclasses import dataclass
 
 from adler.dataclasses.dataclass_utilities import get_from_table
 
-MPCORB_KEYS = {"mpcDesignation": str,
-            "mpcNumber": int,
-            "mpcH": float,
-            "mpcG": float,
-            "epoch": float,
-            "peri": float,
-            "node": float,
-            "incl": float,
-            "e": float,
-            "n": float,
-            "q": float,
-            "uncertaintyParameter": str,
-            "flags": str}
+MPCORB_KEYS = {
+    "mpcDesignation": str,
+    "mpcNumber": int,
+    "mpcH": float,
+    "mpcG": float,
+    "epoch": float,
+    "peri": float,
+    "node": float,
+    "incl": float,
+    "e": float,
+    "n": float,
+    "q": float,
+    "uncertaintyParameter": str,
+    "flags": str,
+}
+
 
 @dataclass
-class MPCORB():
+class MPCORB:
     """Object information from MPCORB. All attributes carry the same names as the column names from the MPCORB table.
 
     Attributes:
@@ -101,7 +104,7 @@ class MPCORB():
         """
 
         mpcorb_dict = {"ssObjectId": ssObjectId}
-        
+
         for mpcorb_key, mpcorb_type in MPCORB_KEYS.items():
             mpcorb_dict[mpcorb_key] = get_from_table(data_table, mpcorb_key, mpcorb_type, "MPCORB")
 

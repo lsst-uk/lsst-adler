@@ -3,13 +3,16 @@ import numpy as np
 
 from adler.dataclasses.dataclass_utilities import get_from_table
 
-SSO_KEYS = {"discoverySubmissionDate": float,
+SSO_KEYS = {
+    "discoverySubmissionDate": float,
     "firstObservationDate": float,
     "arc": float,
     "numObs": int,
     "maxExtendedness": float,
     "minExtendedness": float,
-    "medianExtendedness": float}
+    "medianExtendedness": float,
+}
+
 
 @dataclass
 class SSObject:
@@ -64,9 +67,8 @@ class SSObject:
 
     @classmethod
     def construct_from_data_table(cls, ssObjectId, filter_list, data_table):
-
         sso_dict = {"ssObjectId": ssObjectId, "filter_list": filter_list, "filter_dependent_values": []}
-    
+
         for sso_key, sso_type in SSO_KEYS.items():
             sso_dict[sso_key] = get_from_table(data_table, sso_key, sso_type, "SSObject")
 
