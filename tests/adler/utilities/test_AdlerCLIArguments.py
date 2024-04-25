@@ -26,7 +26,7 @@ def test_AdlerCLIArguments():
 
     assert (
         bad_ssoid_error.value.args[0]
-        == "ssoid command-line argument does not appear to be a valid ssObjectId."
+        == "ssObjectId command-line argument does not appear to be a valid ssObjectId."
     )
 
     # test that non-LSST or unexpected filters trigger the right error

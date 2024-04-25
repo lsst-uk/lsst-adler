@@ -33,7 +33,7 @@ class AdlerCLIArguments:
         try:
             int(self.ssObjectId)
         except ValueError:
-            raise ValueError("ssoid command-line argument does not appear to be a valid ssObjectId.")
+            raise ValueError("ssObjectId command-line argument does not appear to be a valid ssObjectId.")
 
     def _validate_date_range(self):
         for d in self.date_range:
