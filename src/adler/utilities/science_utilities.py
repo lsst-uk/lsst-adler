@@ -7,13 +7,13 @@ def outlier_diff(new_res, diff_cut=1.0):
 
     new_res: array
         The residuals of the new data points compared to the model
-    diff_cut:
+    diff_cut: float
         The threshold difference value for outlier detection.
 
     Returns
     -----------
-    outlier_flag : bool
-        Flag indicating if data point is an outlier (True)
+    outlier_flag : array
+       Array of flag indicating if data point is an outlier (True)
 
     """
 
@@ -29,7 +29,7 @@ def outlier_diff(new_res, diff_cut=1.0):
 def outlier_std(new_res, data_res, std_cut=3.0):
     """Test whether new data point(s) is an outlier compared to the model by considering the standard deviation of the residuals.
 
-    new_res: float or array
+    new_res: array
         The residuals of the new data point(s) compared to the model
     data_res: array
         The residuals of the data compared to the model.
@@ -38,8 +38,8 @@ def outlier_std(new_res, data_res, std_cut=3.0):
 
     Returns
     -----------
-    outlier_flag : bool
-       Flag indicating if data point is an outlier (True)
+    outlier_flag : array
+       Array of flag indicating if data point is an outlier (True)
 
     """
 
@@ -59,6 +59,8 @@ def zero_func(x, axis=None):
     """Dummy function to return a zero.
     Can be used as the centre function in astropy.stats.sigma_clip to get std relative to zero rather than median/mean value.
 
+    x:
+        Dummy variable
     axis:
         required to match the syntax of numpy functions such as np.median
     """
@@ -83,3 +85,24 @@ def sigma_clip(data_res, kwargs={"maxiters": 1, "cenfunc": zero_func}):
     sig_clip_mask = sig_clip.mask
 
     return sig_clip_mask
+
+
+def outlier_sigma_diff(data_res, data_sigma, std_sigma=1):
+    """Function to identify outliers by comparing the uncertainty of measurements to their residuals
+
+    data_res: array
+        The residuals of the data compared to the model.
+    data_sigma: array
+        The uncertainties of the data points
+    std_sigma: float
+        Number of standard deviations to identify outliers, assuming the data uncertainties represent one standard deviation
+
+    Returns
+    -----------
+    outlier_flag : array
+       Array of flag indicating if data point is an outlier (True)
+    """
+
+    outlier_flag = np.abs(data_res) > (std_sigma * data_sigma)
+
+    return outlier_flag
