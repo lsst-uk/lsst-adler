@@ -86,7 +86,7 @@ def test_construct_with_date_range():
         ]
     )
 
-    assert_almost_equal(test_planetoid.observations_by_filter[0].midpointMjdTai, expected_dates)
+    assert_almost_equal(test_planetoid.observations_by_filter[0].midPointMjdTai, expected_dates)
 
     with pytest.raises(ValueError) as error_info_1:
         test_planetoid = AdlerPlanetoid.construct_from_SQL(

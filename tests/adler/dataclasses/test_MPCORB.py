@@ -36,5 +36,5 @@ def test_construct_MPCORB_from_data_table():
     assert_almost_equal(test_MPCORB.e, 0.7168805704972735, decimal=6)
     assert np.isnan(test_MPCORB.n)
     assert_almost_equal(test_MPCORB.q, 0.5898291078470536, decimal=6)
-    assert test_MPCORB.uncertaintyParameter == ""
+    assert np.isnan(test_MPCORB.uncertaintyParameter)
     assert test_MPCORB.flags == "0"
