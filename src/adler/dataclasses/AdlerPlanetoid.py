@@ -87,7 +87,9 @@ class AdlerPlanetoid:
         )
 
         if len(observations_by_filter) == 0:
-            raise Exception("No observations found for this object in the given filter(s). Check SSOID and try again.")
+            raise Exception(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
 
         # redo the filter list based on the available filters in observations_by_filter
         filter_list = [obs_object.filter_name for obs_object in observations_by_filter]
@@ -130,11 +132,13 @@ class AdlerPlanetoid:
         )
 
         if len(observations_by_filter) == 0:
-            raise Exception("No observations found for this object in the given filter(s). Check SSOID and try again.")
+            raise Exception(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
 
         # redo the filter list based on the available filters in observations_by_filter
         filter_list = [obs_object.filter_name for obs_object in observations_by_filter]
-        
+
         mpcorb = cls.populate_MPCORB(cls, ssObjectId, service=service)
         ssobject = cls.populate_SSObject(cls, ssObjectId, filter_list, service=service)
 
@@ -199,7 +203,11 @@ class AdlerPlanetoid:
             data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
 
             if len(data_table) == 0:
-                print("WARNING: No observations found in {} filter for this object. Skipping this filter.".format(filter_name))
+                print(
+                    "WARNING: No observations found in {} filter for this object. Skipping this filter.".format(
+                        filter_name
+                    )
+                )
             else:
                 observations_by_filter.append(
                     Observations.construct_from_data_table(ssObjectId, filter_name, data_table)

@@ -11,7 +11,9 @@ test_db_path = get_test_data_filepath("testing_database.db")
 
 
 def test_construct_from_SQL():
-    test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path, filter_list=["u", "g", "r", "i", "z", "y"])
+    test_planetoid = AdlerPlanetoid.construct_from_SQL(
+        ssoid, test_db_path, filter_list=["u", "g", "r", "i", "z", "y"]
+    )
 
     # testing just a few values here to ensure correct setup: these objects have their own unit tests
     assert test_planetoid.MPCORB.mpcH == 19.8799991607666
@@ -129,17 +131,20 @@ def test_no_observations():
     with pytest.raises(Exception) as error_info:
         test_planetoid = AdlerPlanetoid.construct_from_SQL(826857066833589477, test_db_path)
 
-    assert error_info.value.args[0] == "No observations found for this object in the given filter(s). Check SSOID and try again."
+    assert (
+        error_info.value.args[0]
+        == "No observations found for this object in the given filter(s). Check SSOID and try again."
+    )
 
 
 def test_for_warnings(capsys):
-
     test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path, filter_list=["u", "g"])
     captured = capsys.readouterr()
 
-    expected = ("WARNING: No observations found in u filter for this object. Skipping this filter.\n"
-    + "WARNING: n unpopulated in MPCORB table for this object. Storing NaN instead.\n"
-    + "WARNING: uncertaintyParameter unpopulated in MPCORB table for this object. Storing NaN instead.\n")
+    expected = (
+        "WARNING: No observations found in u filter for this object. Skipping this filter.\n"
+        + "WARNING: n unpopulated in MPCORB table for this object. Storing NaN instead.\n"
+        + "WARNING: uncertaintyParameter unpopulated in MPCORB table for this object. Storing NaN instead.\n"
+    )
 
     assert captured.out == expected
-    
