@@ -148,3 +148,23 @@ def test_for_warnings(capsys):
     )
 
     assert captured.out == expected
+
+
+def test_failed_SQL_queries():
+    test_planetoid = AdlerPlanetoid.construct_from_SQL(
+        ssoid, test_db_path, filter_list=["u", "g", "r", "i", "z", "y"]
+    )
+
+    with pytest.raises(Exception) as error_info_1:
+        test_planetoid.populate_MPCORB("826857066833589477", sql_filename=test_db_path, schema="")
+
+    assert error_info_1.value.args[0] == "No MPCORB data for this object could be found for this SSObjectId."
+
+    with pytest.raises(Exception) as error_info_2:
+        test_planetoid.populate_SSObject(
+            "826857066833589477", filter_list=["u"], sql_filename=test_db_path, schema=""
+        )
+
+    assert (
+        error_info_2.value.args[0] == "No SSObject data for this object could be found for this SSObjectId."
+    )
