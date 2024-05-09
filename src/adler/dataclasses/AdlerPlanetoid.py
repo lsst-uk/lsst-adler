@@ -86,6 +86,14 @@ class AdlerPlanetoid:
             cls, ssObjectId, filter_list, date_range, sql_filename=sql_filename, schema=schema
         )
 
+        if len(observations_by_filter) == 0:
+            raise Exception(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
+
+        # redo the filter list based on the available filters in observations_by_filter
+        filter_list = [obs_object.filter_name for obs_object in observations_by_filter]
+
         mpcorb = cls.populate_MPCORB(cls, ssObjectId, sql_filename=sql_filename, schema=schema)
         ssobject = cls.populate_SSObject(
             cls, ssObjectId, filter_list, sql_filename=sql_filename, schema=schema
@@ -122,6 +130,15 @@ class AdlerPlanetoid:
         observations_by_filter = cls.populate_observations(
             cls, ssObjectId, filter_list, date_range, service=service
         )
+
+        if len(observations_by_filter) == 0:
+            raise Exception(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
+
+        # redo the filter list based on the available filters in observations_by_filter
+        filter_list = [obs_object.filter_name for obs_object in observations_by_filter]
+
         mpcorb = cls.populate_MPCORB(cls, ssObjectId, service=service)
         ssobject = cls.populate_SSObject(cls, ssObjectId, filter_list, service=service)
 
@@ -185,9 +202,16 @@ class AdlerPlanetoid:
 
             data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
 
-            observations_by_filter.append(
-                Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
-            )
+            if len(data_table) == 0:
+                print(
+                    "WARNING: No observations found in {} filter for this object. Skipping this filter.".format(
+                        filter_name
+                    )
+                )
+            else:
+                observations_by_filter.append(
+                    Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
+                )
 
         return observations_by_filter
 
@@ -227,6 +251,9 @@ class AdlerPlanetoid:
         """
 
         data_table = get_data_table(MPCORB_sql_query, service=service, sql_filename=sql_filename)
+
+        if len(data_table) == 0:
+            raise Exception("No MPCORB data for this object could be found for this SSObjectId.")
 
         return MPCORB.construct_from_data_table(ssObjectId, data_table)
 
@@ -281,6 +308,9 @@ class AdlerPlanetoid:
         """
 
         data_table = get_data_table(SSObject_sql_query, service=service, sql_filename=sql_filename)
+
+        if len(data_table) == 0:
+            raise Exception("No SSObject data for this object could be found for this SSObjectId.")
 
         return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table)
 
