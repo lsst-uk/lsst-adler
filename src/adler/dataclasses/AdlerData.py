@@ -15,6 +15,8 @@ MODEL_DEPENDENT_KEYS = [
     "phase_parameter_2_err",
 ]
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class AdlerData:

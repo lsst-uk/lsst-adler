@@ -1,11 +1,14 @@
 from lsst.rsp import get_tap_service
 import pandas as pd
+import logging
 
 from adler.dataclasses.Observations import Observations
 from adler.dataclasses.MPCORB import MPCORB
 from adler.dataclasses.SSObject import SSObject
 from adler.dataclasses.AdlerData import AdlerData
 from adler.dataclasses.dataclass_utilities import get_data_table
+
+logger = logging.getLogger(__name__)
 
 
 class AdlerPlanetoid:

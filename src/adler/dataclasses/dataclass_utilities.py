@@ -3,6 +3,8 @@ import pandas as pd
 import sqlite3
 import warnings
 
+logger = logging.getLogger(__name__)
+
 
 def get_data_table(sql_query, service=None, sql_filename=None):
     """Gets a table of data based on a SQL query. Table is pulled from either the RSP or a local SQL database:
