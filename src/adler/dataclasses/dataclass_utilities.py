@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import sqlite3
 import warnings
+import logging
 
 logger = logging.getLogger(__name__)
 
