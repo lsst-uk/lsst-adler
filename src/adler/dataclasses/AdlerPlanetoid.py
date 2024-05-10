@@ -91,13 +91,17 @@ class AdlerPlanetoid:
         )
 
         if len(observations_by_filter) == 0:
-            logger.error("No observations found for this object in the given filter(s). Check SSOID and try again.")
+            logger.error(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
             raise Exception(
                 "No observations found for this object in the given filter(s). Check SSOID and try again."
             )
 
         if len(filter_list) > len(observations_by_filter):
-            logger.info("Not all specified filters have observations. Recalculating filter list based on past observations.")
+            logger.info(
+                "Not all specified filters have observations. Recalculating filter list based on past observations."
+            )
             filter_list = [obs_object.filter_name for obs_object in observations_by_filter]
             logger.info("New filter list is: {}".format(filter_list))
 
@@ -140,13 +144,17 @@ class AdlerPlanetoid:
         )
 
         if len(observations_by_filter) == 0:
-            logger.error("No observations found for this object in the given filter(s). Check SSOID and try again.")
+            logger.error(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
             raise Exception(
                 "No observations found for this object in the given filter(s). Check SSOID and try again."
             )
 
         if len(filter_list) > len(observations_by_filter):
-            logger.info("Not all specified filters have observations. Recalculating filter list based on past observations.")
+            logger.info(
+                "Not all specified filters have observations. Recalculating filter list based on past observations."
+            )
             filter_list = [obs_object.filter_name for obs_object in observations_by_filter]
             logger.info("New filter list is: {}".format(filter_list))
 
@@ -216,7 +224,11 @@ class AdlerPlanetoid:
             data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
 
             if len(data_table) == 0:
-                logger.warning("No observations found in {} filter for this object. Skipping this filter.".format(filter_name))
+                logger.warning(
+                    "No observations found in {} filter for this object. Skipping this filter.".format(
+                        filter_name
+                    )
+                )
                 print(
                     "WARNING: No observations found in {} filter for this object. Skipping this filter.".format(
                         filter_name

@@ -185,7 +185,8 @@ class AdlerData:
             try:
                 model_index = self.filter_dependent_values[filter_index].model_list.index(model_name)
             except ValueError:
-                logger.error("ValueError: Model {} does not exist for filter {} in AdlerData.model_lists.".format(
+                logger.error(
+                    "ValueError: Model {} does not exist for filter {} in AdlerData.model_lists.".format(
                         model_name, filter_name
                     )
                 )
