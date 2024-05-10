@@ -73,10 +73,12 @@ class AdlerData:
         try:
             filter_index = self.filter_list.index(filter_name)
         except ValueError:
+            logger.error("ValueError: Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
             raise ValueError("Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
 
         # if model-dependent parameters exist without a model name, return an error
         if not kwargs.get("model_name") and any(name in kwargs for name in MODEL_DEPENDENT_KEYS):
+            logger.error("NameError: No model name given. Cannot update model-specific phase parameters.")
             raise NameError("No model name given. Cannot update model-specific phase parameters.")
 
         # update the value if it's in **kwargs
@@ -166,6 +168,7 @@ class AdlerData:
         try:
             filter_index = self.filter_list.index(filter_name)
         except ValueError:
+            logger.error("ValueError: Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
             raise ValueError("Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
 
         output_obj = PhaseParameterOutput()
@@ -176,11 +179,16 @@ class AdlerData:
         output_obj.arc = self.filter_dependent_values[filter_index].arc
 
         if not model_name:
+            logger.warn("No model name was specified. Returning non-model-dependent phase parameters.")
             print("No model name specified. Returning non-model-dependent phase parameters.")
         else:
             try:
                 model_index = self.filter_dependent_values[filter_index].model_list.index(model_name)
             except ValueError:
+                logger.error("ValueError: Model {} does not exist for filter {} in AdlerData.model_lists.".format(
+                        model_name, filter_name
+                    )
+                )
                 raise ValueError(
                     "Model {} does not exist for filter {} in AdlerData.model_lists.".format(
                         model_name, filter_name

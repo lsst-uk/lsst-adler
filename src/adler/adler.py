@@ -1,3 +1,4 @@
+import logging
 import argparse
 import astropy.units as u
 
@@ -6,12 +7,20 @@ from adler.science.PhaseCurve import PhaseCurve
 from adler.utilities.AdlerCLIArguments import AdlerCLIArguments
 from adler.utilities.adler_logging import setup_adler_logging
 
+logger = logging.getLogger(__name__)
 
 def runAdler(cli_args):
+
+    logger.info("Beginning Adler.")
+    logger.info("Ingesting all data for object {} from RSP...".format(cli_args.ssObjectId))
+  
     planetoid = AdlerPlanetoid.construct_from_RSP(
         cli_args.ssObjectId, cli_args.filter_list, cli_args.date_range
     )
 
+    logger.info("Data successfully ingested.")
+    logger.info("Calculating phase curves...")
+    
     # now let's do some phase curves!
 
     # get the r filter SSObject metadata

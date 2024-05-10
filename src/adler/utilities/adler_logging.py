@@ -24,16 +24,19 @@ def setup_adler_logging(
     log_file_info = os.path.join(log_location, dstr + "-p" + str(cpid) + "-" + log_file_info)
     log_file_error = os.path.join(log_location, dstr + "-p" + str(cpid) + "-" + log_file_error)
 
+    # this log will log pretty much everything: basic info, but also warnings and errors
     file_handler_info = logging.FileHandler(log_file_info, mode="w")
     file_handler_info.setFormatter(log_formatter)
     file_handler_info.setLevel(logging.INFO)
     log.addHandler(file_handler_info)
 
+    # this log only logs warnings and errors, so they can be looked at quickly without a lot of scrolling
     file_handler_error = logging.FileHandler(log_file_error, mode="w")
     file_handler_error.setFormatter(log_formatter)
-    file_handler_error.setLevel(logging.ERROR)
+    file_handler_error.setLevel(logging.WARN)
     log.addHandler(file_handler_error)
 
+    # I don't know why we need this line but info logging doesn't work without it, upsettingly
     log.setLevel(logging.INFO)
 
     return log
