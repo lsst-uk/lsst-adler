@@ -2,6 +2,9 @@ import numpy as np
 import pandas as pd
 import sqlite3
 import warnings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_data_table(sql_query, service=None, sql_filename=None):
@@ -48,34 +51,101 @@ def get_data_table(sql_query, service=None, sql_filename=None):
     return data_table
 
 
-def get_from_table(data_table, column_name, data_type):
-    """Retrieves information from the data_table class variable and forces it to be a specified type.
+def get_from_table(data_table, column_name, data_type, table_name="default"):
+    """Retrieves information from the data_table and forces it to be a specified type.
 
     Parameters
     -----------
+    data_table : DALResultsTable or Pandas dataframe
+        Data table containing columns of interest.
+
     column_name : str
         Column name under which the data of interest is stored.
-    type : str
-        String delineating data type. Should be "str", "float", "int" or "array".
+
+    data_type : type
+        Data type. Should be int, float, str or np.ndarray.
+
+    table_name : str
+        Name of the table. This is mostly for more informative error messages. Default="default".
 
     Returns
     -----------
-    data : any type
+    data_val : str, float, int or nd.array
         The data requested from the table cast to the type required.
 
     """
-    try:
-        if data_type == "str":
-            return str(data_table[column_name][0])
-        elif data_type == "float":
-            return float(data_table[column_name][0])
-        elif data_type == "int":
-            return int(data_table[column_name][0])
-        elif data_type == "array":
-            return np.array(data_table[column_name])
-        else:
-            raise TypeError(
-                "Type for argument data_type not recognised: must be one of 'str', 'float', 'int', 'array'."
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", category=UserWarning
+        )  # RSP tables mask unpopulated elements, which get converted to NaN here and trigger a warning we don't care about.
+        try:
+            if data_type == str:
+                data_val = str(data_table[column_name][0])
+            elif data_type == float:
+                data_val = float(data_table[column_name][0])
+            elif data_type == int:
+                data_val = int(data_table[column_name][0])
+            elif data_type == np.ndarray:
+                data_val = np.array(data_table[column_name])
+            else:
+                logger.error(
+                    "TypeError: Type for argument data_type not recognised for column {} in table {}: must be str, float, int or np.ndarray.".format(
+                        column_name, table_name
+                    )
+                )
+                raise TypeError(
+                    "Type for argument data_type not recognised for column {} in table {}: must be str, float, int or np.ndarray.".format(
+                        column_name, table_name
+                    )
+                )
+        except ValueError:
+            logger.error("ValueError: Could not cast column name to type.")
+            raise ValueError("Could not cast column name to type.")
+
+    # here we alert the user if one of the values is unpopulated and change it to a NaN
+    data_val = check_value_populated(data_val, data_type, column_name, table_name)
+
+    return data_val
+
+
+def check_value_populated(data_val, data_type, column_name, table_name):
+    """Checks to see if data_val populated properly and prints a helpful warning if it didn't.
+    Usually this will trigger because the RSP hasn't populated that field for this particular object.
+
+    Parameters
+    -----------
+    data_val : str, float, int or nd.array
+        The value to check.
+
+    data_type: type
+        Data type. Should be int, float, str or np.ndarray.
+
+    column_name: str
+        Column name under which the data of interest is stored.
+
+    table_name : str
+        Name of the table. This is mostly for more informative error messages. Default="default".
+
+    Returns
+    -----------
+    data_val : str, float, int, nd.array or np.nan
+        Either returns the original data_val or an np.nan if it detected that the value was not populated.
+
+    """
+
+    array_length_zero = data_type == np.ndarray and len(data_val) == 0
+    number_is_nan = data_type in [float, int] and np.isnan(data_val)
+    str_is_empty = data_type == str and len(data_val) == 0
+
+    if array_length_zero or number_is_nan or str_is_empty:
+        logger.warning(
+            "{} unpopulated in {} table for this object. Storing NaN instead.".format(column_name, table_name)
+        )
+        print(
+            "WARNING: {} unpopulated in {} table for this object. Storing NaN instead.".format(
+                column_name, table_name
             )
-    except ValueError:
-        raise ValueError("Could not cast column name to type.")
+        )
+        data_val = np.nan
+
+    return data_val

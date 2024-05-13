@@ -1,10 +1,12 @@
 import pytest
 import pandas as pd
+import numpy as np
 from pandas.testing import assert_frame_equal
 from numpy.testing import assert_equal
 
 from adler.dataclasses.dataclass_utilities import get_data_table
 from adler.dataclasses.dataclass_utilities import get_from_table
+from adler.dataclasses.dataclass_utilities import check_value_populated
 from adler.utilities.tests_utilities import get_test_data_filepath
 
 
@@ -37,13 +39,13 @@ def test_get_from_table():
         {"string_col": "a test string", "int_col": 4, "float_col": 4.5, "array_col": [5, 6]}
     )
 
-    assert get_from_table(test_table, "string_col", "str") == "a test string"
-    assert get_from_table(test_table, "int_col", "int") == 4
-    assert get_from_table(test_table, "float_col", "float") == 4.5
-    assert_equal(get_from_table(test_table, "array_col", "array"), [5, 6])
+    assert get_from_table(test_table, "string_col", str) == "a test string"
+    assert get_from_table(test_table, "int_col", int) == 4
+    assert get_from_table(test_table, "float_col", float) == 4.5
+    assert_equal(get_from_table(test_table, "array_col", np.ndarray), [5, 6])
 
     with pytest.raises(ValueError) as error_info_1:
-        get_from_table(test_table, "string_col", "int")
+        get_from_table(test_table, "string_col", int)
 
     assert error_info_1.value.args[0] == "Could not cast column name to type."
 
@@ -52,5 +54,18 @@ def test_get_from_table():
 
     assert (
         error_info_2.value.args[0]
-        == "Type for argument data_type not recognised: must be one of 'str', 'float', 'int', 'array'."
+        == "Type for argument data_type not recognised for column string_col in table default: must be str, float, int or np.ndarray."
     )
+
+
+def test_check_value_populated():
+    populated_value = check_value_populated(3, int, "column", "table")
+    assert populated_value == 3
+
+    array_length_zero = check_value_populated(np.array([]), np.ndarray, "column", "table")
+    number_is_nan = check_value_populated(np.nan, float, "column", "table")
+    str_is_empty = check_value_populated("", str, "column", "table")
+
+    assert np.isnan(array_length_zero)
+    assert np.isnan(number_is_nan)
+    assert np.isnan(str_is_empty)

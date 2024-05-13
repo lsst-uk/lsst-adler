@@ -161,7 +161,7 @@ def test_construct_observations_from_data_table():
 
     assert_almost_equal(test_observations.mag, expected_mag)
     assert_almost_equal(test_observations.magErr, expected_magerr)
-    assert_almost_equal(test_observations.midpointMjdTai, expected_mjd)
+    assert_almost_equal(test_observations.midPointMjdTai, expected_mjd)
     assert_almost_equal(test_observations.ra, expected_ra)
     assert_almost_equal(test_observations.dec, expected_dec)
     assert_almost_equal(test_observations.phaseAngle, expected_phaseangle)

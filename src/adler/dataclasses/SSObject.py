@@ -3,6 +3,16 @@ import numpy as np
 
 from adler.dataclasses.dataclass_utilities import get_from_table
 
+SSO_KEYS = {
+    "discoverySubmissionDate": float,
+    "firstObservationDate": float,
+    "arc": float,
+    "numObs": int,
+    "maxExtendedness": float,
+    "minExtendedness": float,
+    "medianExtendedness": float,
+}
+
 
 @dataclass
 class SSObject:
@@ -57,47 +67,24 @@ class SSObject:
 
     @classmethod
     def construct_from_data_table(cls, ssObjectId, filter_list, data_table):
-        discoverySubmissionDate = get_from_table(data_table, "discoverySubmissionDate", "float")
-        firstObservationDate = get_from_table(data_table, "firstObservationDate", "float")
-        arc = get_from_table(data_table, "arc", "float")
-        numObs = get_from_table(data_table, "numObs", "int")
+        sso_dict = {"ssObjectId": ssObjectId, "filter_list": filter_list, "filter_dependent_values": []}
 
-        H = np.zeros(len(filter_list))
-        G12 = np.zeros(len(filter_list))
-        Herr = np.zeros(len(filter_list))
-        G12err = np.zeros(len(filter_list))
-        nData = np.zeros(len(filter_list))
-
-        filter_dependent_values = []
+        for sso_key, sso_type in SSO_KEYS.items():
+            sso_dict[sso_key] = get_from_table(data_table, sso_key, sso_type, "SSObject")
 
         for i, filter_name in enumerate(filter_list):
             filter_dept_object = FilterDependentSSO(
                 filter_name=filter_name,
-                H=get_from_table(data_table, filter_name + "_H", "float"),
-                G12=get_from_table(data_table, filter_name + "_G12", "float"),
-                Herr=get_from_table(data_table, filter_name + "_HErr", "float"),
-                G12err=get_from_table(data_table, filter_name + "_G12Err", "float"),
-                nData=get_from_table(data_table, filter_name + "_Ndata", "int"),
+                H=get_from_table(data_table, filter_name + "_H", float, "SSObject"),
+                G12=get_from_table(data_table, filter_name + "_G12", float, "SSObject"),
+                Herr=get_from_table(data_table, filter_name + "_HErr", float, "SSObject"),
+                G12err=get_from_table(data_table, filter_name + "_G12Err", float, "SSObject"),
+                nData=get_from_table(data_table, filter_name + "_Ndata", float, "SSObject"),
             )
 
-            filter_dependent_values.append(filter_dept_object)
+            sso_dict["filter_dependent_values"].append(filter_dept_object)
 
-        maxExtendedness = get_from_table(data_table, "maxExtendedness", "float")
-        minExtendedness = get_from_table(data_table, "minExtendedness", "float")
-        medianExtendedness = get_from_table(data_table, "medianExtendedness", "float")
-
-        return cls(
-            ssObjectId,
-            filter_list,
-            discoverySubmissionDate,
-            firstObservationDate,
-            arc,
-            numObs,
-            filter_dependent_values,
-            maxExtendedness,
-            minExtendedness,
-            medianExtendedness,
-        )
+        return cls(**sso_dict)
 
 
 @dataclass

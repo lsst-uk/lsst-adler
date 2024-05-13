@@ -3,6 +3,17 @@ import numpy as np
 
 from adler.dataclasses.dataclass_utilities import get_from_table
 
+OBSERVATIONS_KEYS = {
+    "mag": np.ndarray,
+    "magErr": np.ndarray,
+    "midPointMjdTai": np.ndarray,
+    "ra": np.ndarray,
+    "dec": np.ndarray,
+    "phaseAngle": np.ndarray,
+    "topocentricDist": np.ndarray,
+    "heliocentricDist": np.ndarray,
+}
+
 
 @dataclass
 class Observations:
@@ -24,7 +35,7 @@ class Observations:
     magErr: array_like of floats
         Magnitude error. This is a placeholder and will be replaced by flux error.
 
-    midpointMjdTai: array_like of floats
+    midPointMjdTai: array_like of floats
         Effective mid-visit time for this diaSource, expressed as Modified Julian Date, International Atomic Time.
 
     ra: array_like of floats
@@ -54,7 +65,7 @@ class Observations:
     filter_name: str = ""
     mag: np.ndarray = field(default_factory=lambda: np.zeros(0))
     magErr: np.ndarray = field(default_factory=lambda: np.zeros(0))
-    midpointMjdTai: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    midPointMjdTai: np.ndarray = field(default_factory=lambda: np.zeros(0))
     ra: np.ndarray = field(default_factory=lambda: np.zeros(0))
     dec: np.ndarray = field(default_factory=lambda: np.zeros(0))
     phaseAngle: np.ndarray = field(default_factory=lambda: np.zeros(0))
@@ -85,31 +96,16 @@ class Observations:
 
         """
 
-        mag = get_from_table(data_table, "mag", "array")
-        magErr = get_from_table(data_table, "magErr", "array")
-        midpointMjdTai = get_from_table(data_table, "midPointMjdTai", "array")
-        ra = get_from_table(data_table, "ra", "array")
-        dec = get_from_table(data_table, "dec", "array")
-        phaseAngle = get_from_table(data_table, "phaseAngle", "array")
-        topocentricDist = get_from_table(data_table, "topocentricDist", "array")
-        heliocentricDist = get_from_table(data_table, "heliocentricDist", "array")
+        obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "num_obs": len(data_table)}
 
-        reduced_mag = cls.calculate_reduced_mag(cls, mag, topocentricDist, heliocentricDist)
+        for obs_key, obs_type in OBSERVATIONS_KEYS.items():
+            obs_dict[obs_key] = get_from_table(data_table, obs_key, obs_type, "SSSource/DIASource")
 
-        return cls(
-            ssObjectId,
-            filter_name,
-            mag,
-            magErr,
-            midpointMjdTai,
-            ra,
-            dec,
-            phaseAngle,
-            topocentricDist,
-            heliocentricDist,
-            reduced_mag,
-            len(data_table),
+        obs_dict["reduced_mag"] = cls.calculate_reduced_mag(
+            cls, obs_dict["mag"], obs_dict["topocentricDist"], obs_dict["heliocentricDist"]
         )
+
+        return cls(**obs_dict)
 
     def calculate_reduced_mag(self, mag, topocentric_dist, heliocentric_dist):
         """
