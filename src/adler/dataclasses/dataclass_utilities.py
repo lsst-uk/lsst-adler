@@ -2,6 +2,9 @@ import numpy as np
 import pandas as pd
 import sqlite3
 import warnings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_data_table(sql_query, service=None, sql_filename=None):
@@ -85,12 +88,18 @@ def get_from_table(data_table, column_name, data_type, table_name="default"):
             elif data_type == np.ndarray:
                 data_val = np.array(data_table[column_name])
             else:
+                logger.error(
+                    "TypeError: Type for argument data_type not recognised for column {} in table {}: must be str, float, int or np.ndarray.".format(
+                        column_name, table_name
+                    )
+                )
                 raise TypeError(
                     "Type for argument data_type not recognised for column {} in table {}: must be str, float, int or np.ndarray.".format(
                         column_name, table_name
                     )
                 )
         except ValueError:
+            logger.error("ValueError: Could not cast column name to type.")
             raise ValueError("Could not cast column name to type.")
 
     # here we alert the user if one of the values is unpopulated and change it to a NaN
@@ -129,6 +138,9 @@ def check_value_populated(data_val, data_type, column_name, table_name):
     str_is_empty = data_type == str and len(data_val) == 0
 
     if array_length_zero or number_is_nan or str_is_empty:
+        logger.warning(
+            "{} unpopulated in {} table for this object. Storing NaN instead.".format(column_name, table_name)
+        )
         print(
             "WARNING: {} unpopulated in {} table for this object. Storing NaN instead.".format(
                 column_name, table_name

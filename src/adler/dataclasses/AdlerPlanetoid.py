@@ -1,11 +1,14 @@
 from lsst.rsp import get_tap_service
 import pandas as pd
+import logging
 
 from adler.dataclasses.Observations import Observations
 from adler.dataclasses.MPCORB import MPCORB
 from adler.dataclasses.SSObject import SSObject
 from adler.dataclasses.AdlerData import AdlerData
 from adler.dataclasses.dataclass_utilities import get_data_table
+
+logger = logging.getLogger(__name__)
 
 
 class AdlerPlanetoid:
@@ -80,11 +83,27 @@ class AdlerPlanetoid:
         """
 
         if len(date_range) != 2:
+            logger.error("ValueError: date_range attribute must be of length 2.")
             raise ValueError("date_range attribute must be of length 2.")
 
         observations_by_filter = cls.populate_observations(
             cls, ssObjectId, filter_list, date_range, sql_filename=sql_filename, schema=schema
         )
+
+        if len(observations_by_filter) == 0:
+            logger.error(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
+            raise Exception(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
+
+        if len(filter_list) > len(observations_by_filter):
+            logger.info(
+                "Not all specified filters have observations. Recalculating filter list based on past observations."
+            )
+            filter_list = [obs_object.filter_name for obs_object in observations_by_filter]
+            logger.info("New filter list is: {}".format(filter_list))
 
         mpcorb = cls.populate_MPCORB(cls, ssObjectId, sql_filename=sql_filename, schema=schema)
         ssobject = cls.populate_SSObject(
@@ -119,10 +138,29 @@ class AdlerPlanetoid:
             raise Exception("date_range argument must be of length 2.")
 
         service = get_tap_service("ssotap")
+        logger.info("Getting past observations from DIASource/SSSource...")
         observations_by_filter = cls.populate_observations(
             cls, ssObjectId, filter_list, date_range, service=service
         )
+
+        if len(observations_by_filter) == 0:
+            logger.error(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
+            raise Exception(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
+
+        if len(filter_list) > len(observations_by_filter):
+            logger.info(
+                "Not all specified filters have observations. Recalculating filter list based on past observations."
+            )
+            filter_list = [obs_object.filter_name for obs_object in observations_by_filter]
+            logger.info("New filter list is: {}".format(filter_list))
+
+        logger.info("Populating MPCORB metadata...")
         mpcorb = cls.populate_MPCORB(cls, ssObjectId, service=service)
+        logger.info("Populating SSObject metadata...")
         ssobject = cls.populate_SSObject(cls, ssObjectId, filter_list, service=service)
 
         adler_data = AdlerData(ssObjectId, filter_list)
@@ -185,9 +223,21 @@ class AdlerPlanetoid:
 
             data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
 
-            observations_by_filter.append(
-                Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
-            )
+            if len(data_table) == 0:
+                logger.warning(
+                    "No observations found in {} filter for this object. Skipping this filter.".format(
+                        filter_name
+                    )
+                )
+                print(
+                    "WARNING: No observations found in {} filter for this object. Skipping this filter.".format(
+                        filter_name
+                    )
+                )
+            else:
+                observations_by_filter.append(
+                    Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
+                )
 
         return observations_by_filter
 
@@ -227,6 +277,10 @@ class AdlerPlanetoid:
         """
 
         data_table = get_data_table(MPCORB_sql_query, service=service, sql_filename=sql_filename)
+
+        if len(data_table) == 0:
+            logger.error("No MPCORB data for this object could be found for this SSObjectId.")
+            raise Exception("No MPCORB data for this object could be found for this SSObjectId.")
 
         return MPCORB.construct_from_data_table(ssObjectId, data_table)
 
@@ -282,6 +336,10 @@ class AdlerPlanetoid:
 
         data_table = get_data_table(SSObject_sql_query, service=service, sql_filename=sql_filename)
 
+        if len(data_table) == 0:
+            logger.error("No SSObject data for this object could be found for this SSObjectId.")
+            raise Exception("No SSObject data for this object could be found for this SSObjectId.")
+
         return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table)
 
     def observations_in_filter(self, filter_name):
@@ -302,6 +360,7 @@ class AdlerPlanetoid:
         try:
             filter_index = self.filter_list.index(filter_name)
         except ValueError:
+            logger.error("ValueError: Filter {} is not in AdlerPlanetoid.filter_list.".format(filter_name))
             raise ValueError("Filter {} is not in AdlerPlanetoid.filter_list.".format(filter_name))
 
         return self.observations_by_filter[filter_index]
@@ -324,6 +383,7 @@ class AdlerPlanetoid:
         try:
             filter_index = self.filter_list.index(filter_name)
         except ValueError:
+            logger.error("ValueError: Filter {} is not in AdlerPlanetoid.filter_list.".format(filter_name))
             raise ValueError("Filter {} is not in AdlerPlanetoid.filter_list.".format(filter_name))
 
         return self.SSObject.filter_dependent_values[filter_index]

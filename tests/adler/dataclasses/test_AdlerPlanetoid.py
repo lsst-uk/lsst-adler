@@ -11,13 +11,15 @@ test_db_path = get_test_data_filepath("testing_database.db")
 
 
 def test_construct_from_SQL():
-    test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path)
+    test_planetoid = AdlerPlanetoid.construct_from_SQL(
+        ssoid, test_db_path, filter_list=["u", "g", "r", "i", "z", "y"]
+    )
 
     # testing just a few values here to ensure correct setup: these objects have their own unit tests
     assert test_planetoid.MPCORB.mpcH == 19.8799991607666
     assert test_planetoid.SSObject.discoverySubmissionDate == 60218.0
     assert_almost_equal(
-        test_planetoid.observations_by_filter[1].mag,
+        test_planetoid.observations_by_filter[0].mag,
         [
             21.33099937,
             22.67099953,
@@ -31,10 +33,10 @@ def test_construct_from_SQL():
         ],
     )
 
-    # did we pick up all the filters?
-    assert len(test_planetoid.observations_by_filter) == 6
-    assert len(test_planetoid.SSObject.filter_dependent_values) == 6
-    assert test_planetoid.filter_list == ["u", "g", "r", "i", "z", "y"]
+    # did we pick up all the filters? note we ask for ugrizy but u and y are unpopulated in DP0.3, so the code should eliminate them
+    assert len(test_planetoid.observations_by_filter) == 4
+    assert len(test_planetoid.SSObject.filter_dependent_values) == 4
+    assert test_planetoid.filter_list == ["g", "r", "i", "z"]
 
     # checking the date range to ensure it's the default
     assert test_planetoid.date_range == [60000.0, 67300.0]
@@ -100,12 +102,10 @@ def test_observations_in_filter():
     test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path)
 
     # Python dataclasses create an __eq__ for you so object-to-object comparison just works, isn't that nice?
-    assert test_planetoid.observations_in_filter("u") == test_planetoid.observations_by_filter[0]
-    assert test_planetoid.observations_in_filter("g") == test_planetoid.observations_by_filter[1]
-    assert test_planetoid.observations_in_filter("r") == test_planetoid.observations_by_filter[2]
-    assert test_planetoid.observations_in_filter("i") == test_planetoid.observations_by_filter[3]
-    assert test_planetoid.observations_in_filter("z") == test_planetoid.observations_by_filter[4]
-    assert test_planetoid.observations_in_filter("y") == test_planetoid.observations_by_filter[5]
+    assert test_planetoid.observations_in_filter("g") == test_planetoid.observations_by_filter[0]
+    assert test_planetoid.observations_in_filter("r") == test_planetoid.observations_by_filter[1]
+    assert test_planetoid.observations_in_filter("i") == test_planetoid.observations_by_filter[2]
+    assert test_planetoid.observations_in_filter("z") == test_planetoid.observations_by_filter[3]
 
     with pytest.raises(ValueError) as error_info_1:
         test_planetoid.observations_in_filter("f")
@@ -116,14 +116,55 @@ def test_observations_in_filter():
 def test_SSObject_in_filter():
     test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path)
 
-    assert test_planetoid.SSObject_in_filter("u") == test_planetoid.SSObject.filter_dependent_values[0]
-    assert test_planetoid.SSObject_in_filter("g") == test_planetoid.SSObject.filter_dependent_values[1]
-    assert test_planetoid.SSObject_in_filter("r") == test_planetoid.SSObject.filter_dependent_values[2]
-    assert test_planetoid.SSObject_in_filter("i") == test_planetoid.SSObject.filter_dependent_values[3]
-    assert test_planetoid.SSObject_in_filter("z") == test_planetoid.SSObject.filter_dependent_values[4]
-    assert test_planetoid.SSObject_in_filter("y") == test_planetoid.SSObject.filter_dependent_values[5]
+    assert test_planetoid.SSObject_in_filter("g") == test_planetoid.SSObject.filter_dependent_values[0]
+    assert test_planetoid.SSObject_in_filter("r") == test_planetoid.SSObject.filter_dependent_values[1]
+    assert test_planetoid.SSObject_in_filter("i") == test_planetoid.SSObject.filter_dependent_values[2]
+    assert test_planetoid.SSObject_in_filter("z") == test_planetoid.SSObject.filter_dependent_values[3]
 
     with pytest.raises(ValueError) as error_info_1:
         test_planetoid.SSObject_in_filter("f")
 
     assert error_info_1.value.args[0] == "Filter f is not in AdlerPlanetoid.filter_list."
+
+
+def test_no_observations():
+    with pytest.raises(Exception) as error_info:
+        test_planetoid = AdlerPlanetoid.construct_from_SQL(826857066833589477, test_db_path)
+
+    assert (
+        error_info.value.args[0]
+        == "No observations found for this object in the given filter(s). Check SSOID and try again."
+    )
+
+
+def test_for_warnings(capsys):
+    test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path, filter_list=["u", "g"])
+    captured = capsys.readouterr()
+
+    expected = (
+        "WARNING: No observations found in u filter for this object. Skipping this filter.\n"
+        + "WARNING: n unpopulated in MPCORB table for this object. Storing NaN instead.\n"
+        + "WARNING: uncertaintyParameter unpopulated in MPCORB table for this object. Storing NaN instead.\n"
+    )
+
+    assert captured.out == expected
+
+
+def test_failed_SQL_queries():
+    test_planetoid = AdlerPlanetoid.construct_from_SQL(
+        ssoid, test_db_path, filter_list=["u", "g", "r", "i", "z", "y"]
+    )
+
+    with pytest.raises(Exception) as error_info_1:
+        test_planetoid.populate_MPCORB("826857066833589477", sql_filename=test_db_path, schema="")
+
+    assert error_info_1.value.args[0] == "No MPCORB data for this object could be found for this SSObjectId."
+
+    with pytest.raises(Exception) as error_info_2:
+        test_planetoid.populate_SSObject(
+            "826857066833589477", filter_list=["u"], sql_filename=test_db_path, schema=""
+        )
+
+    assert (
+        error_info_2.value.args[0] == "No SSObject data for this object could be found for this SSObjectId."
+    )
