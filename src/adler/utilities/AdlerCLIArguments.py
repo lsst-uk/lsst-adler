@@ -1,3 +1,6 @@
+import os
+
+
 class AdlerCLIArguments:
     """
     Class for storing abd validating Adler command-line arguments.
@@ -13,6 +16,8 @@ class AdlerCLIArguments:
         self.ssObjectId = args.ssObjectId
         self.filter_list = args.filter_list
         self.date_range = args.date_range
+        self.outpath = args.outpath
+        self.db_name = args.db_name
 
         self.validate_arguments()
 
@@ -20,20 +25,21 @@ class AdlerCLIArguments:
         self._validate_filter_list()
         self._validate_ssObjectId()
         self._validate_date_range()
+        self._validate_outpath()
 
     def _validate_filter_list(self):
         expected_filters = ["u", "g", "r", "i", "z", "y"]
 
         if not set(self.filter_list).issubset(expected_filters):
             raise ValueError(
-                "Unexpected filters found in filter_list command-line argument. filter_list must be a list of LSST filters."
+                "Unexpected filters found in --filter_list command-line argument. --filter_list must be a list of LSST filters."
             )
 
     def _validate_ssObjectId(self):
         try:
             int(self.ssObjectId)
         except ValueError:
-            raise ValueError("ssObjectId command-line argument does not appear to be a valid ssObjectId.")
+            raise ValueError("--ssObjectId command-line argument does not appear to be a valid ssObjectId.")
 
     def _validate_date_range(self):
         for d in self.date_range:
@@ -41,10 +47,17 @@ class AdlerCLIArguments:
                 float(d)
             except ValueError:
                 raise ValueError(
-                    "One or both of the values for the date_range command-line argument do not seem to be valid numbers."
+                    "One or both of the values for the --date_range command-line argument do not seem to be valid numbers."
                 )
 
         if any(d > 250000 for d in self.date_range):
             raise ValueError(
-                "Dates for date_range command-line argument seem rather large. Did you input JD instead of MJD?"
+                "Dates for --date_range command-line argument seem rather large. Did you input JD instead of MJD?"
             )
+
+    def _validate_outpath(self):
+        # make it an absolute path if it's relative!
+        self.outpath = os.path.abspath(self.outpath)
+
+        if not os.path.isdir(self.outpath):
+            raise ValueError("The output path for the command-line argument --outpath cannot be found.")
