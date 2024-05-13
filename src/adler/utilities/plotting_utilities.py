@@ -2,15 +2,16 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 
-def plot_phasecurve(
+def plot_errorbar(
     planetoid,
-    filt_list=["r"],
+    filt_list=[],
     x_plot="phaseAngle",
     y_plot="reduced_mag",
     xerr_plot="magErr",
     fig=None,
     label_list=None,
     col_list=None,
+    filename=None,
 ):
     """Make an errorbar scatter plot of reduced magnitude against phase angle to show the phase curve of an Adler object.
 
@@ -30,6 +31,8 @@ def plot_phasecurve(
         Optional, labels for errorbar plot elements
     col_list: list
         Optional, colors for errorbar scatter points
+    filename: str
+        Optional, if provided save the figure with this filename
 
     Returns
     -----------
@@ -71,5 +74,9 @@ def plot_phasecurve(
 
         # plot the errorbars
         ax1.errorbar(x, y, xerr, color=c, fmt="o", label=l)
+
+    # save the figure?
+    if filename:
+        fig.savefig(filename, facecolor="w", transparent=True, bbox_inches="tight")
 
     return fig
