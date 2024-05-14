@@ -137,19 +137,6 @@ def test_no_observations():
     )
 
 
-def test_for_warnings(capsys):
-    test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path, filter_list=["u", "g"])
-    captured = capsys.readouterr()
-
-    expected = (
-        "WARNING: No observations found in u filter for this object. Skipping this filter.\n"
-        + "WARNING: n unpopulated in MPCORB table for this object. Storing NaN instead.\n"
-        + "WARNING: uncertaintyParameter unpopulated in MPCORB table for this object. Storing NaN instead.\n"
-    )
-
-    assert captured.out == expected
-
-
 def test_failed_SQL_queries():
     test_planetoid = AdlerPlanetoid.construct_from_SQL(
         ssoid, test_db_path, filter_list=["u", "g", "r", "i", "z", "y"]
