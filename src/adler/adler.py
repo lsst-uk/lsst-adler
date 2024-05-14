@@ -23,16 +23,15 @@ def runAdler(cli_args):
     logger.info("Calculating phase curves...")
 
     # now let's do some phase curves!
-    N_pc_fit = 5 # minimum number of data points to fit phase curve
+    N_pc_fit = 5  # minimum number of data points to fit phase curve
 
     # # operate on each filter in turn
     for filt in planetoid.filter_list:
-
         print("fit {} filter data".format(filt))
-        
+
         # get the filter SSObject metadata
         sso = planetoid.SSObject_in_filter(filt)
-    
+
         # get the LSST phase curve filter model
         pc = PhaseCurve(
             abs_mag=sso.H * u.mag,
@@ -41,7 +40,7 @@ def runAdler(cli_args):
         )
         print(pc)
         print(pc.abs_mag, pc.phase_param)
-    
+
         # get the filter observations
         obs = planetoid.observations_in_filter(filt)
         alpha = obs.phaseAngle * u.deg
@@ -56,16 +55,13 @@ def runAdler(cli_args):
         print("number of past obs = {}".format(sum(obs_mask)))
         print("number of tonight's obs = {}".format(sum(~obs_mask)))
 
-        if sum(obs_mask)<N_pc_fit:
+        if sum(obs_mask) < N_pc_fit:
             # use a simple default HG phase curve model
-            pc = PhaseCurve(
-            abs_mag=sso.H * u.mag,
-            phase_param= 0.15,
-            model_name="HG")
+            pc = PhaseCurve(abs_mag=sso.H * u.mag, phase_param=0.15, model_name="HG")
         else:
             # do a simple HG12_Pen16 fit to the past data
             pc_fit = pc.FitModel(alpha[obs_mask], red_mag[obs_mask], mag_err[obs_mask])
-            
+
         print(pc_fit)
 
         # now check if the new observations are outlying
