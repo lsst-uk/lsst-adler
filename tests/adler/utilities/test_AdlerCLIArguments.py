@@ -115,7 +115,6 @@ def test_AdlerCLIArguments_badoutput():
 
 
 def test_AdlerCLIArguments_badlist():
-
     bad_list_arguments = args(
         None,
         "./fake_input/here.txt",

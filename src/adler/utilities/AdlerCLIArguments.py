@@ -83,7 +83,6 @@ class AdlerCLIArguments:
             raise ValueError("The output path for the command-line argument --outpath cannot be found.")
 
     def _validate_ssObjectId_list(self):
-
         self.ssObjectId_list = os.path.abspath(self.ssObjectId_list)
 
         if not os.path.exists(self.ssObjectId_list):

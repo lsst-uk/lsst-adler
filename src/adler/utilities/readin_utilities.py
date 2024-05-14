@@ -4,7 +4,6 @@ logger = logging.getLogger(__name__)
 
 
 def read_in_SSObjectID_file(readin_path):
-
     with open(readin_path) as f:
         ssoid_list = f.read().splitlines()
 

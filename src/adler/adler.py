@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 def runAdler(cli_args):
-
     logger.info("Beginning Adler.")
 
     if cli_args.ssObjectId_list:
