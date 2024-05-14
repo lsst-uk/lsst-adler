@@ -1,6 +1,7 @@
 import logging
 import argparse
 import astropy.units as u
+import numpy as np
 
 from adler.dataclasses.AdlerPlanetoid import AdlerPlanetoid
 from adler.science.PhaseCurve import PhaseCurve
@@ -22,28 +23,52 @@ def runAdler(cli_args):
     logger.info("Calculating phase curves...")
 
     # now let's do some phase curves!
+    N_pc_fit = 5 # minimum number of data points to fit phase curve
 
-    # get the r filter SSObject metadata
-    sso_r = planetoid.SSObject_in_filter("r")
+    # # operate on each filter in turn
+    for filt in planetoid.filter_list:
 
-    # get the RSP r filter model
-    pc = PhaseCurve(
-        abs_mag=sso_r.H * u.mag,
-        phase_param=sso_r.G12,
-        model_name="HG12_Pen16",
-    )
-    print(pc)
-    print(pc.abs_mag, pc.phase_param)
+        print("fit {} filter data".format(filt))
+        
+        # get the filter SSObject metadata
+        sso = planetoid.SSObject_in_filter(filt)
+    
+        # get the LSST phase curve filter model
+        pc = PhaseCurve(
+            abs_mag=sso.H * u.mag,
+            phase_param=sso.G12,
+            model_name="HG12_Pen16",
+        )
+        print(pc)
+        print(pc.abs_mag, pc.phase_param)
+    
+        # get the filter observations
+        obs = planetoid.observations_in_filter(filt)
+        alpha = obs.phaseAngle * u.deg
+        red_mag = obs.reduced_mag * u.mag
+        mag_err = obs.magErr * u.mag
 
-    # get the r filter observations
-    obs_r = planetoid.observations_in_filter("r")
-    alpha = obs_r.phaseAngle * u.deg
-    red_mag = obs_r.reduced_mag * u.mag
-    mag_err = obs_r.magErr * u.mag
+        # when fitting, consider only the previous observations (not tonight's)
+        mjd = obs.midPointMjdTai
+        obs_mask = mjd < int(np.amax(mjd))
 
-    # do a simple fit to all data
-    pc_fit = pc.FitModel(alpha, red_mag, mag_err)
-    print(pc_fit)
+        print("total N obs = {}".format(len(mjd)))
+        print("number of past obs = {}".format(sum(obs_mask)))
+        print("number of tonight's obs = {}".format(sum(~obs_mask)))
+
+        if sum(obs_mask)<N_pc_fit:
+            # use a simple default HG phase curve model
+            pc = PhaseCurve(
+            abs_mag=sso.H * u.mag,
+            phase_param= 0.15,
+            model_name="HG")
+        else:
+            # do a simple HG12_Pen16 fit to the past data
+            pc_fit = pc.FitModel(alpha[obs_mask], red_mag[obs_mask], mag_err[obs_mask])
+            
+        print(pc_fit)
+
+        # now check if the new observations are outlying
 
 
 def main():
