@@ -229,11 +229,6 @@ class AdlerPlanetoid:
                         filter_name
                     )
                 )
-                print(
-                    "WARNING: No observations found in {} filter for this object. Skipping this filter.".format(
-                        filter_name
-                    )
-                )
             else:
                 observations_by_filter.append(
                     Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
