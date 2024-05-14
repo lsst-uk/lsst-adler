@@ -1,11 +1,14 @@
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AdlerCLIArguments:
     """
     Class for storing abd validating Adler command-line arguments.
 
-    Attributes:
+    Attributes
     -----------
     args : argparse.Namespace object
         argparse.Namespace object created by calling parse_args().
@@ -14,6 +17,7 @@ class AdlerCLIArguments:
 
     def __init__(self, args):
         self.ssObjectId = args.ssObjectId
+        self.ssObjectId_list = args.ssObjectId_list
         self.filter_list = args.filter_list
         self.date_range = args.date_range
         self.outpath = args.outpath
@@ -23,14 +27,22 @@ class AdlerCLIArguments:
 
     def validate_arguments(self):
         self._validate_filter_list()
-        self._validate_ssObjectId()
         self._validate_date_range()
         self._validate_outpath()
+
+        if self.ssObjectId:
+            self._validate_ssObjectId()
+
+        if self.ssObjectId_list:
+            self._validate_ssObjectId_list()
 
     def _validate_filter_list(self):
         expected_filters = ["u", "g", "r", "i", "z", "y"]
 
         if not set(self.filter_list).issubset(expected_filters):
+            logging.error(
+                "Unexpected filters found in --filter_list command-line argument. --filter_list must be a list of LSST filters."
+            )
             raise ValueError(
                 "Unexpected filters found in --filter_list command-line argument. --filter_list must be a list of LSST filters."
             )
@@ -39,6 +51,7 @@ class AdlerCLIArguments:
         try:
             int(self.ssObjectId)
         except ValueError:
+            logging.error("--ssObjectId command-line argument does not appear to be a valid ssObjectId.")
             raise ValueError("--ssObjectId command-line argument does not appear to be a valid ssObjectId.")
 
     def _validate_date_range(self):
@@ -46,11 +59,17 @@ class AdlerCLIArguments:
             try:
                 float(d)
             except ValueError:
+                logging.error(
+                    "One or both of the values for the --date_range command-line argument do not seem to be valid numbers."
+                )
                 raise ValueError(
                     "One or both of the values for the --date_range command-line argument do not seem to be valid numbers."
                 )
 
         if any(d > 250000 for d in self.date_range):
+            logging.error(
+                "Dates for --date_range command-line argument seem rather large. Did you input JD instead of MJD?"
+            )
             raise ValueError(
                 "Dates for --date_range command-line argument seem rather large. Did you input JD instead of MJD?"
             )
@@ -60,4 +79,16 @@ class AdlerCLIArguments:
         self.outpath = os.path.abspath(self.outpath)
 
         if not os.path.isdir(self.outpath):
+            logging.error("The output path for the command-line argument --outpath cannot be found.")
             raise ValueError("The output path for the command-line argument --outpath cannot be found.")
+
+    def _validate_ssObjectId_list(self):
+        self.ssObjectId_list = os.path.abspath(self.ssObjectId_list)
+
+        if not os.path.exists(self.ssObjectId_list):
+            logging.error(
+                "The file supplied for the command-line argument --ssObjectId_list cannot be found."
+            )
+            raise ValueError(
+                "The file supplied for the command-line argument --ssObjectId_list cannot be found."
+            )

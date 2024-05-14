@@ -141,11 +141,6 @@ def check_value_populated(data_val, data_type, column_name, table_name):
         logger.warning(
             "{} unpopulated in {} table for this object. Storing NaN instead.".format(column_name, table_name)
         )
-        print(
-            "WARNING: {} unpopulated in {} table for this object. Storing NaN instead.".format(
-                column_name, table_name
-            )
-        )
         data_val = np.nan
 
     return data_val
