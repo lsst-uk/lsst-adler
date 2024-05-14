@@ -8,7 +8,7 @@ class AdlerCLIArguments:
     """
     Class for storing abd validating Adler command-line arguments.
 
-    Attributes:
+    Attributes
     -----------
     args : argparse.Namespace object
         argparse.Namespace object created by calling parse_args().

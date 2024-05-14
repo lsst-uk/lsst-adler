@@ -10,6 +10,32 @@ def setup_adler_logging(
     log_file_info="adler.log",
     log_file_error="adler.err",
 ):
+    """Sets up two logs for Adler: info, which logs everything, and error, which logs warnings and errors.
+
+    Parameters
+    -----------
+    log_location : string
+        Filepath to directory in which to save logs.
+
+    log_format : string, optional
+        Format for log filename.
+        Default = "%(asctime)s %(name)-12s %(levelname)-8s %(message)s "
+
+    log_name : string, optional
+        Name of log. Default = ""
+
+    log_file_info : string, optional
+        Name with which to save info log. Default = "adler.log"
+
+    log_file_error : string, optional
+        Name with which to save error log. Default = "adler.err"
+
+    Returns
+    ----------
+    log : logging object
+        Log object.
+    """
+
     log = logging.getLogger(log_name)
     log_formatter = logging.Formatter(log_format)
 

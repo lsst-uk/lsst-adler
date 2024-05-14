@@ -4,6 +4,7 @@ from adler.utilities.tests_utilities import get_test_data_filepath
 
 
 def test_read_in_SSObjectID_file():
+
     from adler.utilities.readin_utilities import read_in_SSObjectID_file
 
     good_ssoids = read_in_SSObjectID_file(get_test_data_filepath("test_SSOIDs.txt"))
