@@ -163,8 +163,8 @@ class PhaseCurve:
         Returns
         ----------
 
-        return_value : float or array
-           The phasecurve model reduced magnitude at the given phase angle(s)
+        model_fit : object
+           The sbpy phasecurve model object
 
         """
 
