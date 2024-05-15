@@ -32,15 +32,14 @@ def runAdler(cli_args):
         logger.info("Calculating phase curves...")
 
         # now let's do some phase curves!
-    
+
         # # operate on each filter in turn
         for filt in planetoid.filter_list:
-    
             print("fit {} filter data".format(filt))
-    
+
             # get the filter SSObject metadata
             sso = planetoid.SSObject_in_filter(filt)
-    
+
             # get the LSST phase curve filter model
             pc = PhaseCurve(
                 abs_mag=sso.H * u.mag,
@@ -50,22 +49,22 @@ def runAdler(cli_args):
             print(pc)
             print(pc.abs_mag)
             print(pc.phase_param)
-    
+
             # get the filter observations
             obs = planetoid.observations_in_filter(filt)
             alpha = obs.phaseAngle * u.deg
             red_mag = obs.reduced_mag * u.mag
             mag_err = obs.magErr * u.mag
-    
+
             # when fitting, consider only the previous observations (not tonight's)
             mjd = obs.midPointMjdTai
             obs_mask = mjd < int(np.amax(mjd))
             # also drop any past outlying observations?
-    
+
             print("total N obs = {}".format(len(mjd)))
             print("number of past obs = {}".format(sum(obs_mask)))
             print("number of tonight's obs = {}".format(sum(~obs_mask)))
-    
+
             if sum(obs_mask) < N_pc_fit:
                 # use an assumed value of G12 until more data is available
                 pc_fit = PhaseCurve(abs_mag=sso.H * u.mag, phase_param=0.62, model_name="HG12_Pen16")
@@ -73,18 +72,19 @@ def runAdler(cli_args):
                 # do a simple HG12_Pen16 fit to the past data
                 pc_fit = pc.FitModel(alpha[obs_mask], red_mag[obs_mask], mag_err[obs_mask])
                 pc_fit = pc.InitModelSbpy(pc_fit)
-    
+
             print(pc_fit)
             print(pc_fit.abs_mag)
             print(pc_fit.phase_param)
-    
+
             # now check if the new observations are outlying
-    
+
             # also check for past observations that are outlying?
-    
+
             # output results
             # flag outlying observations
             # output the phase curve model parameters
+
 
 def main():
     parser = argparse.ArgumentParser(description="Runs Adler for select planetoid(s) and given user input.")
