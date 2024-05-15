@@ -4,7 +4,7 @@
 
 [![ci](https://github.com/lsst-uk/lsst-adler/actions/workflows/smoke-test.yml/badge.svg)](https://github.com/lsst-uk/lsst-adler/actions/workflows/smoke-test.yml)
 [![pytest](https://github.com/lsst-uk/lsst-adler/actions/workflows/testing-and-coverage.yml/badge.svg)](https://github.com/lsst-uk/lsst-adler/actions/workflows/testing-and-coverage.yml)
-[![Read the Docs](https://img.shields.io/readthedocs/lsstadler)](https://adler.readthedocs.io/)
+[![Read the Docs](https://img.shields.io/readthedocs/adler)](https://adler.readthedocs.io/)
 [![PyPI](https://img.shields.io/pypi/v/lsst-adler?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/lsst-adler/)
 [![codecov](https://codecov.io/gh/lsst-uk/lsst-adler/branch/main/graph/badge.svg)](https://codecov.io/gh/lsst-uk/lsst-adler)
 
