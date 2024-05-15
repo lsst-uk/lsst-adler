@@ -1,12 +1,12 @@
-# adler
+# lsst-adler
 
 [![Template](https://img.shields.io/badge/Template-LINCC%20Frameworks%20Python%20Project%20Template-brightgreen)](https://lincc-ppt.readthedocs.io/en/latest/)
 
-[![ci](https://github.com/lsst-uk/adler/actions/workflows/smoke-test.yml/badge.svg)](https://github.com/lsst-uk/adler/actions/workflows/smoke-test.yml)
-[![pytest](https://github.com/lsst-uk/adler/actions/workflows/testing-and-coverage.yml/badge.svg)](https://github.com/lsst-uk/adler/actions/workflows/testing-and-coverage.yml)
-[![Read the Docs](https://img.shields.io/readthedocs/adler)](https://adler.readthedocs.io/)
-[![PyPI](https://img.shields.io/pypi/v/adler?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/adler/)
-[![codecov](https://codecov.io/gh/lsst-uk/adler/branch/main/graph/badge.svg)](https://codecov.io/gh/lsst-uk/adler)
+[![ci](https://github.com/lsst-uk/lsst-adler/actions/workflows/smoke-test.yml/badge.svg)](https://github.com/lsst-uk/lsst-adler/actions/workflows/smoke-test.yml)
+[![pytest](https://github.com/lsst-uk/lsst-adler/actions/workflows/testing-and-coverage.yml/badge.svg)](https://github.com/lsst-uk/lsst-adler/actions/workflows/testing-and-coverage.yml)
+[![Read the Docs](https://img.shields.io/readthedocs/lsstadler)](https://lsstadler.readthedocs.io/)
+[![PyPI](https://img.shields.io/pypi/v/lsst-adler?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/lsst-adler/)
+[![codecov](https://codecov.io/gh/lsst-uk/lsst-adler/branch/main/graph/badge.svg)](https://codecov.io/gh/lsst-uk/lsst-adler)
 
 This project was automatically generated using the LINCC-Frameworks 
 [python-project-template](https://github.com/lincc-frameworks/python-project-template).
@@ -46,7 +46,7 @@ If you're also working on the docs:
 You can then test that everything works by running:
 
 ```
-adler -s 8268570668335894776
+lsst-adler -s 8268570668335894776
 ```
 This will currently print some phase curve information to the terminal.
 
