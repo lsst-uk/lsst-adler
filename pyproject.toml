@@ -1,5 +1,5 @@
 [project]
-name = "adler"
+name = "lsst-adler"
 license = {file = "LICENSE"}
 readme = "README.md"
 authors = [
@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.urls]
-"Source Code" = "https://github.com/lsst-uk/adler"
+"Source Code" = "https://github.com/lsst-uk/lsst-adler"
 
 # On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
 [project.optional-dependencies]
