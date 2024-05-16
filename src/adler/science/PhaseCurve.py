@@ -34,7 +34,7 @@ class PhaseCurve:
         self.phase_param = phase_param
         self.phase_param2 = phase_param2
         self.model_name = model_name
-        
+
         if model_name == "HG":
             self.model_function = HG(H=abs_mag, G=self.phase_param)
         elif model_name == "HG1G2":
@@ -47,8 +47,8 @@ class PhaseCurve:
             self.model_function = LinearPhaseFunc(H=abs_mag, S=self.phase_param)
         else:
             print("no model selected")
-                
-    def SetModelBounds(self,param,bound_vals = (None, None)):
+
+    def SetModelBounds(self, param, bound_vals=(None, None)):
 
         model_sbpy = self.model_function
         param_names = model_sbpy.param_names

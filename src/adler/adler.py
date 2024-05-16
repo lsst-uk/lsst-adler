@@ -30,13 +30,19 @@ def runAdler(cli_args):
             msg = "query sql database {}".format(cli_args.sql_filename)
             logger.info(msg)
             print(msg)
-            planetoid = AdlerPlanetoid.construct_from_SQL(ssObjectId, filter_list = cli_args.filter_list, date_range = cli_args.date_range, sql_filename= cli_args.sql_filename)
+            planetoid = AdlerPlanetoid.construct_from_SQL(
+                ssObjectId,
+                filter_list=cli_args.filter_list,
+                date_range=cli_args.date_range,
+                sql_filename=cli_args.sql_filename,
+            )
         else:
             msg = "query RSP"
             logger.info(msg)
             print(msg)
-            planetoid = AdlerPlanetoid.construct_from_RSP(ssObjectId, cli_args.filter_list, cli_args.date_range)
-
+            planetoid = AdlerPlanetoid.construct_from_RSP(
+                ssObjectId, cli_args.filter_list, cli_args.date_range
+            )
 
         logger.info("Data successfully ingested.")
         logger.info("Calculating phase curves...")
