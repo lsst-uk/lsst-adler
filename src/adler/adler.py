@@ -26,7 +26,17 @@ def runAdler(cli_args):
         logger.info("Processing object {}/{}.".format(i + 1, len(ssObjectId_list)))
         logger.info("Ingesting all data for object {} from RSP...".format(cli_args.ssObjectId))
 
-        planetoid = AdlerPlanetoid.construct_from_RSP(ssObjectId, cli_args.filter_list, cli_args.date_range)
+        if cli_args.sql_filename:
+            msg = "query sql database {}".format(cli_args.sql_filename)
+            logger.info(msg)
+            print(msg)
+            planetoid = AdlerPlanetoid.construct_from_SQL(ssObjectId, filter_list = cli_args.filter_list, date_range = cli_args.date_range, sql_filename= cli_args.sql_filename)
+        else:
+            msg = "query RSP"
+            logger.info(msg)
+            print(msg)
+            planetoid = AdlerPlanetoid.construct_from_RSP(ssObjectId, cli_args.filter_list, cli_args.date_range)
+
 
         logger.info("Data successfully ingested.")
         logger.info("Calculating phase curves...")
@@ -78,12 +88,20 @@ def runAdler(cli_args):
             print(pc_fit.phase_param)
 
             # now check if the new observations are outlying
+            alpha_new = alpha[~obs_mask]
+            red_mag_new = red_mag[~obs_mask]
+            mag_err_new = mag_err[~obs_mask]
+
+            # calculate data - model residuals
+            res = red_mag_new - pc_fit.ReducedMag(alpha_new)
+            print(res)
 
             # also check for past observations that are outlying?
 
-            # output results
+            # output results:
             # flag outlying observations
             # output the phase curve model parameters
+            # make a plot?
 
 
 def main():
@@ -130,6 +148,13 @@ def main():
         help="Stem filename of output database. If this doesn't exist, it will be created. Default: adler_out.",
         type=str,
         default="adler_out",
+    )
+    optional_group.add_argument(
+        "-i",
+        "--sql_filename",
+        help="Optional input path location of a sql database file containing observations",
+        type=str,
+        default=None,
     )
 
     args = parser.parse_args()

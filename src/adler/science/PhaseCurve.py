@@ -29,12 +29,12 @@ class PhaseCurve:
 
     """
 
-    def __init__(self, abs_mag=18, phase_param=0.2, phase_param2=None, model_name="HG", bounds=False):
+    def __init__(self, abs_mag=18, phase_param=0.2, phase_param2=None, model_name="HG"):
         self.abs_mag = abs_mag
         self.phase_param = phase_param
         self.phase_param2 = phase_param2
         self.model_name = model_name
-
+        
         if model_name == "HG":
             self.model_function = HG(H=abs_mag, G=self.phase_param)
         elif model_name == "HG1G2":
@@ -47,14 +47,13 @@ class PhaseCurve:
             self.model_function = LinearPhaseFunc(H=abs_mag, S=self.phase_param)
         else:
             print("no model selected")
+                
+    def SetModelBounds(self,param,bound_vals = (None, None)):
 
-        # by default sbpy sets bounds
-        if not bounds:
-            model_sbpy = self.model_function
-            param_names = model_sbpy.param_names
-            for p in param_names:
-                x = getattr(model_sbpy, p)
-                setattr(x, "bounds", (None, None))
+        model_sbpy = self.model_function
+        param_names = model_sbpy.param_names
+        x = getattr(model_sbpy, param)
+        setattr(x, "bounds", bound_vals)
 
     def ReturnModelDict(self):
         """Return the values for the PhaseCurve class as a dict
@@ -120,7 +119,7 @@ class PhaseCurve:
             if x is None:
                 x = getattr(model_sbpy, p).value
             parameters.append(x)
-        print(param_names, parameters)
+        # print(param_names, parameters)
 
         # create a PhaseCurve object with the extracted parameters
         model = PhaseCurve(*parameters, model_name=model_name)
@@ -182,7 +181,7 @@ class PhaseCurve:
         # use the LevMarLSQFitter by default
         if fitter is None:
             fitter = LevMarLSQFitter()
-        print(fitter)
+        # print(fitter)
 
         if mag_err is not None:  # fit weighted by photometric uncertainty
             model_fit = fitter(self.model_function, phase_angle, reduced_mag, weights=1.0 / mag_err)
