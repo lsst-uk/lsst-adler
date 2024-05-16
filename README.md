@@ -46,7 +46,7 @@ If you're also working on the docs:
 You can then test that everything works by running:
 
 ```
-lsst-adler -s 8268570668335894776
+adler -s 8268570668335894776
 ```
 This will currently print some phase curve information to the terminal.
 
