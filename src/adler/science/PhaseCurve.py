@@ -8,7 +8,7 @@ class PhaseCurve:
     Units - by default no units are set but astropy units can be passed.
     It is up to the user to ensure that units are correct for the relevant phasecurve model.
 
-    Attibutes
+    Attributes
     -----------
     abs_mag : float
        Absolute magnitude, H, of the phasecurve model (often units of mag).
@@ -24,9 +24,12 @@ class PhaseCurve:
        Label for the phasecurve model to be used.
        Choice of: "HG", "HG1G2", "HG12", "HG12_Pen16", "LinearPhaseFunc"
 
+    bounds: bool
+       Flag for using the default bounds on the sbpy model (True) or ignoring bounds (False).
+
     """
 
-    def __init__(self, abs_mag=18, phase_param=0.2, phase_param2=None, model_name="HG"):
+    def __init__(self, abs_mag=18, phase_param=0.2, phase_param2=None, model_name="HG", bounds=False):
         self.abs_mag = abs_mag
         self.phase_param = phase_param
         self.phase_param2 = phase_param2
@@ -44,6 +47,14 @@ class PhaseCurve:
             self.model_function = LinearPhaseFunc(H=abs_mag, S=self.phase_param)
         else:
             print("no model selected")
+
+        # by default sbpy sets bounds
+        if not bounds:
+            model_sbpy = self.model_function
+            param_names = model_sbpy.param_names
+            for p in param_names:
+                x = getattr(model_sbpy, p)
+                setattr(x, "bounds", (None, None))
 
     def ReturnModelDict(self):
         """Return the values for the PhaseCurve class as a dict
