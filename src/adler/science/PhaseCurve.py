@@ -49,7 +49,6 @@ class PhaseCurve:
             print("no model selected")
 
     def SetModelBounds(self, param, bound_vals=(None, None)):
-
         model_sbpy = self.model_function
         param_names = model_sbpy.param_names
         x = getattr(model_sbpy, param)
