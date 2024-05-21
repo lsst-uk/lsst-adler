@@ -41,6 +41,13 @@ def test_AdlerCLIArguments_population():
     good_arguments_object = AdlerCLIArguments(good_arguments)
     assert good_arguments_object.ssObjectId_list == get_test_data_filepath("test_SSOIDs.txt")
 
+    # also test setting sql_filename
+
+    good_input_dict["sql_filename"] = get_test_data_filepath("testing_database.db")
+    good_arguments = args(**good_input_dict)
+    good_arguments_object = AdlerCLIArguments(good_arguments)
+    assert good_arguments_object.sql_filename == get_test_data_filepath("testing_database.db")
+
 
 def test_AdlerCLIArguments_badSSOID():
     # test that a bad ssObjectId triggers the right error
