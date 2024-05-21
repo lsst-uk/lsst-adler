@@ -18,7 +18,7 @@ def outlier_diff(new_res, diff_cut=1.0):
     """
 
     if not isinstance(new_res, np.ndarray):
-        new_res = np.array(new_res)
+        new_res = np.array(new_res, ndmin=1)
 
     outlier_flag = np.array([False] * len(new_res))
     outlier_flag[np.abs(new_res) >= diff_cut] = True
@@ -47,7 +47,7 @@ def outlier_std(new_res, data_res, std_cut=3.0):
     data_std = np.std(data_res)
 
     if not isinstance(new_res, np.ndarray):
-        new_res = np.array(new_res)
+        new_res = np.array(new_res, ndmin=1)
 
     outlier_flag = np.array([False] * len(new_res))
     outlier_flag[np.abs(new_res) >= (data_std * std_cut)] = True

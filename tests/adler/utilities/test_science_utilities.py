@@ -184,6 +184,30 @@ def test_outlier_diff():
     assert_array_equal(outliers, outliers_y)
 
 
+# check that a single value gets processed as a np.array
+def test_outlier_diff_single_val():
+    outliers = sci_utils.outlier_diff(y_res[0], diff_cut=1.0)
+    assert_array_equal(outliers, outliers_y[:1])
+
+
+# check that a list gets processed as a np.array
+def test_outlier_diff_single_val():
+    outliers = sci_utils.outlier_diff(list(y_res[:3]), diff_cut=1.0)
+    assert_array_equal(outliers, outliers_y[:3])
+
+
+# test if a single data point is outlying the std residuals of the previous data points
+def test_outlier_std():
+    outliers = sci_utils.outlier_std(y_res[-8], y_res[:-8])
+    assert_array_equal(outliers, outliers_y[-8])
+
+
+# test the std residual of a list of data points
+def test_outlier_std():
+    outliers = sci_utils.outlier_std(y_res[-8:-5], y_res[:-8])
+    assert_array_equal(outliers, outliers_y[-8:-5])
+
+
 def test_zero_func():
     assert sci_utils.zero_func(y_res) == 0
 
