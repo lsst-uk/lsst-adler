@@ -37,6 +37,9 @@ class AdlerCLIArguments:
         if self.ssObjectId_list:
             self._validate_ssObjectId_list()
 
+        if self.sql_filename:
+            self._validate_sql_filename()
+
     def _validate_filter_list(self):
         expected_filters = ["u", "g", "r", "i", "z", "y"]
 
@@ -92,4 +95,13 @@ class AdlerCLIArguments:
             )
             raise ValueError(
                 "The file supplied for the command-line argument --ssObjectId_list cannot be found."
+            )
+
+    def _validate_sql_filename(self):
+        self.sql_filename = os.path.abspath(self.sql_filename)
+
+        if not os.path.exists(self.sql_filename):
+            logging.error("The file supplied for the command-line argument --sql_filename cannot be found.")
+            raise ValueError(
+                "The file supplied for the command-line argument --sql_filename cannot be found."
             )

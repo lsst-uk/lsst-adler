@@ -129,9 +129,9 @@ def test_AdlerCLIArguments_badlist():
         "./fake_input/here.txt",
         ["g", "r", "i"],
         [60000.0, 67300.0],
-        "./definitely_fake_folder/",
+        "./",
         "output",
-        None,
+        "./",
     )
 
     with pytest.raises(ValueError) as bad_list_error:
@@ -139,5 +139,25 @@ def test_AdlerCLIArguments_badlist():
 
     assert (
         bad_list_error.value.args[0]
-        == "The output path for the command-line argument --outpath cannot be found."
+        == "The file supplied for the command-line argument --ssObjectId_list cannot be found."
+    )
+
+
+def test_AdlerCLIArguments_badsql():
+    bad_sql_arguments = args(
+        "666",
+        None,
+        ["g", "r", "i"],
+        [60000.0, 67300.0],
+        "./",
+        "output",
+        "./dummy_database.db",
+    )
+
+    with pytest.raises(ValueError) as bad_sql_error:
+        bad_sql_object = AdlerCLIArguments(bad_sql_arguments)
+
+    assert (
+        bad_sql_error.value.args[0]
+        == "The file supplied for the command-line argument --sql_filename cannot be found."
     )
