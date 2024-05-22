@@ -31,7 +31,8 @@ def runAdler(cli_args):
         logger.info("Processing object {}/{}.".format(i + 1, len(ssObjectId_list)))
         logger.info("Ingesting all data for object {} from RSP...".format(cli_args.ssObjectId))
 
-        if cli_args.sql_filename != "None":
+        # if cli_args.sql_filename != "None":
+        if cli_args.sql_filename:
             msg = "query sql database {}".format(cli_args.sql_filename)
             logger.info(msg)
             print(msg)
@@ -244,7 +245,7 @@ def main():
         "--sql_filename",
         help="Optional input path location of a sql database file containing observations",
         type=str,
-        default="None",
+        default=None,
     )
 
     args = parser.parse_args()
