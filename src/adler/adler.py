@@ -68,7 +68,7 @@ def runAdler(cli_args):
             print(len(df_obs))
 
             # load and merge the previous obs
-            save_file = "data/df_outlier_{}.csv".format(cli_args.ssObjectId)
+            save_file = "{}/df_outlier_{}.csv".format(cli_args.outpath, cli_args.ssObjectId)
             if os.path.isfile(save_file):
                 print("load {}".format(save_file))
                 _df_obs = pd.read_csv(save_file, index_col=0)
@@ -152,7 +152,7 @@ def runAdler(cli_args):
                 s=75,
                 zorder=3,
             )
-            fig_file = "plots/phase_curve_{}_{}.png".format(cli_args.ssObjectId, int(t0))
+            fig_file = "{}/plots/phase_curve_{}_{}.png".format(cli_args.outpath, cli_args.ssObjectId, int(t0))
             print(fig_file)
             fig = plot_errorbar(planetoid, fig=fig, filename=fig_file)
 
