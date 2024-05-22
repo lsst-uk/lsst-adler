@@ -22,6 +22,7 @@ class AdlerCLIArguments:
         self.date_range = args.date_range
         self.outpath = args.outpath
         self.db_name = args.db_name
+        self.sql_filename = args.sql_filename
 
         self.validate_arguments()
 

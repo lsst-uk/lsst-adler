@@ -8,7 +8,7 @@ class PhaseCurve:
     Units - by default no units are set but astropy units can be passed.
     It is up to the user to ensure that units are correct for the relevant phasecurve model.
 
-    Attibutes
+    Attributes
     -----------
     abs_mag : float
        Absolute magnitude, H, of the phasecurve model (often units of mag).
@@ -23,6 +23,9 @@ class PhaseCurve:
     model_name: str
        Label for the phasecurve model to be used.
        Choice of: "HG", "HG1G2", "HG12", "HG12_Pen16", "LinearPhaseFunc"
+
+    bounds: bool
+       Flag for using the default bounds on the sbpy model (True) or ignoring bounds (False).
 
     """
 
@@ -44,6 +47,12 @@ class PhaseCurve:
             self.model_function = LinearPhaseFunc(H=abs_mag, S=self.phase_param)
         else:
             print("no model selected")
+
+    def SetModelBounds(self, param, bound_vals=(None, None)):
+        model_sbpy = self.model_function
+        param_names = model_sbpy.param_names
+        x = getattr(model_sbpy, param)
+        setattr(x, "bounds", bound_vals)
 
     def ReturnModelDict(self):
         """Return the values for the PhaseCurve class as a dict
@@ -109,7 +118,7 @@ class PhaseCurve:
             if x is None:
                 x = getattr(model_sbpy, p).value
             parameters.append(x)
-        print(param_names, parameters)
+        # print(param_names, parameters)
 
         # create a PhaseCurve object with the extracted parameters
         model = PhaseCurve(*parameters, model_name=model_name)
@@ -163,15 +172,15 @@ class PhaseCurve:
         Returns
         ----------
 
-        return_value : float or array
-           The phasecurve model reduced magnitude at the given phase angle(s)
+        model_fit : object
+           The sbpy phasecurve model object
 
         """
 
         # use the LevMarLSQFitter by default
         if fitter is None:
             fitter = LevMarLSQFitter()
-        print(fitter)
+        # print(fitter)
 
         if mag_err is not None:  # fit weighted by photometric uncertainty
             model_fit = fitter(self.model_function, phase_angle, reduced_mag, weights=1.0 / mag_err)

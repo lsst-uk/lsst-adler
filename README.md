@@ -50,6 +50,12 @@ adler -s 8268570668335894776
 ```
 This will currently print some phase curve information to the terminal.
 
+One can also read from a local database, for example:
+
+```
+adler -s 8268570668335894776 -i tests/data/testing_database.db
+```
+
 Notes:
 1) The single quotes around `'[dev]'` may not be required for your operating system.
 2) `pre-commit install` will initialize pre-commit for this local repository, so
