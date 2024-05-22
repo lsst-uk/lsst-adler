@@ -36,6 +36,11 @@ development using the following commands from within the adler folder:
 ```
 >> pip install --user -e .'[dev]'
 ```
+Furthermore, to get the pre-commit hooks working on RSP, you will probably have to update git within your environment:
+
+```
+conda install git
+```
 
 If you're also working on the docs:
 
