@@ -49,6 +49,16 @@ class PhaseCurve:
             print("no model selected")
 
     def SetModelBounds(self, param, bound_vals=(None, None)):
+        """By default the sbpy model uses "physical" boundaries for the phase parameter(s).
+        Use this function to change the boundaries of a parameter when fitting, or remove them by setting to None.
+
+        Parameters
+        -----------
+        param : str
+           Adler PhaseCurve parameter to adjust boundaries of: abs_mag, phase_param, phase_param2
+        bound_vals: tuple
+           The (lower, upper) boundaries to use when fitting - set (None, None) for no bounds
+        """
         model_sbpy = self.model_function
         param_names = model_sbpy.param_names
         x = getattr(model_sbpy, param)
