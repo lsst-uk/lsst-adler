@@ -1,6 +1,17 @@
 from sbpy.photometry import HG, HG1G2, HG12, HG12_Pen16, LinearPhaseFunc
 import astropy.units as u
+import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
+
+# translation between sbpy and adler field names
+SBPY_ADLER_DICT = {
+    "H": "H",
+    "G": "phase_parameter_1",
+    "G12": "phase_parameter_1",
+    "G1": "phase_parameter_1",
+    "G2": "phase_parameter_2",
+    "S": "phase_parameter_1",
+}
 
 
 class PhaseCurve:
@@ -10,14 +21,14 @@ class PhaseCurve:
 
     Attributes
     -----------
-    abs_mag : float
+    H : float
        Absolute magnitude, H, of the phasecurve model (often units of mag).
 
-    phase_param: float
+    phase_parameter_1: float
        The first phase parameter of the phasecurve model, e.g. G from HG
        (often dimensionless units unless S from LinearPhaseFunc, which has units mag/deg or mag/rad).
 
-    phase_param2: float
+    phase_parameter_2: float
        The second phase parameter, only used for the 3 parameter HG1G2 phasecurve model.
 
     model_name: str
@@ -27,30 +38,55 @@ class PhaseCurve:
     bounds: bool
        Flag for using the default bounds on the sbpy model (True) or ignoring bounds (False).
 
+    H_err : float
+       Uncertainty in absolute magnitude.
+
+    phase_parameter_1_err : float
+       Uncertainty in the (first) phase parameter.
+
+    phase_parameter_2_err : float
+       Uncertainty in the (second, if required) phase parameter.
+
     """
 
-    def __init__(self, abs_mag=18, phase_param=0.2, phase_param2=None, model_name="HG"):
-        self.abs_mag = abs_mag
-        self.phase_param = phase_param
-        self.phase_param2 = phase_param2
+    def __init__(
+        self,
+        H=18,
+        phase_parameter_1=0.2,
+        phase_parameter_2=None,
+        model_name="HG",
+        H_err=None,
+        phase_parameter_1_err=None,
+        phase_parameter_2_err=None,
+    ):
+        self.H = H
+        self.phase_parameter_1 = phase_parameter_1
+        self.phase_parameter_2 = phase_parameter_2
         self.model_name = model_name
+        self.H_err = H_err
+        self.phase_parameter_1_err = phase_parameter_1_err
+        self.phase_parameter_2_err = phase_parameter_2_err
 
         if model_name == "HG":
-            self.model_function = HG(H=abs_mag, G=self.phase_param)
+            self.model_function = HG(H=H, G=self.phase_parameter_1)
         elif model_name == "HG1G2":
-            self.model_function = HG1G2(H=abs_mag, G1=self.phase_param, G2=self.phase_param)
+            self.model_function = HG1G2(H=H, G1=self.phase_parameter_1, G2=self.phase_parameter_1)
         elif model_name == "HG12":
-            self.model_function = HG12(H=abs_mag, G12=self.phase_param)
+            self.model_function = HG12(H=H, G12=self.phase_parameter_1)
         elif model_name == "HG12_Pen16":
-            self.model_function = HG12_Pen16(H=abs_mag, G12=self.phase_param)
+            self.model_function = HG12_Pen16(H=H, G12=self.phase_parameter_1)
         elif model_name == "LinearPhaseFunc":
-            self.model_function = LinearPhaseFunc(H=abs_mag, S=self.phase_param)
+            self.model_function = LinearPhaseFunc(H=H, S=self.phase_parameter_1)
         else:
             print("no model selected")
 
+        ### set bounds here by default using SetModelBounds?
+        # for x in model phase parameters:
+        #   self.SetModelBounds(x)
+
     def SetModelBounds(self, param, bound_vals=(None, None)):
         model_sbpy = self.model_function
-        param_names = model_sbpy.param_names
+        # param_names = model_sbpy.param_names
         x = getattr(model_sbpy, param)
         setattr(x, "bounds", bound_vals)
 
@@ -74,7 +110,7 @@ class PhaseCurve:
         Parameters
         -----------
         model_dict : dict
-           Dictionary containing the PhaseCurve parameters you wish to set, e.g. abs_mag, phase_param
+           Dictionary containing the PhaseCurve parameters you wish to set, e.g. H, phase_parameter_1
 
         Returns
         ----------
@@ -109,19 +145,36 @@ class PhaseCurve:
         model_name = model_sbpy.__class__.name
 
         # get the sbpy model parameters
-        param_names = model_sbpy.param_names
-        parameters = []
+        param_names = list(model_sbpy.param_names)
+        # we will also check for any uncertainties we have stored in the sbpy object
+        param_names_err = ["{}_err".format(x) for x in param_names]
+        param_names = param_names + param_names_err
+
+        # create a dictionary of phase curve parameters from sbpy in a format accepted by PhaseCurve
+        parameters = {}
         for p in param_names:
-            # try get the quantity (value with units)
-            x = getattr(model_sbpy, p).quantity
-            # if there are no units get just the value
-            if x is None:
-                x = getattr(model_sbpy, p).value
-            parameters.append(x)
-        # print(param_names, parameters)
+            if p in model_sbpy.__dict__:  # check that the parameter is available in the sbpy object
+                x = getattr(model_sbpy, p)
+                print(p, x)
+                # try get the quantity (value with units)
+                if hasattr(x, "unit"):
+                    print(x.unit)
+                    if (x.unit is None) or (
+                        x.unit == ""
+                    ):  # if there are no units (or weird blank units?) get just the value
+                        x = x.value
+                    else:
+                        x = x.quantity
+                    print(x)
+                # look up the correct adler parameter name (accounting for additional uncertainty, "_err", parameters)
+                if p.endswith("_err"):  # assumes the uncertainty parameter always ends in "_err"
+                    _p = SBPY_ADLER_DICT[p.split("_err")[0]] + "_err"
+                    parameters[_p] = x
+                else:
+                    parameters[SBPY_ADLER_DICT[p]] = x
 
         # create a PhaseCurve object with the extracted parameters
-        model = PhaseCurve(*parameters, model_name=model_name)
+        model = PhaseCurve(**parameters, model_name=model_name)
 
         return model
 
@@ -186,6 +239,26 @@ class PhaseCurve:
             model_fit = fitter(self.model_function, phase_angle, reduced_mag, weights=1.0 / mag_err)
         else:  # unweighted fit
             model_fit = fitter(self.model_function, phase_angle, reduced_mag)
+
+        # Add fitted uncertainties as an additional attribute within the sbpy object
+        if "param_cov" in fitter.fit_info:
+            # get the covariance matrix from the fit
+            covariance = fitter.fit_info["param_cov"]
+            if covariance is not None:
+                # get fit uncertainties as square of the diagonal of the covariance
+                fit_errs = np.sqrt(np.diag(covariance))
+                # update only the uncertainties for parameters used in the fit
+                param_names = np.array(model_fit.param_names)
+                fit_mask = ~np.array([getattr(model_fit, x).fixed for x in param_names])
+                for i, x in enumerate(param_names[fit_mask]):
+                    setattr(model_fit, "{}_err".format(x), fit_errs[i])
+            # else:
+            ### TODO log covariance is None error here
+
+        ### TODO
+        # else:
+        #     log lack of uncertainties for fitter
+        #     run an MCMC estimate of uncertainty?
 
         ### if overwrite_model: # add an overwrite option?
         # redo __init__ with the new fitted parameters
