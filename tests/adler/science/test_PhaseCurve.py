@@ -78,6 +78,28 @@ def test_PhaseCurve_FitModel_HG():
     assert pc2.phase_parameter_1_err is not None  # the fitted model has some uncertainties
 
 
+def test_PhaseCurve_FitModel_HG_no_units():
+    """Test fitting a HG model to generated data, but without units.
+    If units are not provided, the phase angles must be in radians!"""
+
+    # generate some model data
+    pc1 = PhaseCurve(H=18.0, phase_parameter_1=0.15, model_name="HG")
+    alpha = np.radians(np.linspace(0, 30))
+    red_mag = pc1.ReducedMag(alpha)
+
+    # fit the same phase curve model to the data
+    pc_fit = pc1.FitModel(alpha, red_mag)
+    # convert from sbpy to adler PhaseCurve object
+    pc2 = pc1.InitModelSbpy(pc_fit)
+
+    # the new fitted model should have the same parameters as the input model
+    assert pc2.H == pc1.H
+    assert pc2.phase_parameter_1 == pc1.phase_parameter_1
+    assert pc2.phase_parameter_2 is None
+    assert pc1.phase_parameter_1_err is None  # the first model had no uncertainties
+    assert pc2.phase_parameter_1_err is not None  # the fitted model has some uncertainties
+
+
 def test_PhaseCurve_FitModel_HG_fixed():
     """Test fitting a just H whilst keeping G fixed."""
 

@@ -256,7 +256,7 @@ class PhaseCurve:
 
         fitter : object
            Select a fitting function from astropy.modeling.fitting, defaults to astropy.modeling.fitting.LevMarLSQFitter.
-           N.B. that LevMarLSQFitter cannot handle inequality constraints for the HG1G2 model.
+           N.B. that LevMarLSQFitter cannot handle inequality constraints for the HG1G2 model, use something like SLSQPLSQFitter from astropy.modeling.fitting (does not return covariance matrix!).
 
         Returns
         ----------
@@ -297,5 +297,6 @@ class PhaseCurve:
 
         ### if overwrite_model: # add an overwrite option?
         # redo __init__ with the new fitted parameters
+        # this would then return an adler PhaseCurve object rather than an sbpy object
 
         return model_fit
