@@ -10,11 +10,11 @@ def test_PhaseCurve_init():
     # test creating a model
     H = 18.9
     G = 0.12
-    pc = PhaseCurve(abs_mag=H * u.mag, phase_param=G, model_name="HG")
+    pc = PhaseCurve(H=H * u.mag, phase_parameter_1=G, model_name="HG")
 
-    assert pc.abs_mag.value == 18.9
-    assert pc.abs_mag.unit == u.mag
-    assert pc.phase_param == 0.12
+    assert pc.H.value == 18.9
+    assert pc.H.unit == u.mag
+    assert pc.phase_parameter_1 == 0.12
     assert pc.model_name == "HG"
 
 
@@ -27,7 +27,7 @@ def test_PhaseCurve_ReducedMag():
     alpha = np.array([0, 10]) * u.deg
 
     # linear phase curve model
-    pc_lin = PhaseCurve(model_name="LinearPhaseFunc", abs_mag=18 * u.mag, phase_param=0.1 * (u.mag / u.deg))
+    pc_lin = PhaseCurve(model_name="LinearPhaseFunc", H=18 * u.mag, phase_parameter_1=0.1 * (u.mag / u.deg))
 
     # find the reduced mag
     red_mag = pc_lin.ReducedMag(alpha)
@@ -55,3 +55,6 @@ def test_PhaseCurve_FitModel():
     assert pc_fit.H.value == 18.0
     assert pc_fit.S.unit == u.mag / u.deg
     assert pc_fit.S.value == 0.1
+
+
+### TODO - add more phase curve tests, test bounds, fixed values and fit uncertainties
