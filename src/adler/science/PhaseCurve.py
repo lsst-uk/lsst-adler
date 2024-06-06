@@ -12,6 +12,14 @@ SBPY_ADLER_DICT = {
     "G2": "phase_parameter_2",
     "S": "phase_parameter_1",
 }
+# translation between adler and sbpy fields, depends on model
+ADLER_SBPY_DICT = {
+    "HG": {"phase_parameter_1": "G"},
+    "HG1G2": {"phase_parameter_1": "G1", "phase_parameter_2": "G2"},
+    "HG12": {"phase_parameter_1": "G12"},
+    "HG12_Pen16": {"phase_parameter_1": "G12"},
+    "LinearPhaseFunc": {"phase_parameter_1": "S"},
+}
 
 
 class PhaseCurve:
@@ -80,15 +88,45 @@ class PhaseCurve:
         else:
             print("no model selected")
 
-        ### set bounds here by default using SetModelBounds?
-        # for x in model phase parameters:
-        #   self.SetModelBounds(x)
-
     def SetModelBounds(self, param, bound_vals=(None, None)):
+        """Set the "bounds" attribute of an sbpy model parameter, i.e. the lower and upper constraints for the fitter.
+
+        Parameters
+        -----------
+        param : str
+           Parameter name bounds to be set fix, if not an sbpy parameter name (e.g. G) the corresponding adler name is looked up (e.g. phase_parameter_1)
+
+        bound_vals : tuple
+           Set the fitter constraints to (upper, lower) for the param.
+
+        """
         model_sbpy = self.model_function
-        # param_names = model_sbpy.param_names
+        if param not in model_sbpy.__dict__:
+            param = ADLER_SBPY_DICT[self.model_name][param]
         x = getattr(model_sbpy, param)
         setattr(x, "bounds", bound_vals)
+        return
+
+    def FixParam(self, param, fix_flag=True):
+        """Set the "fixed" attribute of an sbpy model parameter.
+        E.g. use this to fit for absolute magnitude whilst keeping phase parameter fixed.
+
+        Parameters
+        -----------
+        param : str
+           Parameter name to fix, if not an sbpy parameter name (e.g. G) the corresponding adler name is looked up (e.g. phase_parameter_1)
+
+        fix_flag : bool
+           Set True to keep the param fixed when fitting
+
+        """
+
+        model_sbpy = self.model_function
+        if param not in model_sbpy.__dict__:
+            param = ADLER_SBPY_DICT[self.model_name][param]
+        x = getattr(model_sbpy, param)
+        setattr(x, "fixed", fix_flag)
+        return
 
     def ReturnModelDict(self):
         """Return the values for the PhaseCurve class as a dict
@@ -127,7 +165,7 @@ class PhaseCurve:
 
     def InitModelSbpy(self, model_sbpy):
         """Set up a new PhaseCurve model object from an existing sbpy model
-        ### or create dict from sbpy model and then use InitModelDict?
+        ### TODO or create dict from sbpy model and then use InitModelDict?
 
         Parameters
         -----------
@@ -155,17 +193,14 @@ class PhaseCurve:
         for p in param_names:
             if p in model_sbpy.__dict__:  # check that the parameter is available in the sbpy object
                 x = getattr(model_sbpy, p)
-                print(p, x)
                 # try get the quantity (value with units)
                 if hasattr(x, "unit"):
-                    print(x.unit)
                     if (x.unit is None) or (
                         x.unit == ""
                     ):  # if there are no units (or weird blank units?) get just the value
                         x = x.value
                     else:
                         x = x.quantity
-                    print(x)
                 # look up the correct adler parameter name (accounting for additional uncertainty, "_err", parameters)
                 if p.endswith("_err"):  # assumes the uncertainty parameter always ends in "_err"
                     _p = SBPY_ADLER_DICT[p.split("_err")[0]] + "_err"
@@ -220,7 +255,8 @@ class PhaseCurve:
            Uncertainty on the reduced magnitude, used to weight the fit.
 
         fitter : object
-           Select a fitting function from astropy.modeling.fitting, defaults to astropy.modeling.fitting.LevMarLSQFitter
+           Select a fitting function from astropy.modeling.fitting, defaults to astropy.modeling.fitting.LevMarLSQFitter.
+           N.B. that LevMarLSQFitter cannot handle inequality constraints for the HG1G2 model.
 
         Returns
         ----------
@@ -233,7 +269,6 @@ class PhaseCurve:
         # use the LevMarLSQFitter by default
         if fitter is None:
             fitter = LevMarLSQFitter()
-        # print(fitter)
 
         if mag_err is not None:  # fit weighted by photometric uncertainty
             model_fit = fitter(self.model_function, phase_angle, reduced_mag, weights=1.0 / mag_err)
