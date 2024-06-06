@@ -158,9 +158,18 @@ class PhaseCurve:
 
         """
 
-        model = PhaseCurve()
+        # clean the input dictionary
+        del_keys = []
         for key, value in model_dict.items():
-            setattr(model, key, value)
+            if not hasattr(self, key):
+                del_keys.append(key)
+        model_dict = model_dict.copy()  # make a copy to avoid changing the original dict
+        for key in del_keys:
+            model_dict.pop(key, None)
+
+        # initialise a new model
+        model = PhaseCurve(**model_dict)
+
         return model
 
     def InitModelSbpy(self, model_sbpy):
@@ -221,7 +230,8 @@ class PhaseCurve:
         Parameters
         -----------
         phase_angle : float or array
-           value or array of phase angles at which to evaluate the phasecurve model, must have astropy units of degrees.
+           value or array of phase angles at which to evaluate the phasecurve model.
+           Must have astropy units of degrees if sbpy model uses units, otherwise pass radian values.
 
         Returns
         ----------
@@ -232,6 +242,55 @@ class PhaseCurve:
         """
 
         return self.model_function(phase_angle)
+
+    def ModelResiduals(self, phase_angle, reduced_mag):
+        """For a set of phase curve observations, return the residuals to the PhaseCurve model.
+        NB that units must match the sbpy model. E.g. phase_angle should be passed with units of degrees, or be in values of radians
+
+        Parameters
+        -----------
+        phase_angle : float or array
+           value or array of phase angles at which to evaluate the phasecurve model.
+
+        reduced_mag : float or array
+           value or array of reduced magnitudes at which to evaluate the phasecurve model.
+
+        Returns
+        ----------
+
+        residuals : float or array
+           The residuals of the observations minus PhaseCurve model values
+
+        """
+
+        residuals = reduced_mag - self.ReducedMag(phase_angle)
+
+        return residuals
+
+    def AbsMag(self, phase_angle, reduced_mag):
+        """For a set of phase curve observations, return the absolute magnitude from the fitted phase curve model.
+        I.e. this is the model residuals, shifted by the fitted absolute magnitude
+        NB that units must match the sbpy model. E.g. phase_angle should be passed with units of degrees, or be in values of radians
+
+        Parameters
+        -----------
+        phase_angle : float or array
+           value or array of phase angles at which to evaluate the phasecurve model.
+
+        reduced_mag : float or array
+           value or array of reduced magnitudes at which to evaluate the phasecurve model.
+
+        Returns
+        ----------
+
+        abs_mag : float or array
+           The residuals of the observations minus PhaseCurve model values shifted by the model absolute magnitude
+
+        """
+
+        abs_mag = reduced_mag - self.ReducedMag(phase_angle) + self.H
+
+        return abs_mag
 
     def FitModel(self, phase_angle, reduced_mag, mag_err=None, fitter=None):
         """Fit the phasecurve model parameters to observations.
