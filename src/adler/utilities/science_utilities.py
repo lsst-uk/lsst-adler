@@ -5,6 +5,9 @@ from astropy.stats import sigma_clip as astropy_sigma_clip
 def outlier_diff(new_res, diff_cut=1.0):
     """Test whether new data point(s) is an outlier compared to the model by considering the residual difference.
 
+    Parameters
+    -----------
+
     new_res: array
         The residuals of the new data points compared to the model
     diff_cut: float
@@ -28,6 +31,9 @@ def outlier_diff(new_res, diff_cut=1.0):
 
 def outlier_std(new_res, data_res, std_cut=3.0):
     """Test whether new data point(s) is an outlier compared to the model by considering the standard deviation of the residuals.
+
+    Parameters
+    -----------
 
     new_res: array
         The residuals of the new data point(s) compared to the model
@@ -59,6 +65,9 @@ def zero_func(x, axis=None):
     """Dummy function to return a zero.
     Can be used as the centre function in astropy.stats.sigma_clip to get std relative to zero rather than median/mean value.
 
+    Parameters
+    -----------
+
     x:
         Dummy variable
     axis:
@@ -69,6 +78,9 @@ def zero_func(x, axis=None):
 
 def sigma_clip(data_res, kwargs={"maxiters": 1, "cenfunc": zero_func}):
     """Wrapper function for astropy.stats.sigma_clip, here we define the default centre of the data (the data - model residuals) to be zero
+
+    Parameters
+    -----------
 
     data_res: array
         The residuals of the data compared to the model.
@@ -90,6 +102,9 @@ def sigma_clip(data_res, kwargs={"maxiters": 1, "cenfunc": zero_func}):
 def outlier_sigma_diff(data_res, data_sigma, std_sigma=1):
     """Function to identify outliers by comparing the uncertainty of measurements to their residuals
 
+    Parameters
+    -----------
+
     data_res: array
         The residuals of the data compared to the model.
     data_sigma: array
@@ -106,3 +121,40 @@ def outlier_sigma_diff(data_res, data_sigma, std_sigma=1):
     outlier_flag = np.abs(data_res) > (std_sigma * data_sigma)
 
     return outlier_flag
+
+
+def apparition_gap_finder(x, dx=100.0):
+    """Function to find gaps in a data series. E.g. given an array of observation times, find the different apparitions of an asteroid from gaps between observations larger than a given value.
+
+    Parameters
+    -----------
+
+    x: array
+        The SORTED data array to search for gaps
+    dx: float
+        The size of gap to identify in data series
+
+    Returns
+    -----------
+    x_gaps: array
+        Values of x which define the groups in the data, where each group is x_gaps[i] <= x < x_gaps[i+1]
+    """
+
+    ## TODO: check that x is sorted?
+
+    # find the difference between each data point
+    x_diff = np.diff(x)
+
+    # select only differences greater than value dx
+    x_diff_mask = x_diff > dx
+
+    # find the values in x that correspond to the start of each group
+    x_gaps = x[1:][x_diff_mask]
+
+    # add the very first observation to the array
+    x_gaps = np.insert(x_gaps, 0, x[0])
+
+    # add the very last observation to the array, including a shift of dx to ensure the boundary inequalities work
+    x_gaps = np.insert(x_gaps, len(x_gaps), x[-1] + dx)
+
+    return x_gaps
