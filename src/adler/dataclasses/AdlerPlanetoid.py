@@ -212,7 +212,7 @@ class AdlerPlanetoid:
             observations_sql_query = f"""
                 SELECT
                     ssObject.ssObjectId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
-                    topocentricDist, heliocentricDist
+                    topocentricDist, heliocentricDist, heliocentricX, heliocentricY, heliocentricZ
                 FROM
                     {schema}ssObject
                     JOIN {schema}diaSource ON {schema}ssObject.ssObjectId   = {schema}diaSource.ssObjectId
