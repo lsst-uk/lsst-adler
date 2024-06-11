@@ -100,8 +100,8 @@ def runAdler(cli_args):
 
             # initial simple phase curve filter model with fixed G12
             pc = PhaseCurve(
-                abs_mag=sso.H * u.mag,
-                phase_param=0.62,
+                H=sso.H * u.mag,
+                phase_parameter_1=0.62,
                 model_name="HG12_Pen16",
             )
 
@@ -168,15 +168,15 @@ def runAdler(cli_args):
 
             # if sum(obs_mask) < N_pc_fit:
             #     # use an assumed value of G12 until more data is available
-            #     pc_fit = PhaseCurve(abs_mag=sso.H * u.mag, phase_param=0.62, model_name="HG12_Pen16")
+            #     pc_fit = PhaseCurve(H=sso.H * u.mag, phase_parameter_1=0.62, model_name="HG12_Pen16")
             # else:
             #     # do a simple HG12_Pen16 fit to the past data
             #     pc_fit = pc.FitModel(alpha[obs_mask], red_mag[obs_mask], mag_err[obs_mask])
             #     pc_fit = pc.InitModelSbpy(pc_fit)
 
             # print(pc_fit)
-            # print(pc_fit.abs_mag)
-            # print(pc_fit.phase_param)
+            # print(pc_fit.H)
+            # print(pc_fit.phase_parameter_1)
 
             # # now check if the new observations are outlying
             # alpha_new = alpha[~obs_mask]
