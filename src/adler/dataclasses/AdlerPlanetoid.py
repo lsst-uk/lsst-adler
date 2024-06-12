@@ -264,7 +264,7 @@ class AdlerPlanetoid:
 
         MPCORB_sql_query = f"""
             SELECT
-                ssObjectId, mpcDesignation, mpcNumber, mpcH, mpcG, epoch, peri, node, incl, e, n, q, 
+                ssObjectId, mpcDesignation, mpcNumber, mpcH, mpcG, epoch, tperi, peri, node, incl, e, n, q, 
                 uncertaintyParameter, flags
             FROM
                 {schema}MPCORB

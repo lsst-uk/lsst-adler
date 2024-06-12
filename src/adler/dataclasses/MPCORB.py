@@ -8,6 +8,7 @@ MPCORB_KEYS = {
     "mpcH": float,
     "mpcG": float,
     "epoch": float,
+    "tperi": float,
     "peri": float,
     "node": float,
     "incl": float,
@@ -43,6 +44,9 @@ class MPCORB:
     epoch: float
         Epoch (in MJD, .0 TT)
 
+    tperi: float
+        MJD of pericentric passage
+
     peri: float
         Argument of perihelion, J2000.0 (degrees)
 
@@ -75,6 +79,7 @@ class MPCORB:
     mpcH: float = 0.0
     mpcG: float = 0.0
     epoch: float = 0.0
+    tperi: float = 0.0
     peri: float = 0.0
     node: float = 0.0
     incl: float = 0.0

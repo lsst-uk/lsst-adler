@@ -12,7 +12,7 @@ def test_construct_MPCORB_from_data_table():
 
     test_query = f"""
                 SELECT
-                    ssObjectId, mpcDesignation, mpcNumber, mpcH, mpcG, epoch, peri, node, incl, e, n, q, 
+                    ssObjectId, mpcDesignation, mpcNumber, mpcH, mpcG, epoch, tperi, peri, node, incl, e, n, q, 
                     uncertaintyParameter, flags
                 FROM
                     MPCORB
