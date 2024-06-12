@@ -15,6 +15,9 @@ OBSERVATIONS_KEYS = {
     "heliocentricX": np.ndarray,
     "heliocentricY": np.ndarray,
     "heliocentricZ": np.ndarray,
+    "topocentricX": np.ndarray,
+    "topocentricY": np.ndarray,
+    "topocentricZ": np.ndarray,
 }
 
 
@@ -65,6 +68,15 @@ class Observations:
     heliocentricZ: array_like of floats
         z-axis component of the heliocentric distance.
 
+    topocentricX: array_like of floats
+        x-axis component of the topocentric distance.
+
+    topocentricY: array_like of floats
+        y-axis component of the topocentric distance.
+
+    topocentricZ: array_like of floats
+        z-axis component of the topocentric distance.
+
     reduced_mag: array_like of floats
         The reduced magnitude.
 
@@ -86,6 +98,9 @@ class Observations:
     heliocentricX: np.ndarray = field(default_factory=lambda: np.zeros(0))
     heliocentricY: np.ndarray = field(default_factory=lambda: np.zeros(0))
     heliocentricZ: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    topocentricX: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    topocentricY: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    topocentricZ: np.ndarray = field(default_factory=lambda: np.zeros(0))
     reduced_mag: np.ndarray = field(default_factory=lambda: np.zeros(0))
     num_obs: int = 0
 
