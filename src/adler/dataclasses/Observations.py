@@ -18,6 +18,8 @@ OBSERVATIONS_KEYS = {
     "topocentricX": np.ndarray,
     "topocentricY": np.ndarray,
     "topocentricZ": np.ndarray,
+    "eclipticLambda": np.ndarray,
+    "eclipticBeta": np.ndarray,
 }
 
 
@@ -77,6 +79,12 @@ class Observations:
     topocentricZ: array_like of floats
         z-axis component of the topocentric distance.
 
+    eclipticLambda: array_like of floats
+        The ecliptic longitude.
+
+    eclipticBeta: array_like of floats
+        The ecliptic latitude.
+
     reduced_mag: array_like of floats
         The reduced magnitude.
 
@@ -101,6 +109,8 @@ class Observations:
     topocentricX: np.ndarray = field(default_factory=lambda: np.zeros(0))
     topocentricY: np.ndarray = field(default_factory=lambda: np.zeros(0))
     topocentricZ: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    eclipticLambda: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    eclipticBeta: np.ndarray = field(default_factory=lambda: np.zeros(0))
     reduced_mag: np.ndarray = field(default_factory=lambda: np.zeros(0))
     num_obs: int = 0
 

@@ -213,7 +213,8 @@ class AdlerPlanetoid:
                 SELECT
                     ssObject.ssObjectId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
                     topocentricDist, heliocentricDist, heliocentricX, heliocentricY, heliocentricZ,
-                    topocentricX, topocentricY, topocentricZ
+                    topocentricX, topocentricY, topocentricZ,
+                    eclipticLambda, eclipticBeta
                 FROM
                     {schema}ssObject
                     JOIN {schema}diaSource ON {schema}ssObject.ssObjectId   = {schema}diaSource.ssObjectId

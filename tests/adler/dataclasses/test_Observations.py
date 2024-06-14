@@ -16,7 +16,8 @@ def test_construct_observations_from_data_table():
                     SELECT
                         ssObject.ssObjectId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
                         topocentricDist, heliocentricDist, heliocentricX, heliocentricY, heliocentricZ,
-                        topocentricX, topocentricY, topocentricZ
+                        topocentricX, topocentricY, topocentricZ,
+                        eclipticLambda, eclipticBeta
                     FROM
                         ssObject
                         JOIN diaSource ON ssObject.ssObjectId   = diaSource.ssObjectId
