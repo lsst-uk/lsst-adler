@@ -189,6 +189,19 @@ class Observations:
 
         return cls(**obs_dict)
 
+    @classmethod
+    def construct_from_dictionary(cls, ssObjectId, filter_name, data_dict):
+        obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "num_obs": 1}
+
+        for obs_key, obs_type in OBSERVATIONS_KEYS.items():
+            obs_dict[obs_key] = get_from_dictionary(data_dict, obs_key, obs_type, "SSSource/DIASource")
+
+        obs_dict["reduced_mag"] = cls.calculate_reduced_mag(
+            cls, obs_dict["mag"], obs_dict["topocentricDist"], obs_dict["heliocentricDist"]
+        )
+
+        return cls(**obs_dict)
+
     def calculate_reduced_mag(self, mag, topocentric_dist, heliocentric_dist):
         """
         Calculates the reduced magnitude column.
