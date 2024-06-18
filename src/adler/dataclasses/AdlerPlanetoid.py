@@ -1,6 +1,8 @@
 from lsst.rsp import get_tap_service
 import pandas as pd
+import numpy as np
 import logging
+import json
 
 from adler.dataclasses.Observations import Observations
 from adler.dataclasses.MPCORB import MPCORB
@@ -113,6 +115,32 @@ class AdlerPlanetoid:
         adler_data = AdlerData(ssObjectId, filter_list)
 
         return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
+
+    @classmethod
+    def construct_from_JSON(cls, json_filename):
+        with open(json_filename) as f:
+            json_dict = json.load(f)
+
+        observations_dict = {**json_dict["SSSource"], **json_dict["DiaSource"]}
+
+        filter_list = [observations_dict["band"]]
+
+        MPCORB_dict = json_dict["MPCORB"]
+        SSObject_dict = json_dict["SSObject"]
+
+        ssObjectId = observations_dict["ssObjectId"]
+
+        observations_by_filter = [
+            Observations.construct_from_dictionary(ssObjectId, filter_list[0], observations_dict)
+        ]
+        mpcorb = MPCORB.construct_from_dictionary(ssObjectId, MPCORB_dict)
+        ssobject = SSObject.construct_from_dictionary(ssObjectId, filter_list, SSObject_dict)
+
+        adler_data = AdlerData(ssObjectId, filter_list)
+
+        return cls(
+            ssObjectId, filter_list, [np.nan, np.nan], observations_by_filter, mpcorb, ssobject, adler_data
+        )
 
     @classmethod
     def construct_from_RSP(

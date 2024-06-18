@@ -86,7 +86,7 @@ def get_from_table(data_table, column_name, data_type, table_name="default"):
             elif data_type == int:
                 data_val = int(data_table[column_name][0])
             elif data_type == np.ndarray:
-                data_val = np.array(data_table[column_name])
+                data_val = np.array(data_table[column_name], ndmin=1)
             else:
                 logger.error(
                     "TypeError: Type for argument data_type not recognised for column {} in table {}: must be str, float, int or np.ndarray.".format(
@@ -104,6 +104,27 @@ def get_from_table(data_table, column_name, data_type, table_name="default"):
 
     # here we alert the user if one of the values is unpopulated and change it to a NaN
     data_val = check_value_populated(data_val, data_type, column_name, table_name)
+
+    return data_val
+
+
+def get_from_dictionary(data_dict, key_name, data_type, table_name="default"):
+    try:
+        if data_type == str:
+            data_val = str(data_dict[key_name])
+        elif data_type == float:
+            data_val = float(data_dict[key_name])
+        elif data_type == int:
+            data_val = int(data_dict[key_name])
+        elif data_type == np.ndarray:
+            data_val = np.array(data_dict[key_name], ndmin=1)
+        else:
+            print("type not recognised")
+
+    except ValueError:
+        print("error message")
+
+    data_val = check_value_populated(data_val, data_type, key_name, "JSON")
 
     return data_val
 
