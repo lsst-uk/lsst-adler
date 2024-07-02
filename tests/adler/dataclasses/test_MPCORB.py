@@ -12,7 +12,7 @@ def test_construct_MPCORB_from_data_table():
 
     test_query = f"""
                 SELECT
-                    ssObjectId, mpcDesignation, mpcNumber, mpcH, mpcG, epoch, tperi, peri, node, incl, e, n, q, 
+                    ssObjectId, mpcDesignation, fullDesignation, mpcNumber, mpcH, mpcG, epoch, tperi, peri, node, incl, e, n, q, 
                     uncertaintyParameter, flags
                 FROM
                     MPCORB
@@ -25,6 +25,7 @@ def test_construct_MPCORB_from_data_table():
 
     assert test_MPCORB.ssObjectId == 8268570668335894776
     assert test_MPCORB.mpcDesignation == "2014 QL4"
+    # assert test_MPCORB.fullDesignation == "2014 QL4" #
     assert test_MPCORB.mpcNumber == 0
     assert_almost_equal(test_MPCORB.mpcH, 19.8799991607666, decimal=6)
     assert_almost_equal(test_MPCORB.mpcG, 0.15000000596046448, decimal=6)

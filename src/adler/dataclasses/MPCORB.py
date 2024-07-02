@@ -4,6 +4,7 @@ from adler.dataclasses.dataclass_utilities import get_from_table
 
 MPCORB_KEYS = {
     "mpcDesignation": str,
+    "fullDesignation": str,
     "mpcNumber": int,
     "mpcH": float,
     "mpcG": float,
@@ -31,6 +32,9 @@ class MPCORB:
 
     mpcDesignation: str
         Number or provisional designation (in packed form)
+
+    fullDesignation: str
+        Number or provisional designation (in readable form)
 
     mpcNumber: int
         MPC number (if the asteroid has been numbered; NULL otherwise). Provided for convenience.
@@ -75,6 +79,7 @@ class MPCORB:
 
     ssObjectId: str = ""
     mpcDesignation: str = ""
+    fullDesignation: str = ""
     mpcNumber: int = 0
     mpcH: float = 0.0
     mpcG: float = 0.0
