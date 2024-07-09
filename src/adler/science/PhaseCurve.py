@@ -270,7 +270,7 @@ class PhaseCurve:
     def AbsMag(self, phase_angle, reduced_mag):
         """For a set of phase curve observations, return the absolute magnitude from the fitted phase curve model.
         I.e. this is the model residuals, shifted by the fitted absolute magnitude
-        NB that units must match the sbpy model. E.g. phase_angle should be passed with units of degrees, or be in values of radians
+        NB that units for phase_angle and reduced_mag must match the sbpy model. E.g. phase_angle should be passed with units of degrees, or be in values of radians
 
         Parameters
         -----------
@@ -287,6 +287,10 @@ class PhaseCurve:
            The residuals of the observations minus PhaseCurve model values shifted by the model absolute magnitude
 
         """
+
+        # TODO: add option to pass model & filt instead of reduced_mag & phase angle - will calculate all absmags automatically
+        # probably not possible as observations are contained in a separate object
+        # if (phase_angle is None) and (reduced_mag is None) and (filt is not None)...
 
         abs_mag = reduced_mag - self.ReducedMag(phase_angle) + self.H
 

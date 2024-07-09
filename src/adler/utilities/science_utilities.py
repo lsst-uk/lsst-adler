@@ -214,7 +214,7 @@ def get_df_obs_filt(planetoid, filt, x_col="midPointMjdTai", x1=None, x2=None, c
     # sort into x_col order
     df_obs = df_obs.sort_values(x_col)
     # limit to range in x_col if limits x1, x2 are supplied
-    if (x1 is not None) & (x2 is not None):
+    if (x1 is not None) & (x2 is not None):  # TODO: add functionality to set only upper/lower limit
         x_mask = (df_obs[x_col] >= x1) & (df_obs[x_col] <= x2)
         df_obs = df_obs[x_mask]
     # reset the dataframe index
