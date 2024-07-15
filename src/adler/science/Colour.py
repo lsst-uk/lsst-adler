@@ -10,7 +10,7 @@ def col_obs_ref(
     adler_cols,
     filt_obs="g",
     filt_ref="r",
-    N_mean=3,
+    N_ref=3,
     x_col="midPointMjdTai",
     y_col="AbsMag",
     yerr_col="magErr",
@@ -33,7 +33,7 @@ def col_obs_ref(
     filt_ref:str
         Filter name of the reference observations when calculating the filt_obs - filt_ref colour
 
-    N_mean: int
+    N_ref: int
         Number of reference observations to use when calculated the reference absolute magnitude.
         Set to 1 to use only the most recent of ref observations.
         Set to None to use all past ref obs.
@@ -90,19 +90,19 @@ def col_obs_ref(
     ref_mask = df_obs_ref[x_col] < x_obs
 
     # set the number of ref obs to use
-    if N_mean is None:
-        _N_mean = len(df_obs_ref[ref_mask])  # use all available ref obs
+    if N_ref is None:
+        _N_ref = len(df_obs_ref[ref_mask])  # use all available ref obs
     else:
-        _N_mean = N_mean
+        _N_ref = N_ref
 
-    # select only the N_mean ref obs for comparison
-    _df_obs_ref = df_obs_ref[ref_mask].iloc[-_N_mean:]
+    # select only the N_ref ref obs for comparison
+    _df_obs_ref = df_obs_ref[ref_mask].iloc[-_N_ref:]
     if len(_df_obs_ref) == 0:
         print("no reference observations")  # TODO: add proper error handling and logging here
         return df_obs
 
     # determine reference observation values
-    y_ref = np.mean(_df_obs_ref[y_col])
+    y_ref = np.mean(_df_obs_ref[y_col])  # TODO: add option to choose statistic, e.g. mean or median?
     yerr_ref = np.std(_df_obs_ref[y_col])  # TODO: propagate ref uncertainty properly
     # determine the ref obs time range
     x1_ref = np.array(_df_obs_ref[x_col])[0]
