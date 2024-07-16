@@ -261,7 +261,7 @@ class PhaseCurve:
         resample : int
             Optional - if passed this forces a monte carlo resampling of data points within their uncertainties.
             This the number of times to resample and fit the phase curve.
-            The phase curve parameter uncertainties are determined from the mean and std of the fitted values.
+            The phase curve parameter value and uncertainties are determined from the mean and std of the fitted values respectively.
         Returns
         ----------
 
@@ -291,19 +291,39 @@ class PhaseCurve:
                 fit_mask = ~np.array([getattr(model_fit, x).fixed for x in param_names])
                 for i, x in enumerate(param_names[fit_mask]):
                     setattr(model_fit, "{}_err".format(x), fit_errs[i])
-                    # TODO: return uncertainties with units if units are passed
+                    # TODO: return uncertainties with units if units are passed - see MC resample code below
             # else:
-            ### TODO log covariance is None error here
+            ### TODO log covariance is None error here - no uncertainties
 
+        # run an MC reasmple fit to estimate parameter value and uncertainty
         elif (resample is not None) and (mag_err is not None):
-            #     run an MC estimate of uncertainty?
+            mc_models = []  # list to store MC model fits
+            for i in range(resample):  # TODO: try optimise/parallelise this loop?
+                _reduced_mag = np.random.normal(loc=np.array(reduced_mag), scale=np.array(mag_err)) * u.mag
+                _model_fit = fitter(self.model_function, phase_angle, _reduced_mag)
+                mc_models.append(_model_fit)
 
-            _reduced_mag = np.random.normal(loc=np.array(reduced_mag), scale=np.array(mag_err)) * u.mag
-            _model_fit = fitter(self.model_function, phase_angle, _reduced_mag)
+            # Update the model_fit parameters with the MC values
+            param_names = np.array(model_fit.param_names)
+            # update only the uncertainties for parameters used in the fit
+            fit_mask = ~np.array([getattr(model_fit, x).fixed for x in param_names])
+            for i, x in enumerate(param_names[fit_mask]):
+                # check if the parameter has units and then get array of the MC model values
+                m = mc_models[0]
+                p = getattr(m, x)
+                if hasattr(p, "unit"):
+                    fit_vals = np.array([getattr(m, x).value for m in mc_models]) * p.unit
+                else:
+                    fit_vals = np.array([getattr(m, x) for m in mc_models])
+
+                # set the parameter value as the mean of the MC values
+                setattr(model_fit, "{}".format(x), np.mean(fit_vals))
+                # set the parameter uncertainty as the std of the MC values
+                setattr(model_fit, "{}_err".format(x), np.std(fit_vals))
 
         else:
             #     log lack of uncertainties for fitter
-            print("no phase curve parameter uncertainties")
+            print("no phase curve parameter uncertainties calculated")
 
         ### if overwrite_model: # add an overwrite option?
         # redo __init__ with the new fitted parameters
