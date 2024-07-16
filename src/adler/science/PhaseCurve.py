@@ -317,7 +317,7 @@ class PhaseCurve:
                 # check if the parameter has units and then get array of the MC model values
                 m = mc_models[0]
                 p = getattr(m, x)
-                if hasattr(p, "unit"):
+                if hasattr(p, "unit") and (p.unit is not None):
                     fit_vals = np.array([getattr(m, x).value for m in mc_models]) * p.unit
                 else:
                     fit_vals = np.array([getattr(m, x) for m in mc_models])
