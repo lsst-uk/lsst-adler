@@ -233,7 +233,7 @@ class PhaseCurve:
 
         return self.model_function(phase_angle)
 
-    def FitModel(self, phase_angle, reduced_mag, mag_err=None, fitter=None):
+    def FitModel(self, phase_angle, reduced_mag, mag_err=None, fitter=None, resample=None):
         """Fit the phasecurve model parameters to observations.
         starts with a phase curve model as an initial guess for parameters.
         fits model to phase angle and reduced magnitude.
@@ -258,6 +258,10 @@ class PhaseCurve:
            Select a fitting function from astropy.modeling.fitting, defaults to astropy.modeling.fitting.LevMarLSQFitter.
            N.B. that LevMarLSQFitter cannot handle inequality constraints for the HG1G2 model, use something like SLSQPLSQFitter from astropy.modeling.fitting (does not return covariance matrix!).
 
+        resample : int
+            Optional - if passed this forces a monte carlo resampling of data points within their uncertainties.
+            This the number of times to resample and fit the phase curve.
+            The phase curve parameter uncertainties are determined from the mean and std of the fitted values.
         Returns
         ----------
 
@@ -276,7 +280,7 @@ class PhaseCurve:
             model_fit = fitter(self.model_function, phase_angle, reduced_mag)
 
         # Add fitted uncertainties as an additional attribute within the sbpy object
-        if "param_cov" in fitter.fit_info:
+        if ("param_cov" in fitter.fit_info) and (resample is None):
             # get the covariance matrix from the fit
             covariance = fitter.fit_info["param_cov"]
             if covariance is not None:
@@ -287,13 +291,19 @@ class PhaseCurve:
                 fit_mask = ~np.array([getattr(model_fit, x).fixed for x in param_names])
                 for i, x in enumerate(param_names[fit_mask]):
                     setattr(model_fit, "{}_err".format(x), fit_errs[i])
+                    # TODO: return uncertainties with units if units are passed
             # else:
             ### TODO log covariance is None error here
 
-        ### TODO
-        # else:
-        #     log lack of uncertainties for fitter
-        #     run an MCMC estimate of uncertainty?
+        elif (resample is not None) and (mag_err is not None):
+            #     run an MC estimate of uncertainty?
+
+            _reduced_mag = np.random.normal(loc=np.array(reduced_mag), scale=np.array(mag_err)) * u.mag
+            _model_fit = fitter(self.model_function, phase_angle, _reduced_mag)
+
+        else:
+            #     log lack of uncertainties for fitter
+            print("no phase curve parameter uncertainties")
 
         ### if overwrite_model: # add an overwrite option?
         # redo __init__ with the new fitted parameters
