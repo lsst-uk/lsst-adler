@@ -199,7 +199,9 @@ class PhaseCurve:
                         x.unit == ""
                     ):  # if there are no units (or weird blank units?) get just the value
                         x = x.value
-                    else:
+                    if hasattr(
+                        x, "quantity"
+                    ):  # catch any sbpy parameters returned as astropy.modeling.parameters.Parameter
                         x = x.quantity
                 # look up the correct adler parameter name (accounting for additional uncertainty, "_err", parameters)
                 if p.endswith("_err"):  # assumes the uncertainty parameter always ends in "_err"
@@ -290,7 +292,11 @@ class PhaseCurve:
                 param_names = np.array(model_fit.param_names)
                 fit_mask = ~np.array([getattr(model_fit, x).fixed for x in param_names])
                 for i, x in enumerate(param_names[fit_mask]):
-                    setattr(model_fit, "{}_err".format(x), fit_errs[i])
+                    p = getattr(model_fit, x)
+                    if hasattr(p, "unit") and (p.unit is not None):
+                        setattr(model_fit, "{}_err".format(x), fit_errs[i] * p.unit)
+                    else:
+                        setattr(model_fit, "{}_err".format(x), fit_errs[i])
                     # TODO: return uncertainties with units if units are passed - see MC resample code below
             # else:
             ### TODO log covariance is None error here - no uncertainties
