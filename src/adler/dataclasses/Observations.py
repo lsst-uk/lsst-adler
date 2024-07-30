@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 import numpy as np
 
-from adler.dataclasses.dataclass_utilities import get_from_table
+from adler.dataclasses.dataclass_utilities import get_from_table, get_from_dictionary
 
 OBSERVATIONS_KEYS = {
     "mag": np.ndarray,
@@ -140,6 +140,19 @@ class Observations:
 
         for obs_key, obs_type in OBSERVATIONS_KEYS.items():
             obs_dict[obs_key] = get_from_table(data_table, obs_key, obs_type, "SSSource/DIASource")
+
+        obs_dict["reduced_mag"] = cls.calculate_reduced_mag(
+            cls, obs_dict["mag"], obs_dict["topocentricDist"], obs_dict["heliocentricDist"]
+        )
+
+        return cls(**obs_dict)
+
+    @classmethod
+    def construct_from_dictionary(cls, ssObjectId, filter_name, data_dict):
+        obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "num_obs": 1}
+
+        for obs_key, obs_type in OBSERVATIONS_KEYS.items():
+            obs_dict[obs_key] = get_from_dictionary(data_dict, obs_key, obs_type, "SSSource/DIASource")
 
         obs_dict["reduced_mag"] = cls.calculate_reduced_mag(
             cls, obs_dict["mag"], obs_dict["topocentricDist"], obs_dict["heliocentricDist"]

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from adler.dataclasses.dataclass_utilities import get_from_table
+from adler.dataclasses.dataclass_utilities import get_from_table, get_from_dictionary
 
 MPCORB_KEYS = {
     "mpcDesignation": str,
@@ -117,5 +117,14 @@ class MPCORB:
 
         for mpcorb_key, mpcorb_type in MPCORB_KEYS.items():
             mpcorb_dict[mpcorb_key] = get_from_table(data_table, mpcorb_key, mpcorb_type, "MPCORB")
+
+        return cls(**mpcorb_dict)
+
+    @classmethod
+    def construct_from_dictionary(cls, ssObjectId, data_dict):
+        mpcorb_dict = {"ssObjectId": ssObjectId}
+
+        for mpcorb_key, mpcorb_type in MPCORB_KEYS.items():
+            mpcorb_dict[mpcorb_key] = get_from_dictionary(data_dict, mpcorb_key, mpcorb_type, "MPCORB")
 
         return cls(**mpcorb_dict)
