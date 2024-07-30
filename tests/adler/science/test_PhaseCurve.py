@@ -144,4 +144,5 @@ def test_PhaseCurve_FitModel_HG_bounds():
     assert pc2.phase_parameter_1 == 0.1
     assert pc2.phase_parameter_1_err is not None
 
+
 # TODO: test absmag
