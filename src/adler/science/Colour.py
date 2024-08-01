@@ -17,7 +17,10 @@ def col_obs_ref(
     x1=None,
     x2=None,
 ):
-    """
+    """A function to calculate the colour of an Adler planetoid object.
+    An observation in a given filter (filt_obs) is compared to previous observation in a reference filter (filt_ref).
+    By setting N_ref one can control how many reference observations to include in the colour calculation.
+    Note that the observations are considered to be in reduced magnitudes, hence why an adlerData object with phase curve models is passed.
 
     Parameters
     -----------
@@ -67,7 +70,6 @@ def col_obs_ref(
     y_ref_col = "{}_{}".format(y_col, filt_ref)
     x1_ref_col = "{}1_{}".format(x_col, filt_ref)
     x2_ref_col = "{}2_{}".format(x_col, filt_ref)
-    new_obs_cols = [colour, colErr, delta_t_col, y_ref_col, x1_ref_col, x2_ref_col]
 
     # get the stored AdlerData parameters for this filter # TODO: do this bit better
     ad_obs = adler_cols.get_phase_parameters_in_filter(filt_obs, "HG12_Pen16")
