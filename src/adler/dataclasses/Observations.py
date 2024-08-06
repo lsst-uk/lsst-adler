@@ -4,6 +4,7 @@ import numpy as np
 from adler.dataclasses.dataclass_utilities import get_from_table, get_from_dictionary
 
 OBSERVATIONS_KEYS = {
+    "diaSourceId": np.ndarray,
     "mag": np.ndarray,
     "magErr": np.ndarray,
     "midPointMjdTai": np.ndarray,
@@ -36,6 +37,9 @@ class Observations:
 
     filter_name : str
         Filter of the observations.
+
+    diaSourceId: array_like of ints
+        Unique identifier of the observation
 
     mag: array_like of floats
         Magnitude. This is a placeholder and will be replaced by flux.
@@ -95,6 +99,7 @@ class Observations:
 
     ssObjectId: str = ""
     filter_name: str = ""
+    diaSourceId: np.ndarray = field(default_factory=lambda: np.zeros(0))
     mag: np.ndarray = field(default_factory=lambda: np.zeros(0))
     magErr: np.ndarray = field(default_factory=lambda: np.zeros(0))
     midPointMjdTai: np.ndarray = field(default_factory=lambda: np.zeros(0))

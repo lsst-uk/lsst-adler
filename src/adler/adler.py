@@ -142,10 +142,8 @@ def runAdler(cli_args):
             outlier_flag = sci_utils.outlier_diff(res.value, diff_cut=diff_cut)
             df_obs.loc[~mask, "outlier"] = outlier_flag
 
-            print(df_obs.columns)
-
             # save the df_obs subset with outlier classification
-            df_save = df_obs[["midPointMjdTai", "outlier"]]
+            df_save = df_obs[["diaSourceId", "midPointMjdTai", "outlier"]]
             print("save classifications: {}".format(save_file))
             logger.info("save classifications: {}".format(save_file))
             df_save.to_csv(save_file)
