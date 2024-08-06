@@ -101,7 +101,7 @@ class AdlerData:
 
         # update the value if it's in **kwargs
         for model_key in MODEL_DEPENDENT_KEYS:
-            if kwargs.get(model_key):
+            if model_key in kwargs:
                 setattr(
                     self.filter_dependent_values[filter_index].model_dependent_values[model_index],
                     model_key,

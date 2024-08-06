@@ -12,6 +12,14 @@ OBSERVATIONS_KEYS = {
     "phaseAngle": np.ndarray,
     "topocentricDist": np.ndarray,
     "heliocentricDist": np.ndarray,
+    "heliocentricX": np.ndarray,
+    "heliocentricY": np.ndarray,
+    "heliocentricZ": np.ndarray,
+    "topocentricX": np.ndarray,
+    "topocentricY": np.ndarray,
+    "topocentricZ": np.ndarray,
+    "eclipticLambda": np.ndarray,
+    "eclipticBeta": np.ndarray,
 }
 
 
@@ -53,6 +61,30 @@ class Observations:
     heliocentricDist: array_like of floats
         Heliocentric distance.
 
+    heliocentricX: array_like of floats
+        x-axis component of the heliocentric distance.
+
+    heliocentricY: array_like of floats
+        y-axis component of the heliocentric distance.
+
+    heliocentricZ: array_like of floats
+        z-axis component of the heliocentric distance.
+
+    topocentricX: array_like of floats
+        x-axis component of the topocentric distance.
+
+    topocentricY: array_like of floats
+        y-axis component of the topocentric distance.
+
+    topocentricZ: array_like of floats
+        z-axis component of the topocentric distance.
+
+    eclipticLambda: array_like of floats
+        The ecliptic longitude.
+
+    eclipticBeta: array_like of floats
+        The ecliptic latitude.
+
     reduced_mag: array_like of floats
         The reduced magnitude.
 
@@ -71,6 +103,14 @@ class Observations:
     phaseAngle: np.ndarray = field(default_factory=lambda: np.zeros(0))
     topocentricDist: np.ndarray = field(default_factory=lambda: np.zeros(0))
     heliocentricDist: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    heliocentricX: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    heliocentricY: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    heliocentricZ: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    topocentricX: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    topocentricY: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    topocentricZ: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    eclipticLambda: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    eclipticBeta: np.ndarray = field(default_factory=lambda: np.zeros(0))
     reduced_mag: np.ndarray = field(default_factory=lambda: np.zeros(0))
     num_obs: int = 0
 
