@@ -20,19 +20,20 @@ def runAdler(cli_args):
     logger.info("Beginning Adler.")
 
     N_pc_fit = 10  # minimum number of data points to fit phase curve
-    diff_cut = 1.0
+    diff_cut = 1.0  # magnitude difference used to identify outliers
 
     if cli_args.ssObjectId_list:
         ssObjectId_list = read_in_SSObjectID_file(cli_args.ssObjectId_list)
     else:
         ssObjectId_list = [cli_args.ssObjectId]
 
+    # consider each ssObjectId in the list separately
     for i, ssObjectId in enumerate(ssObjectId_list):
         logger.info("Processing object {}/{}.".format(i + 1, len(ssObjectId_list)))
         logger.info("Ingesting all data for object {} from RSP...".format(cli_args.ssObjectId))
 
-        # if cli_args.sql_filename != "None":
-        if cli_args.sql_filename:
+        # load ssObjectId data
+        if cli_args.sql_filename:  # load from a local database, if provided
             msg = "query sql database {}".format(cli_args.sql_filename)
             logger.info(msg)
             print(msg)
@@ -42,7 +43,7 @@ def runAdler(cli_args):
                 date_range=cli_args.date_range,
                 sql_filename=cli_args.sql_filename,
             )
-        else:
+        else:  # otherwise load from the Rubin Science Platform
             msg = "query RSP"
             logger.info(msg)
             print(msg)
@@ -55,7 +56,7 @@ def runAdler(cli_args):
 
         # now let's do some phase curves!
 
-        # # operate on each filter in turn
+        # operate on each filter in turn
         for filt in planetoid.filter_list:
             print("fit {} filter data".format(filt))
 
@@ -69,6 +70,7 @@ def runAdler(cli_args):
             print(len(df_obs))
 
             # load and merge the previous obs
+            # TODO: replace this part with classifications loaded from adlerData
             save_file = "{}/df_outlier_{}.csv".format(cli_args.outpath, cli_args.ssObjectId)
             if os.path.isfile(save_file):
                 print("load {}".format(save_file))
@@ -79,18 +81,21 @@ def runAdler(cli_args):
             else:
                 print("no previous obs to load")
 
+            # define the date range to for new observations taken in the night to be analysed
             print(cli_args.date_range)
             print(np.amax(df_obs["midPointMjdTai"]))
             t1 = int(np.amax(df_obs["midPointMjdTai"])) + 1
             t0 = t1 - 1
 
-            # t_mask = (df_obs["midPointMjdTai"]<t1)
-            # _df_obs = df_obs[t_mask]
+            # get all past observations
             mask = df_obs["midPointMjdTai"] < t0
+
+            # split observations into "old" and "new"
             df_obs_old = df_obs[(mask)]
             df_obs_new = df_obs[~mask]
             print(t0, t1, len(df_obs_old), len(df_obs_new))
 
+            # we need sufficient past observations to fit the phase curve model
             if len(df_obs_old) < 2:
                 print("save {}".format(save_file))
                 df_save = df_obs[["midPointMjdTai", "outlier"]]
@@ -100,18 +105,18 @@ def runAdler(cli_args):
 
             # initial simple phase curve filter model with fixed G12
             pc = PhaseCurve(
-                abs_mag=sso.H * u.mag,
-                phase_param=0.62,
+                H=sso.H * u.mag,
+                phase_parameter_1=0.62,
                 model_name="HG12_Pen16",
             )
 
+            # only fit G12 when sufficient data is available
             if len(df_obs_old) < N_pc_fit:
-                # use an assumed value of G12 until more data is available
                 pc.model_function.G12.fixed = True
             else:
                 pc.model_function.G12.fixed = False
 
-            # do a simple HG12_Pen16 fit to the past data
+            # do a HG12_Pen16 fit to the past data
             pc_fit = pc.FitModel(
                 np.array(df_obs_old["phaseAngle"]) * u.deg,
                 np.array(df_obs_old["reduced_mag"]) * u.mag,
@@ -124,12 +129,11 @@ def runAdler(cli_args):
             res = (np.array(df_obs_new["reduced_mag"]) * u.mag) - pc_fit.ReducedMag(
                 np.array(df_obs_new["phaseAngle"]) * u.deg
             )
-            # print(res)
             outlier_flag = sci_utils.outlier_diff(res.value, diff_cut=diff_cut)
             print(outlier_flag)
             df_obs.loc[~mask, "outlier"] = outlier_flag
 
-            # save the df_obs subset
+            # save the df_obs subset with outlier classification
             df_save = df_obs[["midPointMjdTai", "outlier"]]
             print("save {}".format(save_file))
             df_save.to_csv(save_file)
@@ -143,7 +147,6 @@ def runAdler(cli_args):
             ax1.scatter(
                 df_obs_new["phaseAngle"], df_obs_new["reduced_mag"], edgecolor="r", facecolor="none", zorder=3
             )
-            # ax1.scatter(df_obs_new.loc[outlier_flag]["phaseAngle"], df_obs_new.loc[outlier_flag]["reduced_mag"], c = "r", marker = "x", s= 75, zorder = 3)
             out_mask = df_obs["outlier"] == True
             ax1.scatter(
                 df_obs.loc[out_mask]["phaseAngle"],
@@ -154,45 +157,9 @@ def runAdler(cli_args):
                 zorder=3,
             )
             fig_file = "{}/plots/phase_curve_{}_{}.png".format(cli_args.outpath, cli_args.ssObjectId, int(t0))
+            # TODO: make the plots folder if it does not already exist?
             print(fig_file)
             fig = plot_errorbar(planetoid, fig=fig, filename=fig_file)
-
-            # # when fitting, consider only the previous observations (not tonight's)
-            # mjd = obs.midPointMjdTai
-            # obs_mask = mjd < int(np.amax(mjd))
-            # # also drop any past outlying observations?
-
-            # print("total N obs = {}".format(len(mjd)))
-            # print("number of past obs = {}".format(sum(obs_mask)))
-            # print("number of tonight's obs = {}".format(sum(~obs_mask)))
-
-            # if sum(obs_mask) < N_pc_fit:
-            #     # use an assumed value of G12 until more data is available
-            #     pc_fit = PhaseCurve(abs_mag=sso.H * u.mag, phase_param=0.62, model_name="HG12_Pen16")
-            # else:
-            #     # do a simple HG12_Pen16 fit to the past data
-            #     pc_fit = pc.FitModel(alpha[obs_mask], red_mag[obs_mask], mag_err[obs_mask])
-            #     pc_fit = pc.InitModelSbpy(pc_fit)
-
-            # print(pc_fit)
-            # print(pc_fit.abs_mag)
-            # print(pc_fit.phase_param)
-
-            # # now check if the new observations are outlying
-            # alpha_new = alpha[~obs_mask]
-            # red_mag_new = red_mag[~obs_mask]
-            # mag_err_new = mag_err[~obs_mask]
-
-            # # calculate data - model residuals
-            # res = red_mag_new - pc_fit.ReducedMag(alpha_new)
-            # print(res)
-
-            # # also check for past observations that are outlying?
-
-            # # output results:
-            # # flag outlying observations
-            # # output the phase curve model parameters
-            # # make a plot?
 
 
 def main():
