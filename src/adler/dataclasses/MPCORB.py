@@ -4,10 +4,12 @@ from adler.dataclasses.dataclass_utilities import get_from_table, get_from_dicti
 
 MPCORB_KEYS = {
     "mpcDesignation": str,
+    "fullDesignation": str,
     "mpcNumber": int,
     "mpcH": float,
     "mpcG": float,
     "epoch": float,
+    "tperi": float,
     "peri": float,
     "node": float,
     "incl": float,
@@ -31,6 +33,9 @@ class MPCORB:
     mpcDesignation: str
         Number or provisional designation (in packed form)
 
+    fullDesignation: str
+        Number or provisional designation (in readable form)
+
     mpcNumber: int
         MPC number (if the asteroid has been numbered; NULL otherwise). Provided for convenience.
 
@@ -42,6 +47,9 @@ class MPCORB:
 
     epoch: float
         Epoch (in MJD, .0 TT)
+
+    tperi: float
+        MJD of pericentric passage
 
     peri: float
         Argument of perihelion, J2000.0 (degrees)
@@ -71,10 +79,12 @@ class MPCORB:
 
     ssObjectId: str = ""
     mpcDesignation: str = ""
+    fullDesignation: str = ""
     mpcNumber: int = 0
     mpcH: float = 0.0
     mpcG: float = 0.0
     epoch: float = 0.0
+    tperi: float = 0.0
     peri: float = 0.0
     node: float = 0.0
     incl: float = 0.0

@@ -220,3 +220,11 @@ def test_sigma_clip():
 def test_outlier_sigma_diff():
     outliers = sci_utils.outlier_sigma_diff(y_res, y_err, std_sigma=5.0)
     assert_array_equal(outliers, outliers_y)
+
+
+# TODO: test apparition_gap_finder, correct number of groups identified? correct boundaries?
+# check boundaires are in ascending order
+
+# TODO: test get_df_obs_filt, check filter and sorting/time range constraints,
+# check the column list behaviour
+# check AbsMag calculation
