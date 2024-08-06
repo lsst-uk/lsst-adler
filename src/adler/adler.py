@@ -31,6 +31,9 @@ def runAdler(cli_args):
     for i, ssObjectId in enumerate(ssObjectId_list):
         logger.info("Processing object {}/{}.".format(i + 1, len(ssObjectId_list)))
         logger.info("Ingesting all data for object {} from RSP...".format(cli_args.ssObjectId))
+        logger.info(
+            "Query data in the range: {} <= date <= {}".format(cli_args.date_range[0], cli_args.date_range[1])
+        )  # the adler planetoid date_range is used in an SQL BETWEEN statement which is inclusive
 
         # load ssObjectId data
         if cli_args.sql_filename:  # load from a local database, if provided
@@ -58,7 +61,7 @@ def runAdler(cli_args):
 
         # operate on each filter in turn
         for filt in planetoid.filter_list:
-            print("fit {} filter data".format(filt))
+            logger.info("fit {} filter data".format(filt))
 
             # get the filter SSObject metadata
             sso = planetoid.SSObject_in_filter(filt)
@@ -67,22 +70,21 @@ def runAdler(cli_args):
             obs = planetoid.observations_in_filter(filt)
             df_obs = pd.DataFrame(obs.__dict__)
             df_obs["outlier"] = [False] * len(df_obs)
-            print(len(df_obs))
+            logger.info("{} observations retrieved".format(len(df_obs)))
 
             # load and merge the previous obs
             # TODO: replace this part with classifications loaded from adlerData
             save_file = "{}/df_outlier_{}.csv".format(cli_args.outpath, cli_args.ssObjectId)
             if os.path.isfile(save_file):
-                print("load {}".format(save_file))
+                logger.info("load previously classified observations: {}".format(save_file))
                 _df_obs = pd.read_csv(save_file, index_col=0)
                 df_obs = df_obs.merge(_df_obs, on="midPointMjdTai", how="left")
                 df_obs = df_obs.rename({"outlier_y": "outlier"}, axis=1)
                 df_obs = df_obs.drop("outlier_x", axis=1)
             else:
-                print("no previous obs to load")
+                logger.info("no previously classified observations to load")
 
             # define the date range to for new observations taken in the night to be analysed
-            print(cli_args.date_range)
             print(np.amax(df_obs["midPointMjdTai"]))
             t1 = int(np.amax(df_obs["midPointMjdTai"])) + 1
             t0 = t1 - 1
