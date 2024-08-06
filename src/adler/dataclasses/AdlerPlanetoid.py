@@ -29,7 +29,7 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of int
+        date_range : list of float
             The minimum and maximum dates of the desired observations.
 
         observations_by_filter : list of Observations objects
@@ -76,7 +76,7 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of int
+        date_range : list of float
             The minimum and maximum dates of the desired observations.
 
         schema : str or None
@@ -157,7 +157,7 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of int
+        date_range : list of float
             The minimum and maximum dates of the desired observations.
 
         """
@@ -215,7 +215,7 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of int
+        date_range : list of float
             The minimum and maximum dates of the desired observations.
 
         service : pyvo.dal.tap.TAPService object or None
