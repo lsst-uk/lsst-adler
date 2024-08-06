@@ -85,7 +85,11 @@ def runAdler(cli_args):
                 logger.info("no previously classified observations to load")
 
             # define the date range to for new observations taken in the night to be analysed
-            print(np.amax(df_obs["midPointMjdTai"]))
+            logger.info(
+                "Most recent {} filter observation in query: {}".format(
+                    filt, np.amax(df_obs["midPointMjdTai"])
+                )
+            )
             t1 = int(np.amax(df_obs["midPointMjdTai"])) + 1
             t0 = t1 - 1
 
@@ -95,7 +99,11 @@ def runAdler(cli_args):
             # split observations into "old" and "new"
             df_obs_old = df_obs[(mask)]
             df_obs_new = df_obs[~mask]
-            print(t0, t1, len(df_obs_old), len(df_obs_new))
+            logger.info("Previous observations (date < {}): {}".format(t0, len(df_obs_old)))
+            logger.info("New observations ({} <= date < {}): {}".format(t0, t1, len(df_obs_new)))
+
+            # Determine the reference phase curve model
+            # TODO: We would load the best phase curve model available in AdlerData here
 
             # we need sufficient past observations to fit the phase curve model
             if len(df_obs_old) < 2:
@@ -132,12 +140,14 @@ def runAdler(cli_args):
                 np.array(df_obs_new["phaseAngle"]) * u.deg
             )
             outlier_flag = sci_utils.outlier_diff(res.value, diff_cut=diff_cut)
-            print(outlier_flag)
             df_obs.loc[~mask, "outlier"] = outlier_flag
+
+            print(df_obs.columns)
 
             # save the df_obs subset with outlier classification
             df_save = df_obs[["midPointMjdTai", "outlier"]]
-            print("save {}".format(save_file))
+            print("save classifications: {}".format(save_file))
+            logger.info("save classifications: {}".format(save_file))
             df_save.to_csv(save_file)
 
             # make a plot
@@ -160,7 +170,8 @@ def runAdler(cli_args):
             )
             fig_file = "{}/plots/phase_curve_{}_{}.png".format(cli_args.outpath, cli_args.ssObjectId, int(t0))
             # TODO: make the plots folder if it does not already exist?
-            print(fig_file)
+            print("Save figure: {}".format(fig_file))
+            logger.info("Save figure: {}".format(fig_file))
             fig = plot_errorbar(planetoid, fig=fig, filename=fig_file)
 
 
