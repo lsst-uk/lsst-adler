@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 class AdlerCLIArguments:
     """
-    Class for storing abd validating Adler command-line arguments.
+    Class for storing and validating Adler command-line arguments.
 
     Attributes
     -----------

@@ -21,6 +21,19 @@ def runAdler(cli_args):
 
     N_pc_fit = 10  # minimum number of data points to fit phase curve
     diff_cut = 1.0  # magnitude difference used to identify outliers
+    obs_cols = ["diaSourceId", "midPointMjdTai", "outlier"]  # observation columns to use
+    unique_filter_list = list(
+        np.unique(cli_args.filter_list)
+    )  # cli_args.filter_list is also used to determine which colours to calculate, for data retrieval and phase curves we only need the unique filters
+
+    # Define colour parameters
+    # set number of reference observations to use for colour estimate
+    N_ref = 5
+
+    # observation and filter field names
+    x_col = "midPointMjdTai"
+    y_col = "AbsMag"
+    yerr_col = "magErr"
 
     if cli_args.ssObjectId_list:
         ssObjectId_list = read_in_SSObjectID_file(cli_args.ssObjectId_list)
@@ -34,6 +47,7 @@ def runAdler(cli_args):
         logger.info(
             "Query data in the range: {} <= date <= {}".format(cli_args.date_range[0], cli_args.date_range[1])
         )  # the adler planetoid date_range is used in an SQL BETWEEN statement which is inclusive
+        logger.info("Consider the filters: {}".format(unique_filter_list))
 
         # load ssObjectId data
         if cli_args.sql_filename:  # load from a local database, if provided
@@ -42,7 +56,7 @@ def runAdler(cli_args):
             print(msg)
             planetoid = AdlerPlanetoid.construct_from_SQL(
                 ssObjectId,
-                filter_list=cli_args.filter_list,
+                filter_list=unique_filter_list,
                 date_range=cli_args.date_range,
                 sql_filename=cli_args.sql_filename,
             )
@@ -50,17 +64,15 @@ def runAdler(cli_args):
             msg = "query RSP"
             logger.info(msg)
             print(msg)
-            planetoid = AdlerPlanetoid.construct_from_RSP(
-                ssObjectId, cli_args.filter_list, cli_args.date_range
-            )
+            planetoid = AdlerPlanetoid.construct_from_RSP(ssObjectId, unique_filter_list, cli_args.date_range)
 
         logger.info("Data successfully ingested.")
-        logger.info("Calculating phase curves...")
 
         # now let's do some phase curves!
+        logger.info("Calculating phase curves...")
 
         # operate on each filter in turn
-        for filt in planetoid.filter_list:
+        for filt in unique_filter_list:
             logger.info("fit {} filter data".format(filt))
 
             # get the filter SSObject metadata
@@ -74,11 +86,11 @@ def runAdler(cli_args):
 
             # load and merge the previous obs
             # TODO: replace this part with classifications loaded from adlerData
-            save_file = "{}/df_outlier_{}.csv".format(cli_args.outpath, cli_args.ssObjectId)
+            save_file = "{}/df_outlier_{}_{}.csv".format(cli_args.outpath, cli_args.ssObjectId, filt)
             if os.path.isfile(save_file):
                 logger.info("load previously classified observations: {}".format(save_file))
                 _df_obs = pd.read_csv(save_file, index_col=0)
-                df_obs = df_obs.merge(_df_obs, on="midPointMjdTai", how="left")
+                df_obs = df_obs.merge(_df_obs, on=["diaSourceId", "midPointMjdTai"], how="left")
                 df_obs = df_obs.rename({"outlier_y": "outlier"}, axis=1)
                 df_obs = df_obs.drop("outlier_x", axis=1)
             else:
@@ -86,7 +98,7 @@ def runAdler(cli_args):
 
             # define the date range to for new observations taken in the night to be analysed
             logger.info(
-                "Most recent {} filter observation in query: {}".format(
+                "Most recent {} filter observation in query: date = {}".format(
                     filt, np.amax(df_obs["midPointMjdTai"])
                 )
             )
@@ -108,7 +120,7 @@ def runAdler(cli_args):
             # we need sufficient past observations to fit the phase curve model
             if len(df_obs_old) < 2:
                 print("save {}".format(save_file))
-                df_save = df_obs[["midPointMjdTai", "outlier"]]
+                df_save = df_obs[obs_cols]
                 df_save.to_csv(save_file)
                 print("insufficient data, continue")
                 continue
@@ -143,7 +155,7 @@ def runAdler(cli_args):
             df_obs.loc[~mask, "outlier"] = outlier_flag
 
             # save the df_obs subset with outlier classification
-            df_save = df_obs[["diaSourceId", "midPointMjdTai", "outlier"]]
+            df_save = df_obs[obs_cols]
             print("save classifications: {}".format(save_file))
             logger.info("save classifications: {}".format(save_file))
             df_save.to_csv(save_file)
@@ -166,11 +178,36 @@ def runAdler(cli_args):
                 s=75,
                 zorder=3,
             )
-            fig_file = "{}/plots/phase_curve_{}_{}.png".format(cli_args.outpath, cli_args.ssObjectId, int(t0))
+            fig_file = "{}/plots/phase_curve_{}_{}_{}.png".format(
+                cli_args.outpath, cli_args.ssObjectId, int(t0), filt
+            )
             # TODO: make the plots folder if it does not already exist?
             print("Save figure: {}".format(fig_file))
             logger.info("Save figure: {}".format(fig_file))
             fig = plot_errorbar(planetoid, fig=fig, filename=fig_file)
+
+        # analyse colours for the filters provided
+        logger.info("Calculate some colours...")
+
+        if len(unique_filter_list) < 2:
+            logger.info("We need to consider at least two filters to calculate a colour")
+            continue
+
+        # cycle through the filters, calculating a colour relative to the next filter
+        # note that the order in which cli_args.filter_list is passed will determine which colours are calculated
+        print(cli_args.filter_list)
+        for i_filt in range(len(cli_args.filter_list[:-1])):
+            filt_obs = cli_args.filter_list[i_filt]
+            filt_ref = cli_args.filter_list[i_filt + 1]
+            logger.info("Determine {} - {} colour".format(filt_obs, filt_ref))
+
+            # define colour field names
+            colour = "{}-{}".format(filt_obs, filt_ref)
+            colErr = "{}-{}Err".format(filt_obs, filt_ref)
+            delta_t_col = "delta_t_{}".format(colour)
+            y_ref_col = "{}_{}".format(y_col, filt_ref)
+            x1_ref_col = "{}1_{}".format(x_col, filt_ref)
+            x2_ref_col = "{}2_{}".format(x_col, filt_ref)
 
 
 def main():
@@ -191,7 +228,7 @@ def main():
     optional_group.add_argument(
         "-f",
         "--filter_list",
-        help="Filters required.",
+        help="Filters to be analysed. The list order determines colours to be determined.",
         nargs="*",
         type=str,
         default=["u", "g", "r", "i", "z", "y"],
