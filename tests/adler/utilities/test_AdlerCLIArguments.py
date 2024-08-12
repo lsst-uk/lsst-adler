@@ -6,10 +6,21 @@ from adler.utilities.tests_utilities import get_test_data_filepath
 
 # AdlerCLIArguments object takes an object as input, so we define a quick one here
 class args:
-    def __init__(self, ssObjectId, ssObjectId_list, filter_list, date_range, outpath, db_name, sql_filename):
+    def __init__(
+        self,
+        ssObjectId,
+        ssObjectId_list,
+        filter_list,
+        colour_list,
+        date_range,
+        outpath,
+        db_name,
+        sql_filename,
+    ):
         self.ssObjectId = ssObjectId
         self.ssObjectId_list = ssObjectId_list
         self.filter_list = filter_list
+        self.colour_list = colour_list
         self.date_range = date_range
         self.outpath = outpath
         self.db_name = db_name
@@ -22,6 +33,7 @@ def test_AdlerCLIArguments_population():
         "ssObjectId": "666",
         "ssObjectId_list": None,
         "filter_list": ["g", "r", "i"],
+        "colour_list": ["g-r", "r-i"],
         "date_range": [60000.0, 67300.0],
         "outpath": "./",
         "db_name": "output",
@@ -51,7 +63,9 @@ def test_AdlerCLIArguments_population():
 
 def test_AdlerCLIArguments_badSSOID():
     # test that a bad ssObjectId triggers the right error
-    bad_ssoid_arguments = args("hello!", None, ["g", "r", "i"], [60000.0, 67300.0], "./", "output", "None")
+    bad_ssoid_arguments = args(
+        "hello!", None, ["g", "r", "i"], ["g-r", "r-i"], [60000.0, 67300.0], "./", "output", "None"
+    )
 
     with pytest.raises(ValueError) as bad_ssoid_error:
         bad_ssoid_object = AdlerCLIArguments(bad_ssoid_arguments)
@@ -64,7 +78,9 @@ def test_AdlerCLIArguments_badSSOID():
 
 def test_AdlerCLIArguments_badfilters():
     # test that non-LSST or unexpected filters trigger the right error
-    bad_filter_arguments = args("666", None, ["g", "r", "i", "m"], [60000.0, 67300.0], "./", "output", None)
+    bad_filter_arguments = args(
+        "666", None, ["g", "r", "i", "m"], ["g-r", "r-i"], [60000.0, 67300.0], "./", "output", None
+    )
 
     with pytest.raises(ValueError) as bad_filter_error:
         bad_filter_object = AdlerCLIArguments(bad_filter_arguments)
@@ -74,7 +90,9 @@ def test_AdlerCLIArguments_badfilters():
         == "Unexpected filters found in --filter_list command-line argument. --filter_list must be a list of LSST filters."
     )
 
-    bad_filter_arguments_2 = args("666", None, ["pony"], [60000.0, 67300.0], "./", "output", None)
+    bad_filter_arguments_2 = args(
+        "666", None, ["pony"], ["g-r", "r-i"], [60000.0, 67300.0], "./", "output", None
+    )
 
     with pytest.raises(ValueError) as bad_filter_error_2:
         bad_filter_object = AdlerCLIArguments(bad_filter_arguments_2)
@@ -85,9 +103,15 @@ def test_AdlerCLIArguments_badfilters():
     )
 
 
+# TODO: bad colour filters, e.g. ["g-r", "r-j"] or ["g-r", "r - y"] or ["g-r", "rxi"]
+# also test that correct filter_list has been requested
+
+
 def test_AdlerCLIArguments_baddates():
     # test that overly-large dates trigger the right error
-    big_date_arguments = args("666", None, ["g", "r", "i"], [260000.0, 267300.0], "./", "output", None)
+    big_date_arguments = args(
+        "666", None, ["g", "r", "i"], ["g-r", "r-i"], [260000.0, 267300.0], "./", "output", None
+    )
 
     with pytest.raises(ValueError) as big_date_error:
         big_date_object = AdlerCLIArguments(big_date_arguments)
@@ -98,7 +122,9 @@ def test_AdlerCLIArguments_baddates():
     )
 
     # test that unexpected date values trigger the right error
-    bad_date_arguments = args("666", None, ["g", "r", "i"], [60000.0, "cheese"], "./", "output", None)
+    bad_date_arguments = args(
+        "666", None, ["g", "r", "i"], ["g-r", "r-i"], [60000.0, "cheese"], "./", "output", None
+    )
 
     with pytest.raises(ValueError) as bad_date_error:
         bad_date_object = AdlerCLIArguments(bad_date_arguments)
@@ -111,7 +137,14 @@ def test_AdlerCLIArguments_baddates():
 
 def test_AdlerCLIArguments_badoutput():
     bad_output_arguments = args(
-        "666", None, ["g", "r", "i"], [60000.0, 67300.0], "./definitely_fake_folder/", "output", None
+        "666",
+        None,
+        ["g", "r", "i"],
+        ["g-r", "r-i"],
+        [60000.0, 67300.0],
+        "./definitely_fake_folder/",
+        "output",
+        None,
     )
 
     with pytest.raises(ValueError) as bad_output_error:
@@ -128,6 +161,7 @@ def test_AdlerCLIArguments_badlist():
         None,
         "./fake_input/here.txt",
         ["g", "r", "i"],
+        ["g-r", "r-i"],
         [60000.0, 67300.0],
         "./",
         "output",
@@ -148,6 +182,7 @@ def test_AdlerCLIArguments_badsql():
         "666",
         None,
         ["g", "r", "i"],
+        ["g-r", "r-i"],
         [60000.0, 67300.0],
         "./",
         "output",

@@ -22,9 +22,6 @@ def runAdler(cli_args):
     N_pc_fit = 10  # minimum number of data points to fit phase curve
     diff_cut = 1.0  # magnitude difference used to identify outliers
     obs_cols = ["diaSourceId", "midPointMjdTai", "outlier"]  # observation columns to use
-    unique_filter_list = list(
-        np.unique(cli_args.filter_list)
-    )  # cli_args.filter_list is also used to determine which colours to calculate, for data retrieval and phase curves we only need the unique filters
 
     # Define colour parameters
     # set number of reference observations to use for colour estimate
@@ -47,7 +44,7 @@ def runAdler(cli_args):
         logger.info(
             "Query data in the range: {} <= date <= {}".format(cli_args.date_range[0], cli_args.date_range[1])
         )  # the adler planetoid date_range is used in an SQL BETWEEN statement which is inclusive
-        logger.info("Consider the filters: {}".format(unique_filter_list))
+        logger.info("Consider the filters: {}".format(cli_args.filter_list))
 
         # load ssObjectId data
         if cli_args.sql_filename:  # load from a local database, if provided
@@ -56,7 +53,7 @@ def runAdler(cli_args):
             print(msg)
             planetoid = AdlerPlanetoid.construct_from_SQL(
                 ssObjectId,
-                filter_list=unique_filter_list,
+                filter_list=cli_args.filter_list,
                 date_range=cli_args.date_range,
                 sql_filename=cli_args.sql_filename,
             )
@@ -64,7 +61,9 @@ def runAdler(cli_args):
             msg = "query RSP"
             logger.info(msg)
             print(msg)
-            planetoid = AdlerPlanetoid.construct_from_RSP(ssObjectId, unique_filter_list, cli_args.date_range)
+            planetoid = AdlerPlanetoid.construct_from_RSP(
+                ssObjectId, cli_args.filter_list, cli_args.date_range
+            )
 
         logger.info("Data successfully ingested.")
 
@@ -72,7 +71,7 @@ def runAdler(cli_args):
         logger.info("Calculating phase curves...")
 
         # operate on each filter in turn
-        for filt in unique_filter_list:
+        for filt in cli_args.filter_list:
             logger.info("fit {} filter data".format(filt))
 
             # get the filter SSObject metadata
@@ -187,18 +186,14 @@ def runAdler(cli_args):
             fig = plot_errorbar(planetoid, fig=fig, filename=fig_file)
 
         # analyse colours for the filters provided
-        logger.info("Calculate some colours...")
-
-        if len(unique_filter_list) < 2:
-            logger.info("We need to consider at least two filters to calculate a colour")
-            continue
+        logger.info("Calculate colours: {}".format(cli_args.colour_list))
 
         # cycle through the filters, calculating a colour relative to the next filter
         # note that the order in which cli_args.filter_list is passed will determine which colours are calculated
-        print(cli_args.filter_list)
-        for i_filt in range(len(cli_args.filter_list[:-1])):
-            filt_obs = cli_args.filter_list[i_filt]
-            filt_ref = cli_args.filter_list[i_filt + 1]
+        for colour in cli_args.colour_list:
+            col_filts = colour.split("-")
+            filt_obs = col_filts[0]
+            filt_ref = col_filts[1]
             logger.info("Determine {} - {} colour".format(filt_obs, filt_ref))
 
             # define colour field names
@@ -228,10 +223,18 @@ def main():
     optional_group.add_argument(
         "-f",
         "--filter_list",
-        help="Filters to be analysed. The list order determines colours to be determined.",
+        help="Filters to be analysed.",
         nargs="*",
         type=str,
         default=["u", "g", "r", "i", "z", "y"],
+    )
+    optional_group.add_argument(
+        "-c",
+        "--colour_list",
+        help="Colours to be analysed.",
+        nargs="*",
+        type=str,
+        default=["g-r", "r-i"],
     )
     optional_group.add_argument(
         "-d",
