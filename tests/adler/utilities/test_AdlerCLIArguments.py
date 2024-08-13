@@ -103,8 +103,41 @@ def test_AdlerCLIArguments_badfilters():
     )
 
 
-# TODO: bad colour filters, e.g. ["g-r", "r-j"] or ["g-r", "r - y"] or ["g-r", "rxi"]
-# also test that correct filter_list has been requested
+def test_AdlerCLIArguments_badfilters():
+    # test that non-LSST or unexpected filters trigger the right error
+
+    # the colours are not in the right format
+    bad_colour_arguments_1 = args(
+        "666", None, ["g", "r", "i"], ["g - r", "r x i"], [60000.0, 67300.0], "./", "output", None
+    )
+    err_msg1 = "Unexpected filters found in --colour_list command-line argument. --colour_list must contain LSST filters in the format 'filter2-filter1'."
+
+    with pytest.raises(ValueError) as bad_colour_error_1:
+        bad_colour_object_1 = AdlerCLIArguments(bad_colour_arguments_1)
+
+    assert bad_colour_error_1.value.args[0] == err_msg1
+
+    # colours are requested in filters that are not available
+    bad_colour_arguments_2 = args(
+        "666", None, ["g", "r", "i"], ["g-r", "r-j"], [60000.0, 67300.0], "./", "output", None
+    )
+    err_msg2 = err_msg1
+
+    with pytest.raises(ValueError) as bad_colour_error_2:
+        bad_filter_object_2 = AdlerCLIArguments(bad_colour_arguments_2)
+
+    assert bad_colour_error_2.value.args[0] == err_msg2
+
+    # colours are requested in filters that are not available
+    bad_colour_arguments_3 = args(
+        "666", None, ["g", "r"], ["g-r", "r-i"], [60000.0, 67300.0], "./", "output", None
+    )
+    err_msg3 = "The filters required to calculate the colours have not been requested in --filter-list"
+
+    with pytest.raises(ValueError) as bad_colour_error_3:
+        bad_filter_object_3 = AdlerCLIArguments(bad_colour_arguments_3)
+
+    assert bad_colour_error_3.value.args[0] == err_msg3
 
 
 def test_AdlerCLIArguments_baddates():

@@ -59,25 +59,20 @@ class AdlerCLIArguments:
     def _validate_colour_list(self):
         # the expected format is a list of "g-r", "r-i" etc
         expected_filters = ["u", "g", "r", "i", "z", "y"]
+        err_msg_filt1 = "Unexpected filters found in --colour_list command-line argument. --colour_list must contain LSST filters in the format 'filter2-filter1'."
+
         try:
             _colour_filters = np.array([x.split("-") for x in self.colour_list]).flatten()
         except:
-            err_msg = "Incorrect format in --colour_list command-line argument. --colour_list must contain LSST filters in the format 'filter2-filter1'."
-            logging.error(err_msg)
-            raise ValueError(err_msg)
+            logging.error(err_msg_filt1)
+            raise ValueError(err_msg_filt1)
 
         if not set(_colour_filters).issubset(expected_filters):
-            logging.error(
-                "Unexpected filters found in --colour_list command-line argument. --colour_list must contain LSST filters in the format 'filter2-filter1'."
-            )
-            raise ValueError(
-                "Unexpected filters found in --colour_list command-line argument. --colour_list must contain LSST filters in the format 'filter2-filter1'."
-            )
+            logging.error(err_msg_filt1)
+            raise ValueError(err_msg_filt1)
 
         if not set(_colour_filters).issubset(self.filter_list):
-            err_msg = "The filters required to calculate the colours {} have not been requested in --filter-list {}".format(
-                self.colour_list, self.filter_list
-            )
+            err_msg = "The filters required to calculate the colours have not been requested in --filter-list"
             logging.error(err_msg)
             raise ValueError(err_msg)
 
