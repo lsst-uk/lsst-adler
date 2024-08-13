@@ -6,7 +6,9 @@ import pandas as pd
 import os
 
 from adler.dataclasses.AdlerPlanetoid import AdlerPlanetoid
+from adler.dataclasses.AdlerData import AdlerData
 from adler.science.PhaseCurve import PhaseCurve
+from adler.science.Colour import col_obs_ref
 from adler.utilities.AdlerCLIArguments import AdlerCLIArguments
 from adler.utilities.adler_logging import setup_adler_logging
 from adler.utilities.readin_utilities import read_in_SSObjectID_file
@@ -64,6 +66,10 @@ def runAdler(cli_args):
             planetoid = AdlerPlanetoid.construct_from_RSP(
                 ssObjectId, cli_args.filter_list, cli_args.date_range
             )
+
+        # TODO: Here we would load the AdlerData object from our data tables
+        adler_data = AdlerData(ssObjectId, planetoid.filter_list)
+        print(adler_data.__dict__)
 
         logger.info("Data successfully ingested.")
 
@@ -145,6 +151,9 @@ def runAdler(cli_args):
             )
             pc_fit = pc.InitModelSbpy(pc_fit)
 
+            # TODO: Here the best fit should be pushed back to our AdlerData tables
+            adler_data.populate_phase_parameters(filt, **pc_fit.__dict__)
+
             # find outliers in new data
             # calculate data - model residuals
             res = (np.array(df_obs_new["reduced_mag"]) * u.mag) - pc_fit.ReducedMag(
@@ -183,7 +192,7 @@ def runAdler(cli_args):
             # TODO: make the plots folder if it does not already exist?
             print("Save figure: {}".format(fig_file))
             logger.info("Save figure: {}".format(fig_file))
-            fig = plot_errorbar(planetoid, fig=fig, filename=fig_file)
+            fig = plot_errorbar(planetoid, fig=fig, filename=fig_file)  # TODO: add titles with filter name?
 
         # analyse colours for the filters provided
         logger.info("Calculate colours: {}".format(cli_args.colour_list))
@@ -203,6 +212,21 @@ def runAdler(cli_args):
             y_ref_col = "{}_{}".format(y_col, filt_ref)
             x1_ref_col = "{}1_{}".format(x_col, filt_ref)
             x2_ref_col = "{}2_{}".format(x_col, filt_ref)
+
+            # determine the filt_obs - filt_ref colour
+            # generate a plot
+            col_dict = col_obs_ref(
+                planetoid,
+                adler_data,
+                filt_obs=filt_obs,
+                filt_ref=filt_ref,
+                N_ref=N_ref,
+                # x1 = x1,
+                # x2 = x2,
+                plot_dir="{}/plots".format(cli_args.outpath),
+            )
+
+            print(col_dict)
 
 
 def main():

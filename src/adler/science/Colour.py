@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 from adler.science.PhaseCurve import PhaseCurve
 from adler.utilities.science_utilities import get_df_obs_filt
 
@@ -16,6 +18,7 @@ def col_obs_ref(
     yerr_col="magErr",
     x1=None,
     x2=None,
+    plot_dir=None,
 ):
     """A function to calculate the colour of an Adler planetoid object.
     An observation in a given filter (filt_obs) is compared to previous observation in a reference filter (filt_ref).
@@ -55,6 +58,9 @@ def col_obs_ref(
 
     x2: float
         Upper limit on x_col values (<=)
+
+    plot_dir: str
+        Directory in which to save the colour plot
 
     Returns
     ----------
@@ -122,5 +128,31 @@ def col_obs_ref(
     # TODO:
     # could also record phase angle diff and phase curve residual?
     # need to test error case where there are no r filter obs yet
+
+    # TODO: add a plotting option?
+    if plot_dir:
+        fig = plt.figure()
+        gs = gridspec.GridSpec(1, 1)
+        ax1 = plt.subplot(gs[0, 0])
+
+        ax1.errorbar(df_obs[x_col], df_obs[y_col], df_obs[yerr_col], fmt="o", label=filt_obs)
+        ax1.errorbar(df_obs_ref[x_col], df_obs_ref[y_col], df_obs_ref[yerr_col], fmt="o", label=filt_ref)
+
+        # plot some lines to show the colour and mean reference
+        ax1.vlines(x_obs, y_obs, col_dict[y_ref_col], color="k", ls=":")
+        ax1.hlines(col_dict[y_ref_col], col_dict[x1_ref_col], col_dict[x2_ref_col], color="k", ls="--")
+
+        ax1.set_xlabel(x_col)
+        ax1.set_ylabel(y_col)
+        ax1.legend()
+        ax1.invert_yaxis()
+
+        fname = "{}/colour_plot_{}_{}-{}_{}.png".format(
+            plot_dir, planetoid.ssObjectId, filt_obs, filt_ref, int(x_obs)
+        )
+        print("Save figure: {}".format(fname))
+        plt.savefig(fname, facecolor="w", transparent=True, bbox_inches="tight")
+
+        plt.show()
 
     return col_dict
