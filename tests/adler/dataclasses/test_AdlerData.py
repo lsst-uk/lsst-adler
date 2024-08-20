@@ -278,3 +278,9 @@ def test_read_row_from_database():
         error_info_2.value.args[0]
         == "Data does not exist for some of the requested filters in this database. Filters in database for this object: ['u', 'g', 'r']"
     )
+
+    with pytest.raises(ValueError) as error_info_3:
+        bad_filter = AdlerData("8268570668335894776", ["u", "g", "h"])
+        bad_filter.populate_from_database("./dummy_location.db")
+
+    assert error_info_3.value.args[0] == "Database cannot be found at given filepath."

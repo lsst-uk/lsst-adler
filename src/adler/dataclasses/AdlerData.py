@@ -110,19 +110,16 @@ class AdlerData:
                     kwargs.get(model_key),
                 )
 
-    def populate_from_database(self, filepath, tablename="AdlerData"):
+    def populate_from_database(self, filepath):
         """Populates the AdlerData object with information from the most recent timestamped entry for the ssObjectId in a given database.
 
         Parameters
         -----------
         filepath : path-like object
-            Filepath with the location of the output SQL database.
-
-        table_name : str, optional
-            String containing the table name to write the data to. Default is "AdlerData".
+            Filepath with the location of the output SQL database. Note that for now, we assume only one table with all the data.
         """
 
-        con = self._get_database_connection(filepath, tablename)
+        con = self._get_database_connection(filepath)
         cursor = con.cursor()
         sql_query = f"""SELECT * from AdlerData where ssObjectId='{self.ssObjectId}' ORDER BY timestamp DESC LIMIT 1"""
         query_result = cursor.execute(sql_query)
@@ -134,7 +131,7 @@ class AdlerData:
             raise ValueError("No data found in this database for the supplied ssObjectId.")
 
         fetched_data = [np.nan if v is None else v for v in fetched_data_raw]  # replaces Nones with nans
-        column_list = self._get_database_columns(con, tablename)
+        column_list = self._get_database_columns(con, "AdlerData")
         con.close()
 
         filter_bools = [
