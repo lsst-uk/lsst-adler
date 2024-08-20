@@ -197,9 +197,14 @@ def runAdler(cli_args):
         # analyse colours for the filters provided
         logger.info("Calculate colours: {}".format(cli_args.colour_list))
 
-        # cycle through the filters, calculating a colour relative to the next filter
+        # if requested cycle through the filters, calculating a colour relative to the next filter
+        if not cli_args.colour_list:
+            colour_list = []
+        else:
+            colour_list = cli_args.colour_list
+
         # note that the order in which cli_args.filter_list is passed will determine which colours are calculated
-        for colour in cli_args.colour_list:
+        for colour in colour_list:
             col_filts = colour.split("-")
             filt_obs = col_filts[0]
             filt_ref = col_filts[1]
@@ -227,6 +232,9 @@ def runAdler(cli_args):
             )
 
             print(col_dict)
+
+            # TODO: determine if colour is outlying
+            # compare this new colour to previous colour(s)
 
 
 def main():
@@ -258,7 +266,8 @@ def main():
         help="Colours to be analysed.",
         nargs="*",
         type=str,
-        default=["g-r", "r-i"],
+        # default=["g-r", "r-i"],
+        default=None,
     )
     optional_group.add_argument(
         "-d",

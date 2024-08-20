@@ -4,8 +4,6 @@ import matplotlib.gridspec as gridspec
 from adler.science.PhaseCurve import PhaseCurve
 from adler.utilities.science_utilities import get_df_obs_filt
 
-# TODO: add colour estimate function
-
 
 def col_obs_ref(
     planetoid,
