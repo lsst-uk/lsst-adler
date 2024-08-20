@@ -3,6 +3,8 @@ import argparse
 import astropy.units as u
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import os
 
 from adler.dataclasses.AdlerPlanetoid import AdlerPlanetoid
@@ -81,7 +83,11 @@ def runAdler(cli_args):
             logger.info("fit {} filter data".format(filt))
 
             # get the filter SSObject metadata
-            sso = planetoid.SSObject_in_filter(filt)
+            try:
+                sso = planetoid.SSObject_in_filter(filt)
+            except:
+                logger.info("error loading SSObject in filter {}".format(filt))
+                continue
 
             # get the observations
             obs = planetoid.observations_in_filter(filt)
@@ -193,6 +199,7 @@ def runAdler(cli_args):
             print("Save figure: {}".format(fig_file))
             logger.info("Save figure: {}".format(fig_file))
             fig = plot_errorbar(planetoid, fig=fig, filename=fig_file)  # TODO: add titles with filter name?
+            plt.close()
 
         # analyse colours for the filters provided
         logger.info("Calculate colours: {}".format(cli_args.colour_list))
@@ -208,6 +215,16 @@ def runAdler(cli_args):
             col_filts = colour.split("-")
             filt_obs = col_filts[0]
             filt_ref = col_filts[1]
+
+            if ~np.isin([filt_obs, filt_ref], planetoid.filter_list).all():
+                missing_filts = np.array([filt_obs, filt_ref])[
+                    ~np.isin([filt_obs, filt_ref], planetoid.filter_list)
+                ]
+                logger.info(
+                    "Filter(s) {} are missing for determining {} colour".format(missing_filts, colour)
+                )
+                continue
+
             logger.info("Determine {} - {} colour".format(filt_obs, filt_ref))
 
             # define colour field names
@@ -232,6 +249,18 @@ def runAdler(cli_args):
             )
 
             print(col_dict)
+
+            # TODO: replace this with a colour loaded from adlerData
+            save_file_colour = "{}/df_colour_{}_{}.csv".format(cli_args.outpath, cli_args.ssObjectId, colour)
+            if os.path.isfile(save_file_colour):
+                print("load & append file: {}".format(save_file_colour))
+                df_col = pd.read_csv(save_file_colour, index_col=0)
+                df_col = pd.concat([df_col, pd.DataFrame([col_dict])])
+                df_col.to_csv(save_file_colour)
+            else:
+                print("save new file: {}".format(save_file_colour))
+                df_col = pd.DataFrame([col_dict])
+                df_col.to_csv(save_file_colour)
 
             # TODO: determine if colour is outlying
             # compare this new colour to previous colour(s)
@@ -280,7 +309,7 @@ def main():
     optional_group.add_argument(
         "-o",
         "--outpath",
-        help="Output path location. Default is current working directory.",
+        help="Output path location. Default is current working directory.",  # TODO: make adler create the outpath directory on start up if it does not exist? Also the "plots" dir within?
         type=str,
         default="./",
     )

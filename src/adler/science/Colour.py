@@ -151,6 +151,7 @@ def col_obs_ref(
         print("Save figure: {}".format(fname))
         plt.savefig(fname, facecolor="w", transparent=True, bbox_inches="tight")
 
-        plt.show()
+        # plt.show() # TODO: add option to display figure, or to return the fig object?
+        plt.close()
 
     return col_dict
