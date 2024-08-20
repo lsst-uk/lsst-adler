@@ -48,6 +48,9 @@ def runAdler(cli_args):
         logger.info(
             "Query data in the range: {} <= date <= {}".format(cli_args.date_range[0], cli_args.date_range[1])
         )  # the adler planetoid date_range is used in an SQL BETWEEN statement which is inclusive
+        print(
+            "Query data in the range: {} <= date <= {}".format(cli_args.date_range[0], cli_args.date_range[1])
+        )  # the adler planetoid date_range is used in an SQL BETWEEN statement which is inclusive
         logger.info("Consider the filters: {}".format(cli_args.filter_list))
 
         # load ssObjectId data
@@ -133,7 +136,16 @@ def runAdler(cli_args):
                 print("save {}".format(save_file))
                 df_save = df_obs[obs_cols]
                 df_save.to_csv(save_file)
-                print("insufficient data, continue")
+                print("insufficient data, use default SSObject phase model and continue")
+                # use the default SSObject phase parameter if there is no better information
+                pc_dict = {
+                    "H": sso.H * u.mag,
+                    "H_err": sso.Herr * u.mag,
+                    "phase_parameter_1": sso.G12,
+                    "phase_parameter_1_err": sso.G12err,
+                    "model_name": "HG12_Pen16",
+                }
+                adler_data.populate_phase_parameters(filt, **pc_dict)
                 continue
 
             # initial simple phase curve filter model with fixed G12
@@ -235,11 +247,18 @@ def runAdler(cli_args):
             x1_ref_col = "{}1_{}".format(x_col, filt_ref)
             x2_ref_col = "{}2_{}".format(x_col, filt_ref)
 
+            # which phase model to use?
+            phase_model = "HG12_Pen16"
+            ad_obs = adler_data.get_phase_parameters_in_filter(filt_obs, phase_model)
+            print(ad_obs)
+            print(ad_obs.__dict__)
+
             # determine the filt_obs - filt_ref colour
             # generate a plot
             col_dict = col_obs_ref(
                 planetoid,
                 adler_data,
+                phase_model=phase_model,
                 filt_obs=filt_obs,
                 filt_ref=filt_ref,
                 N_ref=N_ref,
@@ -256,6 +275,7 @@ def runAdler(cli_args):
                 print("load & append file: {}".format(save_file_colour))
                 df_col = pd.read_csv(save_file_colour, index_col=0)
                 df_col = pd.concat([df_col, pd.DataFrame([col_dict])])
+                df_col = df_col.reset_index(drop=True)
                 df_col.to_csv(save_file_colour)
             else:
                 print("save new file: {}".format(save_file_colour))

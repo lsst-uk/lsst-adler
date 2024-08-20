@@ -8,6 +8,7 @@ from adler.utilities.science_utilities import get_df_obs_filt
 def col_obs_ref(
     planetoid,
     adler_data,
+    phase_model="HG12_Pen16",
     filt_obs="g",
     filt_ref="r",
     N_ref=3,
@@ -31,6 +32,9 @@ def col_obs_ref(
 
     adler_data : object
         AdlerData object
+
+    phase_model: str
+        Name of phase curve model to use for calculating colour
 
     filt_obs: str
         Filter name of the new observation for which to calculate a filt_obs - filt_ref colour
@@ -82,10 +86,10 @@ def col_obs_ref(
     col_list = [obsId_col, y_col, yerr_col]
 
     # get the stored AdlerData parameters for this filter # TODO: do this bit better
-    ad_obs = adler_data.get_phase_parameters_in_filter(filt_obs, "HG12_Pen16")
+    ad_obs = adler_data.get_phase_parameters_in_filter(filt_obs, phase_model)
     # make the PhaseCurve object from AdlerData
     pc_obs = PhaseCurve().InitModelDict(ad_obs.__dict__)
-    ad_ref = adler_data.get_phase_parameters_in_filter(filt_ref, "HG12_Pen16")
+    ad_ref = adler_data.get_phase_parameters_in_filter(filt_ref, phase_model)
     pc_ref = PhaseCurve().InitModelDict(ad_ref.__dict__)
     df_obs = get_df_obs_filt(planetoid, filt_obs, x1=x1, x2=x2, col_list=col_list, pc_model=pc_obs)
     df_obs_ref = get_df_obs_filt(planetoid, filt_ref, x1=x1, x2=x2, col_list=col_list, pc_model=pc_ref)
@@ -108,6 +112,8 @@ def col_obs_ref(
 
     # select only the N_ref ref obs for comparison
     _df_obs_ref = df_obs_ref[ref_mask].iloc[-_N_ref:]
+    print(len(_df_obs_ref))
+    print(np.array(_df_obs_ref[x_col]))
     if len(_df_obs_ref) == 0:
         print("no reference observations")  # TODO: add proper error handling and logging here
         return df_obs
@@ -122,6 +128,7 @@ def col_obs_ref(
     # Create the colour dict
     col_dict = {}
     col_dict[obsId_col] = obsId
+    col_dict[x_col] = x_obs
     col_dict[colour] = y_obs - y_ref
     col_dict[delta_t_col] = x_obs - x2_ref
     col_dict[colErr] = np.sqrt((yerr_obs**2.0) + (yerr_ref**2.0))
@@ -143,8 +150,10 @@ def col_obs_ref(
         ax1.errorbar(df_obs_ref[x_col], df_obs_ref[y_col], df_obs_ref[yerr_col], fmt="o", label=filt_ref)
 
         # plot some lines to show the colour and mean reference
-        ax1.vlines(x_obs, y_obs, col_dict[y_ref_col], color="k", ls=":")
-        ax1.hlines(col_dict[y_ref_col], col_dict[x1_ref_col], col_dict[x2_ref_col], color="k", ls="--")
+        ax1.vlines(x_obs, y_obs, col_dict[y_ref_col], color="k", ls=":", zorder=5)
+        ax1.hlines(
+            col_dict[y_ref_col], col_dict[x1_ref_col], col_dict[x2_ref_col], color="k", ls="--", zorder=5
+        )
 
         ax1.set_xlabel(x_col)
         ax1.set_ylabel(y_col)

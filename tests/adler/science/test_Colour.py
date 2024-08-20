@@ -79,7 +79,7 @@ def test_col_obs_ref(
         column_dict["filt_obs"],
         x1=t_app1,
         x2=t_app2,
-        col_list=[column_dict["y_col"], column_dict["yerr_col"]],
+        col_list=[column_dict["obsId_col"], column_dict["y_col"], column_dict["yerr_col"]],
         pc_model=pc_g,
     )
 
@@ -105,7 +105,9 @@ def test_col_obs_ref(
 
         # store results as a dataframe
         df_col = pd.DataFrame(col_dict_list)
-        df_col = pd.concat([df_obs, df_col], axis=1)
+        df_col = df_col.merge(
+            df_obs[[x for x in list(df_obs) if x != column_dict["x_col"]]], on=column_dict["obsId_col"]
+        )  # merge with observation data (avoiding duplicating x_col)
 
         # compare results df to stored df
         for x in list(df_col):
