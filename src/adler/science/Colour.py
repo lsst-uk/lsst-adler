@@ -7,13 +7,14 @@ from adler.utilities.science_utilities import get_df_obs_filt
 
 def col_obs_ref(
     planetoid,
-    adler_cols,
+    adler_data,
     filt_obs="g",
     filt_ref="r",
     N_ref=3,
     x_col="midPointMjdTai",
     y_col="AbsMag",
     yerr_col="magErr",
+    obsId_col="diaSourceId",
     x1=None,
     x2=None,
     plot_dir=None,
@@ -28,7 +29,7 @@ def col_obs_ref(
     planetoid : object
         Adler planetoid object
 
-    adler_cols : object
+    adler_data : object
         AdlerData object
 
     filt_obs: str
@@ -50,6 +51,9 @@ def col_obs_ref(
 
     yerr_col: str
         Magnitude uncertainty column name
+
+    obsId_col: str
+        Column name for the unique observation identifier
 
     x1: float
         Lower limit on x_col values (>=)
@@ -75,22 +79,23 @@ def col_obs_ref(
     x1_ref_col = "{}1_{}".format(x_col, filt_ref)
     x2_ref_col = "{}2_{}".format(x_col, filt_ref)
 
+    col_list = [obsId_col, y_col, yerr_col]
+
     # get the stored AdlerData parameters for this filter # TODO: do this bit better
-    ad_obs = adler_cols.get_phase_parameters_in_filter(filt_obs, "HG12_Pen16")
+    ad_obs = adler_data.get_phase_parameters_in_filter(filt_obs, "HG12_Pen16")
     # make the PhaseCurve object from AdlerData
     pc_obs = PhaseCurve().InitModelDict(ad_obs.__dict__)
-    ad_ref = adler_cols.get_phase_parameters_in_filter(filt_ref, "HG12_Pen16")
+    ad_ref = adler_data.get_phase_parameters_in_filter(filt_ref, "HG12_Pen16")
     pc_ref = PhaseCurve().InitModelDict(ad_ref.__dict__)
-    df_obs = get_df_obs_filt(planetoid, filt_obs, x1=x1, x2=x2, col_list=[y_col, yerr_col], pc_model=pc_obs)
-    df_obs_ref = get_df_obs_filt(
-        planetoid, filt_ref, x1=x1, x2=x2, col_list=[y_col, yerr_col], pc_model=pc_ref
-    )
+    df_obs = get_df_obs_filt(planetoid, filt_obs, x1=x1, x2=x2, col_list=col_list, pc_model=pc_obs)
+    df_obs_ref = get_df_obs_filt(planetoid, filt_ref, x1=x1, x2=x2, col_list=col_list, pc_model=pc_ref)
 
     # select the values of the new observation in the selected filter
     i = -1
     x_obs = df_obs.iloc[i][x_col]
     y_obs = df_obs.iloc[i][y_col]
     yerr_obs = df_obs.iloc[i][yerr_col]
+    obsId = df_obs.iloc[i][obsId_col]
 
     # select observations in the reference filter from before the new obs
     ref_mask = df_obs_ref[x_col] < x_obs
@@ -116,6 +121,7 @@ def col_obs_ref(
 
     # Create the colour dict
     col_dict = {}
+    col_dict[obsId_col] = obsId
     col_dict[colour] = y_obs - y_ref
     col_dict[delta_t_col] = x_obs - x2_ref
     col_dict[colErr] = np.sqrt((yerr_obs**2.0) + (yerr_ref**2.0))

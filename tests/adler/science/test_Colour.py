@@ -16,7 +16,7 @@ from adler.utilities.science_utilities import get_df_obs_filt
 ssoid = 6098332225018
 test_db_path = get_test_data_filepath("testing_database.db")
 planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, sql_filename=test_db_path)
-adler_cols = AdlerData(ssoid, planetoid.filter_list)
+adler_data = AdlerData(ssoid, planetoid.filter_list)
 
 # Set time boundaries for a given apparition (apparition index 3 for this object)
 test_app_i = 3
@@ -29,6 +29,7 @@ column_dict = {
     "y_col": "AbsMag",
     "y_col": "reduced_mag",
     "yerr_col": "magErr",
+    "obsId_col": "diaSourceId",
     "filt_obs": "g",  # observation filter
     "filt_ref": "r",  # reference filter (we are calculating a filt_obs - filt_ref colour)
 }
@@ -45,7 +46,7 @@ df_N_ref_5 = pd.read_csv("{}_N_ref_{}.csv".format(df_col_fname, 5), index_col=0)
 
 # fit adler phase curve models
 # TODO: replace this with the stored alder_cols when they are implemented in the database
-adler_cols = AdlerData(ssoid, planetoid.filter_list)
+adler_data = AdlerData(ssoid, planetoid.filter_list)
 for filt in [column_dict["filt_obs"], column_dict["filt_ref"]]:
     sso = planetoid.SSObject_in_filter(filt)
     obs = planetoid.observations_in_filter(filt)
@@ -60,18 +61,18 @@ for filt in [column_dict["filt_obs"], column_dict["filt_ref"]]:
     )
     pc = pc.InitModelSbpy(pc_fit)
 
-    adler_cols.populate_phase_parameters(filt, **pc.ReturnModelDict())
+    adler_data.populate_phase_parameters(filt, **pc.ReturnModelDict())
 
 
 def test_col_obs_ref(
     planetoid=planetoid,
-    adler_cols=adler_cols,
+    adler_data=adler_data,
     column_dict=column_dict,
     N_ref_list=[1, 3, 5],
     df_ref_list=[df_N_ref_1, df_N_ref_3, df_N_ref_5],
 ):
     # gather the observations for the apparition
-    ad_g = adler_cols.get_phase_parameters_in_filter(column_dict["filt_obs"], "HG12_Pen16")
+    ad_g = adler_data.get_phase_parameters_in_filter(column_dict["filt_obs"], "HG12_Pen16")
     pc_g = PhaseCurve().InitModelDict(ad_g.__dict__)
     df_obs = get_df_obs_filt(
         planetoid,
@@ -94,7 +95,7 @@ def test_col_obs_ref(
             # do the colour finding function here
             col_dict = col_obs_ref(
                 planetoid,
-                adler_cols,
+                adler_data,
                 N_ref=N_ref,
                 x1=x1,
                 x2=x2,
