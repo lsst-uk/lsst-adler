@@ -26,15 +26,11 @@ def runAdler(cli_args):
     N_pc_fit = 10  # minimum number of data points to fit phase curve
     diff_cut = 1.0  # magnitude difference used to identify outliers
     obs_cols = ["diaSourceId", "midPointMjdTai", "outlier"]  # observation columns to use
+    phase_model = "HG12_Pen16"  # which phase curve model to fit
 
     # Define colour parameters
     # set number of reference observations to use for colour estimate
     N_ref = 5
-
-    # observation and filter field names
-    x_col = "midPointMjdTai"
-    y_col = "AbsMag"
-    yerr_col = "magErr"
 
     if cli_args.ssObjectId_list:
         ssObjectId_list = read_in_SSObjectID_file(cli_args.ssObjectId_list)
@@ -98,6 +94,10 @@ def runAdler(cli_args):
             df_obs["outlier"] = [False] * len(df_obs)
             logger.info("{} observations retrieved".format(len(df_obs)))
 
+            if filt == "g":
+                logger.info(print(df_obs[obs_cols]))
+                logger.info(df_obs[obs_cols])
+
             # load and merge the previous obs
             # TODO: replace this part with classifications loaded from adlerData
             save_file = "{}/df_outlier_{}_{}.csv".format(cli_args.outpath, cli_args.ssObjectId, filt)
@@ -105,6 +105,12 @@ def runAdler(cli_args):
                 logger.info("load previously classified observations: {}".format(save_file))
                 _df_obs = pd.read_csv(save_file, index_col=0)
                 df_obs = df_obs.merge(_df_obs, on=["diaSourceId", "midPointMjdTai"], how="left")
+                df_obs.loc[
+                    pd.isnull(df_obs["outlier_y"]), "outlier_y"
+                ] = False  # ensure that classifications exist (nan entries can only be false?). Weird behaviour here for g filter, is it to do with when new g obs appear relative to r/i etc?
+                if filt == "g":
+                    logger.info(print(df_obs))
+                    logger.info(df_obs)
                 df_obs = df_obs.rename({"outlier_y": "outlier"}, axis=1)
                 df_obs = df_obs.drop("outlier_x", axis=1)
             else:
@@ -120,7 +126,8 @@ def runAdler(cli_args):
             t0 = t1 - 1
 
             # get all past observations
-            mask = df_obs["midPointMjdTai"] < t0
+            # mask = df_obs["midPointMjdTai"] < t0
+            mask = (df_obs["midPointMjdTai"] < t0) & (df_obs["outlier"] == False)  # reject any past outliers
 
             # split observations into "old" and "new"
             df_obs_old = df_obs[(mask)]
@@ -137,6 +144,10 @@ def runAdler(cli_args):
                 df_save = df_obs[obs_cols]
                 df_save.to_csv(save_file)
                 print("insufficient data, use default SSObject phase model and continue")
+                logger.info("insufficient data, use default SSObject phase model and continue")
+                if filt == "g":
+                    logger.info(print(df_save))
+
                 # use the default SSObject phase parameter if there is no better information
                 pc_dict = {
                     "H": sso.H * u.mag,
@@ -205,7 +216,7 @@ def runAdler(cli_args):
                 zorder=3,
             )
             fig_file = "{}/plots/phase_curve_{}_{}_{}.png".format(
-                cli_args.outpath, cli_args.ssObjectId, int(t0), filt
+                cli_args.outpath, cli_args.ssObjectId, filt, int(t0)
             )
             # TODO: make the plots folder if it does not already exist?
             print("Save figure: {}".format(fig_file))
@@ -237,21 +248,22 @@ def runAdler(cli_args):
                 )
                 continue
 
-            logger.info("Determine {} - {} colour".format(filt_obs, filt_ref))
+            logger.info("Determine {} colour".format(colour))
 
-            # define colour field names
-            colour = "{}-{}".format(filt_obs, filt_ref)
-            colErr = "{}-{}Err".format(filt_obs, filt_ref)
-            delta_t_col = "delta_t_{}".format(colour)
-            y_ref_col = "{}_{}".format(y_col, filt_ref)
-            x1_ref_col = "{}1_{}".format(x_col, filt_ref)
-            x2_ref_col = "{}2_{}".format(x_col, filt_ref)
+            # TODO: replace this with a colour loaded from adlerData
+            save_file_colour = "{}/df_colour_{}_{}.csv".format(cli_args.outpath, cli_args.ssObjectId, colour)
+            if os.path.isfile(save_file_colour):
+                print("load previous colours from file: {}".format(save_file_colour))
+                df_col = pd.read_csv(save_file_colour, index_col=0)
+                # Check the last colour calculation date (x_obs) to avoid recalculation
+                obs = planetoid.observations_in_filter(filt_obs)
+                df_obs = pd.DataFrame(obs.__dict__)
+                if np.amax(df_col["midPointMjdTai"]) >= np.amax(df_obs["midPointMjdTai"]):
+                    print("colour already calculated, skip")
+                    continue
 
-            # which phase model to use?
-            phase_model = "HG12_Pen16"
-            ad_obs = adler_data.get_phase_parameters_in_filter(filt_obs, phase_model)
-            print(ad_obs)
-            print(ad_obs.__dict__)
+            else:
+                df_col = pd.DataFrame()
 
             # determine the filt_obs - filt_ref colour
             # generate a plot
@@ -269,19 +281,13 @@ def runAdler(cli_args):
 
             print(col_dict)
 
-            # TODO: replace this with a colour loaded from adlerData
-            save_file_colour = "{}/df_colour_{}_{}.csv".format(cli_args.outpath, cli_args.ssObjectId, colour)
-            if os.path.isfile(save_file_colour):
-                print("load & append file: {}".format(save_file_colour))
-                df_col = pd.read_csv(save_file_colour, index_col=0)
-                df_col = pd.concat([df_col, pd.DataFrame([col_dict])])
-                df_col = df_col.reset_index(drop=True)
-                df_col.to_csv(save_file_colour)
-            else:
-                print("save new file: {}".format(save_file_colour))
-                df_col = pd.DataFrame([col_dict])
-                df_col.to_csv(save_file_colour)
+            # save the colour data
+            print("Append new colour and save to file: {}".format(save_file_colour))
+            df_col = pd.concat([df_col, pd.DataFrame([col_dict])])
+            df_col = df_col.reset_index(drop=True)
+            df_col.to_csv(save_file_colour)
 
+            # TODO: reject unreliable colours, e.g. high colErr or delta_t_col
             # TODO: determine if colour is outlying
             # compare this new colour to previous colour(s)
 
