@@ -412,3 +412,18 @@ class AdlerPlanetoid:
             raise ValueError("Filter {} is not in AdlerPlanetoid.filter_list.".format(filter_name))
 
         return self.SSObject.filter_dependent_values[filter_index]
+
+    def attach_previous_adler_data(self, filepath):
+        """Attaches and returns an AdlerData object containing the most recent AdlerData
+        for this ssObjectId.
+
+        Parameters
+        -----------
+        filepath : path-like object
+            Filepath with the location of the output SQL database.
+        """
+
+        self.PreviousAdlerData = AdlerData(self.ssObjectId, self.filter_list)
+        self.PreviousAdlerData.populate_from_database(filepath)
+
+        return self.PreviousAdlerData
