@@ -155,3 +155,30 @@ def test_failed_SQL_queries():
     assert (
         error_info_2.value.args[0] == "No SSObject data for this object could be found for this SSObjectId."
     )
+
+
+def test_attach_previous_adlerdata():
+    test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path, filter_list=["g", "r"])
+
+    db_location = get_test_data_filepath("test_AdlerData_database.db")
+
+    test_planetoid.attach_previous_adler_data(db_location)
+
+    test_output = test_planetoid.PreviousAdlerData.get_phase_parameters_in_filter("g", "model_1")
+
+    expected_output = {
+        "filter_name": "g",
+        "phaseAngle_min": 31.0,
+        "phaseAngle_range": 32.0,
+        "nobs": 33,
+        "arc": 34.0,
+        "model_name": "model_1",
+        "H": 35.0,
+        "H_err": 36.0,
+        "phase_parameter_1": 37.0,
+        "phase_parameter_1_err": 38.0,
+        "phase_parameter_2": np.nan,
+        "phase_parameter_2_err": np.nan,
+    }
+
+    assert test_output.__dict__ == expected_output

@@ -1,6 +1,8 @@
 from lsst.rsp import get_tap_service
 import pandas as pd
+import numpy as np
 import logging
+import json
 
 from adler.dataclasses.Observations import Observations
 from adler.dataclasses.MPCORB import MPCORB
@@ -27,7 +29,7 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of int
+        date_range : list of float
             The minimum and maximum dates of the desired observations.
 
         observations_by_filter : list of Observations objects
@@ -74,7 +76,7 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of int
+        date_range : list of float
             The minimum and maximum dates of the desired observations.
 
         schema : str or None
@@ -115,6 +117,32 @@ class AdlerPlanetoid:
         return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
 
     @classmethod
+    def construct_from_JSON(cls, json_filename):
+        with open(json_filename) as f:
+            json_dict = json.load(f)
+
+        observations_dict = {**json_dict["SSSource"], **json_dict["DiaSource"]}
+
+        filter_list = [observations_dict["band"]]
+
+        MPCORB_dict = json_dict["MPCORB"]
+        SSObject_dict = json_dict["SSObject"]
+
+        ssObjectId = observations_dict["ssObjectId"]
+
+        observations_by_filter = [
+            Observations.construct_from_dictionary(ssObjectId, filter_list[0], observations_dict)
+        ]
+        mpcorb = MPCORB.construct_from_dictionary(ssObjectId, MPCORB_dict)
+        ssobject = SSObject.construct_from_dictionary(ssObjectId, filter_list, SSObject_dict)
+
+        adler_data = AdlerData(ssObjectId, filter_list)
+
+        return cls(
+            ssObjectId, filter_list, [np.nan, np.nan], observations_by_filter, mpcorb, ssobject, adler_data
+        )
+
+    @classmethod
     def construct_from_RSP(
         cls, ssObjectId, filter_list=["u", "g", "r", "i", "z", "y"], date_range=[60000.0, 67300.0]
     ):  # pragma: no cover
@@ -129,7 +157,7 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of int
+        date_range : list of float
             The minimum and maximum dates of the desired observations.
 
         """
@@ -187,7 +215,7 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of int
+        date_range : list of float
             The minimum and maximum dates of the desired observations.
 
         service : pyvo.dal.tap.TAPService object or None
@@ -212,7 +240,9 @@ class AdlerPlanetoid:
             observations_sql_query = f"""
                 SELECT
                     ssObject.ssObjectId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
-                    topocentricDist, heliocentricDist
+                    topocentricDist, heliocentricDist, heliocentricX, heliocentricY, heliocentricZ,
+                    topocentricX, topocentricY, topocentricZ,
+                    eclipticLambda, eclipticBeta
                 FROM
                     {schema}ssObject
                     JOIN {schema}diaSource ON {schema}ssObject.ssObjectId   = {schema}diaSource.ssObjectId
@@ -263,7 +293,7 @@ class AdlerPlanetoid:
 
         MPCORB_sql_query = f"""
             SELECT
-                ssObjectId, mpcDesignation, mpcNumber, mpcH, mpcG, epoch, peri, node, incl, e, n, q, 
+                ssObjectId, mpcDesignation, fullDesignation, mpcNumber, mpcH, mpcG, epoch, tperi, peri, node, incl, e, n, q, 
                 uncertaintyParameter, flags
             FROM
                 {schema}MPCORB
@@ -382,3 +412,18 @@ class AdlerPlanetoid:
             raise ValueError("Filter {} is not in AdlerPlanetoid.filter_list.".format(filter_name))
 
         return self.SSObject.filter_dependent_values[filter_index]
+
+    def attach_previous_adler_data(self, filepath):
+        """Attaches and returns an AdlerData object containing the most recent AdlerData
+        for this ssObjectId.
+
+        Parameters
+        -----------
+        filepath : path-like object
+            Filepath with the location of the output SQL database.
+        """
+
+        self.PreviousAdlerData = AdlerData(self.ssObjectId, self.filter_list)
+        self.PreviousAdlerData.populate_from_database(filepath)
+
+        return self.PreviousAdlerData
