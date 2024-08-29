@@ -94,10 +94,6 @@ def runAdler(cli_args):
             df_obs["outlier"] = [False] * len(df_obs)
             logger.info("{} observations retrieved".format(len(df_obs)))
 
-            if filt == "g":
-                logger.info(print(df_obs[obs_cols]))
-                logger.info(df_obs[obs_cols])
-
             # load and merge the previous obs
             # TODO: replace this part with classifications loaded from adlerData
             save_file = "{}/df_outlier_{}_{}.csv".format(cli_args.outpath, cli_args.ssObjectId, filt)
@@ -108,9 +104,6 @@ def runAdler(cli_args):
                 df_obs.loc[
                     pd.isnull(df_obs["outlier_y"]), "outlier_y"
                 ] = False  # ensure that classifications exist (nan entries can only be false?). Weird behaviour here for g filter, is it to do with when new g obs appear relative to r/i etc?
-                if filt == "g":
-                    logger.info(print(df_obs))
-                    logger.info(df_obs)
                 df_obs = df_obs.rename({"outlier_y": "outlier"}, axis=1)
                 df_obs = df_obs.drop("outlier_x", axis=1)
             else:
@@ -145,8 +138,6 @@ def runAdler(cli_args):
                 df_save.to_csv(save_file)
                 print("insufficient data, use default SSObject phase model and continue")
                 logger.info("insufficient data, use default SSObject phase model and continue")
-                if filt == "g":
-                    logger.info(print(df_save))
 
                 # use the default SSObject phase parameter if there is no better information
                 pc_dict = {
