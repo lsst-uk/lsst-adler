@@ -10,3 +10,4 @@ sbpy
 matplotlib
 numpy
 ipykernel
+scipy
