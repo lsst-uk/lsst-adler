@@ -124,7 +124,7 @@ def get_from_dictionary(data_dict, key_name, data_type, table_name="default"):
     except ValueError:
         print("error message")
 
-    data_val = check_value_populated(data_val, data_type, key_name, "JSON")
+    data_val = check_value_populated(data_val, data_type, key_name, "dictionary")
 
     return data_val
 

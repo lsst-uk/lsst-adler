@@ -91,16 +91,18 @@ class SSObject:
         sso_dict = {"ssObjectId": ssObjectId, "filter_list": filter_list, "filter_dependent_values": []}
 
         for sso_key, sso_type in SSO_KEYS.items():
-            sso_dict[sso_key] = get_from_dictionary(data_dict, sso_key, sso_type, "SSObject")
+            sso_dict[sso_key] = get_from_dictionary(data_dict, sso_key.casefold(), sso_type, "SSObject")
 
         for i, filter_name in enumerate(filter_list):
             filter_dept_object = FilterDependentSSO(
                 filter_name=filter_name,
-                H=get_from_dictionary(data_dict, filter_name + "_H", float, "SSObject"),
-                G12=get_from_dictionary(data_dict, filter_name + "_G12", float, "SSObject"),
-                Herr=get_from_dictionary(data_dict, filter_name + "_HErr", float, "SSObject"),
-                G12err=get_from_dictionary(data_dict, filter_name + "_G12Err", float, "SSObject"),
-                nData=get_from_dictionary(data_dict, filter_name + "_Ndata", float, "SSObject"),
+                H=get_from_dictionary(data_dict, (filter_name + "_H").casefold(), float, "SSObject"),
+                G12=get_from_dictionary(data_dict, (filter_name + "_G12").casefold(), float, "SSObject"),
+                Herr=get_from_dictionary(data_dict, (filter_name + "_HErr").casefold(), float, "SSObject"),
+                G12err=get_from_dictionary(
+                    data_dict, (filter_name + "_G12Err").casefold(), float, "SSObject"
+                ),
+                nData=get_from_dictionary(data_dict, (filter_name + "_Ndata").casefold(), float, "SSObject"),
             )
 
             sso_dict["filter_dependent_values"].append(filter_dept_object)

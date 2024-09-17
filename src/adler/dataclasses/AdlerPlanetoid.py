@@ -10,6 +10,8 @@ from adler.dataclasses.SSObject import SSObject
 from adler.dataclasses.AdlerData import AdlerData
 from adler.dataclasses.dataclass_utilities import get_data_table
 
+from adler.lasair.cassandra_fetcher import cassandra_fetcher
+
 logger = logging.getLogger(__name__)
 
 
@@ -117,30 +119,59 @@ class AdlerPlanetoid:
         return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
 
     @classmethod
-    def construct_from_JSON(cls, json_filename):
-        with open(json_filename) as f:
-            json_dict = json.load(f)
+    def construct_from_cassandra(
+        cls, ssObjectId, filter_list=["u", "g", "r", "i", "z", "y"], date_range=[60000.0, 67300.0]
+    ):  # pragma: no cover
 
-        observations_dict = {**json_dict["SSSource"], **json_dict["DiaSource"]}
+        fetcher = cassandra_fetcher(cassandra_hosts=["10.21.3.123"])
 
-        filter_list = [observations_dict["band"]]
+        MPCORB_dict = fetcher.fetch_MPCORB(ssObjectId)
+        SSObject_dict = fetcher.fetch_SSObject(ssObjectId, filter_list)
+        observations_dict = fetcher.fetch_observations(ssObjectId)
 
-        MPCORB_dict = json_dict["MPCORB"]
-        SSObject_dict = json_dict["SSObject"]
+        # note that Cassandra doesn't allow filters/joins
+        # instead we pull all observations for this ID, then filter with Pandas later
+        observations_table = pd.DataFrame(observations_dict)
+        observations_table.rename(columns={"decl": "dec"}, inplace=True)
 
-        ssObjectId = observations_dict["ssObjectId"]
+        observations_by_filter = []
+        for filter_name in filter_list:
+            obs_slice = observations_table[
+                (observations_table["band"] == filter_name)
+                & (observations_table["midpointmjdtai"].between(date_range[0], date_range[1]))
+            ]
 
-        observations_by_filter = [
-            Observations.construct_from_dictionary(ssObjectId, filter_list[0], observations_dict)
-        ]
+            if len(obs_slice) == 0:
+                logger.warning(
+                    "No observations found in {} filter for this object. Skipping this filter.".format(
+                        filter_name
+                    )
+                )
+            else:
+                observations = Observations.construct_from_data_table(ssObjectId, filter_name, obs_slice)
+                observations_by_filter.append(observations)
+
+        if len(observations_by_filter) == 0:
+            logger.error(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
+            raise Exception(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
+
+        if len(filter_list) > len(observations_by_filter):
+            logger.info(
+                "Not all specified filters have observations. Recalculating filter list based on past observations."
+            )
+            filter_list = [obs_object.filter_name for obs_object in observations_by_filter]
+            logger.info("New filter list is: {}".format(filter_list))
+
         mpcorb = MPCORB.construct_from_dictionary(ssObjectId, MPCORB_dict)
         ssobject = SSObject.construct_from_dictionary(ssObjectId, filter_list, SSObject_dict)
 
         adler_data = AdlerData(ssObjectId, filter_list)
 
-        return cls(
-            ssObjectId, filter_list, [np.nan, np.nan], observations_by_filter, mpcorb, ssobject, adler_data
-        )
+        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
 
     @classmethod
     def construct_from_RSP(

@@ -125,6 +125,8 @@ class MPCORB:
         mpcorb_dict = {"ssObjectId": ssObjectId}
 
         for mpcorb_key, mpcorb_type in MPCORB_KEYS.items():
-            mpcorb_dict[mpcorb_key] = get_from_dictionary(data_dict, mpcorb_key, mpcorb_type, "MPCORB")
+            mpcorb_dict[mpcorb_key] = get_from_dictionary(
+                data_dict, mpcorb_key.casefold(), mpcorb_type, "MPCORB"
+            )
 
         return cls(**mpcorb_dict)
