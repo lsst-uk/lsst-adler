@@ -14,7 +14,6 @@ class CassandraFetcher:  # pragma: no cover
         self.session.set_keyspace("adler")
 
     def fetch_SSObject(self, ssObjectId, filter_list):
-
         filter_dependent_columns = ""
         for filter_name in filter_list:
             filter_string = "{}_H, {}_G12, {}_HErr, {}_G12Err, {}_Ndata, ".format(
@@ -44,7 +43,6 @@ class CassandraFetcher:  # pragma: no cover
         return obj
 
     def fetch_MPCORB(self, ssObjectId):
-
         obj = {}
 
         MPCORB_sql_query = f"""
@@ -65,7 +63,6 @@ class CassandraFetcher:  # pragma: no cover
         return obj
 
     def fetch_observations(self, ssObjectId):
-
         sourceDict = {}
 
         dia_query = f"""
