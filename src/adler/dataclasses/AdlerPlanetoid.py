@@ -122,7 +122,7 @@ class AdlerPlanetoid:
     ):  # pragma: no cover
 
         from adler.lasair.cassandra_fetcher import CassandraFetcher
-        
+
         fetcher = CassandraFetcher(cassandra_hosts=["10.21.3.123"])
 
         MPCORB_dict = fetcher.fetch_MPCORB(ssObjectId)
