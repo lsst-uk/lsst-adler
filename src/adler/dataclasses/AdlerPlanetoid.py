@@ -10,7 +10,7 @@ from adler.dataclasses.SSObject import SSObject
 from adler.dataclasses.AdlerData import AdlerData
 from adler.dataclasses.dataclass_utilities import get_data_table
 
-from adler.lasair.cassandra_fetcher import cassandra_fetcher
+from adler.lasair.cassandra_fetcher import CassandraFetcher
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ class AdlerPlanetoid:
         cls, ssObjectId, filter_list=["u", "g", "r", "i", "z", "y"], date_range=[60000.0, 67300.0]
     ):  # pragma: no cover
 
-        fetcher = cassandra_fetcher(cassandra_hosts=["10.21.3.123"])
+        fetcher = CassandraFetcher(cassandra_hosts=["10.21.3.123"])
 
         MPCORB_dict = fetcher.fetch_MPCORB(ssObjectId)
         SSObject_dict = fetcher.fetch_SSObject(ssObjectId, filter_list)

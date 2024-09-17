@@ -4,7 +4,7 @@ from cassandra.cluster import Cluster, ConsistencyLevel
 from cassandra.query import dict_factory, SimpleStatement
 
 
-class cassandra_fetcher:  # pragma: no cover
+class CassandraFetcher:  # pragma: no cover
     def __init__(self, cassandra_hosts):
         self.cluster = Cluster(cassandra_hosts)
         self.session = self.cluster.connect()
