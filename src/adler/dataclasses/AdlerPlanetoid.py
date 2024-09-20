@@ -118,11 +118,38 @@ class AdlerPlanetoid:
 
     @classmethod
     def construct_from_cassandra(
-        cls, ssObjectId, filter_list=["u", "g", "r", "i", "z", "y"], date_range=[60000.0, 67300.0]
+        cls,
+        ssObjectId,
+        filter_list=["u", "g", "r", "i", "z", "y"],
+        date_range=[60000.0, 67300.0],
+        cassandra_hosts=["10.21.3.123"],
     ):  # pragma: no cover
+        """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects from
+        a Cassandra database. Used only for Lasair integration.
+
+        TODO: move method to its own class which inherits from AdlerPlanetoid and move to adler-lasair repo?
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        filter_list : list of str
+            A comma-separated list of the filters of interest.
+
+        date_range : list of float
+            The minimum and maximum dates of the desired observations.
+
+        cassandra_hosts : list of str
+            Location of the Cassandra database - usually an IP address. Default is ["10.21.3.123"].
+
+        """
+        # do not move this import! CassandraFetcher requires the non-mandatory
+        # cassandra-driver library - if not installed, and this import is at the top,
+        # test collection will break.
         from adler.lasair.cassandra_fetcher import CassandraFetcher
 
-        fetcher = CassandraFetcher(cassandra_hosts=["10.21.3.123"])
+        fetcher = CassandraFetcher(cassandra_hosts=cassandra_hosts)
 
         MPCORB_dict = fetcher.fetch_MPCORB(ssObjectId)
         SSObject_dict = fetcher.fetch_SSObject(ssObjectId, filter_list)

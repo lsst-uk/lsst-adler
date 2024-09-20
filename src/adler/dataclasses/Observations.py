@@ -154,6 +154,25 @@ class Observations:
 
     @classmethod
     def construct_from_dictionary(cls, ssObjectId, filter_name, data_dict):
+        """Initialises the Observations object from a dictionary of data.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        filter_name : str
+            String of the filter the observations are taken in,
+
+        data_dict : dict or dict-like object
+            Dictionary of data from which attributes shoud be populated.
+
+        Returns
+        -----------
+        Observations object
+            Observations object with class attributes populated from data_dict.
+
+        """
         obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "num_obs": 1}
 
         for obs_key, obs_type in OBSERVATIONS_KEYS.items():

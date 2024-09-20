@@ -67,6 +67,25 @@ class SSObject:
 
     @classmethod
     def construct_from_data_table(cls, ssObjectId, filter_list, data_table):
+        """Initialises the SSObject object from a table of data.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        filter_list : list of str
+            A comma-separated list of the filters of interest.
+
+        data_table : table-like object
+            Table of data from which attributes shoud be populated.
+
+        Returns
+        -----------
+        SSObject object
+            SSObject object with class attributes populated from data_table.
+
+        """
         sso_dict = {"ssObjectId": ssObjectId, "filter_list": filter_list, "filter_dependent_values": []}
 
         for sso_key, sso_type in SSO_KEYS.items():
@@ -88,6 +107,25 @@ class SSObject:
 
     @classmethod
     def construct_from_dictionary(cls, ssObjectId, filter_list, data_dict):
+        """Initialises the SSObject object from a dictionary of data.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        filter_list : list of str
+            A comma-separated list of the filters of interest.
+
+        data_dict : dict or dict-like object
+            Ditcionary of data from which attributes shoud be populated.
+
+        Returns
+        -----------
+        SSObject object
+            SSObject object with class attributes populated from data_dict.
+
+        """
         sso_dict = {"ssObjectId": ssObjectId, "filter_list": filter_list, "filter_dependent_values": []}
 
         for sso_key, sso_type in SSO_KEYS.items():

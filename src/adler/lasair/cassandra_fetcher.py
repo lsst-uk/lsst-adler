@@ -5,6 +5,17 @@ from cassandra.query import dict_factory, SimpleStatement
 
 
 class CassandraFetcher:  # pragma: no cover
+    """Class to fetch data from a Cassandra database, used for Lasair integration.
+
+    TODO: move to the lasair-adler repo.
+
+    Attributes
+    -----------
+    cassandra_hosts : list of str
+        Location of the Cassandra database - usually an IP address. Default is ["10.21.3.123"].
+
+    """
+
     def __init__(self, cassandra_hosts):
         self.cluster = Cluster(cassandra_hosts)
         self.session = self.cluster.connect()
@@ -14,6 +25,24 @@ class CassandraFetcher:  # pragma: no cover
         self.session.set_keyspace("adler")
 
     def fetch_SSObject(self, ssObjectId, filter_list):
+        """Fetches the metadata from the SSObject table of a Cassandra database as a dictionary.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        filter_list : list of str
+            A comma-separated list of the filters of interest.
+
+        Returns
+        -----------
+        dict
+            A dictionary of metadata for the object of interest in the filters
+            of interest.
+
+        """
+
         filter_dependent_columns = ""
         for filter_name in filter_list:
             filter_string = "{}_H, {}_G12, {}_HErr, {}_G12Err, {}_Ndata, ".format(
@@ -43,6 +72,20 @@ class CassandraFetcher:  # pragma: no cover
         return obj
 
     def fetch_MPCORB(self, ssObjectId):
+        """Fetches the metadata from the MPCORB table of a Cassandra database as a dictionary.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        Returns
+        -----------
+        dict
+            A dictionary of metadata for the object of interest.
+
+        """
+
         obj = {}
 
         MPCORB_sql_query = f"""
@@ -63,6 +106,23 @@ class CassandraFetcher:  # pragma: no cover
         return obj
 
     def fetch_observations(self, ssObjectId):
+        """Fetches the source observations from the DIASource and SSSource tables as a dictionary.
+        Note that it will retrieve ALL observations for the object regardless of filter and data range,
+        so any filtering must be performed later. This is due to restrictions on queries to Cassandra.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        Returns
+        -----------
+        dict
+            A dictionary of metadata for the object of interest in the filters
+            of interest.
+
+        """
+
         sourceDict = {}
 
         dia_query = f"""
