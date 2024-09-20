@@ -67,6 +67,25 @@ class SSObject:
 
     @classmethod
     def construct_from_data_table(cls, ssObjectId, filter_list, data_table):
+        """Initialises the SSObject object from a table of data.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        filter_list : list of str
+            A comma-separated list of the filters of interest.
+
+        data_table : table-like object
+            Table of data from which attributes shoud be populated.
+
+        Returns
+        -----------
+        SSObject object
+            SSObject object with class attributes populated from data_table.
+
+        """
         sso_dict = {"ssObjectId": ssObjectId, "filter_list": filter_list, "filter_dependent_values": []}
 
         for sso_key, sso_type in SSO_KEYS.items():
@@ -88,19 +107,40 @@ class SSObject:
 
     @classmethod
     def construct_from_dictionary(cls, ssObjectId, filter_list, data_dict):
+        """Initialises the SSObject object from a dictionary of data.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        filter_list : list of str
+            A comma-separated list of the filters of interest.
+
+        data_dict : dict or dict-like object
+            Ditcionary of data from which attributes shoud be populated.
+
+        Returns
+        -----------
+        SSObject object
+            SSObject object with class attributes populated from data_dict.
+
+        """
         sso_dict = {"ssObjectId": ssObjectId, "filter_list": filter_list, "filter_dependent_values": []}
 
         for sso_key, sso_type in SSO_KEYS.items():
-            sso_dict[sso_key] = get_from_dictionary(data_dict, sso_key, sso_type, "SSObject")
+            sso_dict[sso_key] = get_from_dictionary(data_dict, sso_key.casefold(), sso_type, "SSObject")
 
         for i, filter_name in enumerate(filter_list):
             filter_dept_object = FilterDependentSSO(
                 filter_name=filter_name,
-                H=get_from_dictionary(data_dict, filter_name + "_H", float, "SSObject"),
-                G12=get_from_dictionary(data_dict, filter_name + "_G12", float, "SSObject"),
-                Herr=get_from_dictionary(data_dict, filter_name + "_HErr", float, "SSObject"),
-                G12err=get_from_dictionary(data_dict, filter_name + "_G12Err", float, "SSObject"),
-                nData=get_from_dictionary(data_dict, filter_name + "_Ndata", float, "SSObject"),
+                H=get_from_dictionary(data_dict, (filter_name + "_H").casefold(), float, "SSObject"),
+                G12=get_from_dictionary(data_dict, (filter_name + "_G12").casefold(), float, "SSObject"),
+                Herr=get_from_dictionary(data_dict, (filter_name + "_HErr").casefold(), float, "SSObject"),
+                G12err=get_from_dictionary(
+                    data_dict, (filter_name + "_G12Err").casefold(), float, "SSObject"
+                ),
+                nData=get_from_dictionary(data_dict, (filter_name + "_Ndata").casefold(), float, "SSObject"),
             )
 
             sso_dict["filter_dependent_values"].append(filter_dept_object)

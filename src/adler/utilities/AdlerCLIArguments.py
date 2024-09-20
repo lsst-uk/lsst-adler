@@ -27,6 +27,8 @@ class AdlerCLIArguments:
         self.validate_arguments()
 
     def validate_arguments(self):
+        """Checks and validates the command-line arguments."""
+
         self._validate_filter_list()
         self._validate_date_range()
         self._validate_outpath()
@@ -41,6 +43,7 @@ class AdlerCLIArguments:
             self._validate_sql_filename()
 
     def _validate_filter_list(self):
+        """Validation checks for the filter_list command-line argument."""
         expected_filters = ["u", "g", "r", "i", "z", "y"]
 
         if not set(self.filter_list).issubset(expected_filters):
@@ -52,6 +55,9 @@ class AdlerCLIArguments:
             )
 
     def _validate_ssObjectId(self):
+        """
+        Validation checks for the ssObjectId command-line argument.
+        """
         try:
             int(self.ssObjectId)
         except ValueError:
@@ -59,6 +65,9 @@ class AdlerCLIArguments:
             raise ValueError("--ssObjectId command-line argument does not appear to be a valid ssObjectId.")
 
     def _validate_date_range(self):
+        """
+        Validation checks for the date_range command-line argument.
+        """
         for d in self.date_range:
             try:
                 float(d)
@@ -79,6 +88,9 @@ class AdlerCLIArguments:
             )
 
     def _validate_outpath(self):
+        """
+        Validation checks for the outpath command-line argument.
+        """
         # make it an absolute path if it's relative!
         self.outpath = os.path.abspath(self.outpath)
 
@@ -87,6 +99,9 @@ class AdlerCLIArguments:
             raise ValueError("The output path for the command-line argument --outpath cannot be found.")
 
     def _validate_ssObjectId_list(self):
+        """
+        Validation checks for the ssObjectId_list command-line argument.
+        """
         self.ssObjectId_list = os.path.abspath(self.ssObjectId_list)
 
         if not os.path.exists(self.ssObjectId_list):
@@ -98,6 +113,9 @@ class AdlerCLIArguments:
             )
 
     def _validate_sql_filename(self):
+        """
+        Validation checks for the sel_filename command-line argument.
+        """
         self.sql_filename = os.path.abspath(self.sql_filename)
 
         if not os.path.exists(self.sql_filename):

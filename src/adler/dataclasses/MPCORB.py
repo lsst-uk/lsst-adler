@@ -122,9 +122,27 @@ class MPCORB:
 
     @classmethod
     def construct_from_dictionary(cls, ssObjectId, data_dict):
+        """Initialises the MPCORB object from a dictionary of data.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        data_dict : dict or dict-like object
+            Dictionary of data from which attributes shoud be populated.
+
+        Returns
+        -----------
+        MPCORB object
+            MPCORB object with class attributes populated from data_table.
+
+        """
         mpcorb_dict = {"ssObjectId": ssObjectId}
 
         for mpcorb_key, mpcorb_type in MPCORB_KEYS.items():
-            mpcorb_dict[mpcorb_key] = get_from_dictionary(data_dict, mpcorb_key, mpcorb_type, "MPCORB")
+            mpcorb_dict[mpcorb_key] = get_from_dictionary(
+                data_dict, mpcorb_key.casefold(), mpcorb_type, "MPCORB"
+            )
 
         return cls(**mpcorb_dict)
