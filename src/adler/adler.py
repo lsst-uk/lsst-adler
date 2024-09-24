@@ -102,9 +102,9 @@ def runAdler(cli_args):
                 logger.info("load previously classified observations: {}".format(save_file))
                 _df_obs = pd.read_csv(save_file, index_col=0)
                 df_obs = df_obs.merge(_df_obs, on=["diaSourceId", "midPointMjdTai"], how="left")
-                df_obs.loc[
-                    pd.isnull(df_obs["outlier_y"]), "outlier_y"
-                ] = False  # ensure that classifications exist (nan entries can only be false?). Weird behaviour here for g filter, is it to do with when new g obs appear relative to r/i etc?
+                df_obs.loc[pd.isnull(df_obs["outlier_y"]), "outlier_y"] = (
+                    False  # ensure that classifications exist (nan entries can only be false?). Weird behaviour here for g filter, is it to do with when new g obs appear relative to r/i etc?
+                )
                 df_obs = df_obs.rename({"outlier_y": "outlier"}, axis=1)
                 df_obs = df_obs.drop("outlier_x", axis=1)
             else:
