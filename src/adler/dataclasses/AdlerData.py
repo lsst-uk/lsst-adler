@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import logging
+import re
 import numpy as np
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -15,6 +16,7 @@ MODEL_DEPENDENT_KEYS = [
     "phase_parameter_2",
     "phase_parameter_2_err",
 ]
+ALL_FILTER_LIST = ["u", "g", "r", "i", "z", "y"]
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +109,73 @@ class AdlerData:
                     model_key,
                     kwargs.get(model_key),
                 )
+
+    def populate_from_database(self, filepath):
+        """Populates the AdlerData object with information from the most recent timestamped entry for the ssObjectId in a given database.
+
+        Parameters
+        -----------
+        filepath : path-like object
+            Filepath with the location of the output SQL database. Note that for now, we assume only one table with all the data.
+        """
+
+        con = self._get_database_connection(filepath)
+        cursor = con.cursor()
+        sql_query = f"""SELECT * from AdlerData where ssObjectId='{self.ssObjectId}' ORDER BY timestamp DESC LIMIT 1"""
+        query_result = cursor.execute(sql_query)
+
+        try:
+            fetched_data_raw = query_result.fetchall()[0]
+        except IndexError:
+            logger.error("ValueError: No data found in this database for the supplied ssObjectId.")
+            raise ValueError("No data found in this database for the supplied ssObjectId.")
+
+        fetched_data = [np.nan if v is None else v for v in fetched_data_raw]  # replaces Nones with nans
+        column_list = self._get_database_columns(con, "AdlerData")
+        con.close()
+
+        filter_bools = [
+            any((column_heading.startswith(filter + "_") for column_heading in column_list))
+            for filter in ALL_FILTER_LIST
+        ]
+        database_filter_list = [b for a, b in zip(filter_bools, ALL_FILTER_LIST) if a]
+
+        if not all([requested_filter in database_filter_list for requested_filter in self.filter_list]):
+            logger.error(
+                "ValueError: Data does not exist for some of the requested filters in this database. Filters in database for this object: {}".format(
+                    database_filter_list
+                )
+            )
+            raise ValueError(
+                "Data does not exist for some of the requested filters in this database. Filters in database for this object: {}".format(
+                    database_filter_list
+                )
+            )
+
+        for filter_name in self.filter_list:
+            expected_filter_columns = [filter_name + "_" + filter_key for filter_key in FILTER_DEPENDENT_KEYS]
+            filter_indices_list = [column_list.index(column_name) for column_name in expected_filter_columns]
+            filter_values = [fetched_data[a] for a in filter_indices_list]
+            filter_dependent_info = dict(zip(FILTER_DEPENDENT_KEYS, filter_values))
+
+            self.populate_phase_parameters(filter_name, **filter_dependent_info)
+
+            r = re.compile("^(" + filter_name + "_).*_H$")
+            model_column_list = list(filter(r.match, column_list))
+            models_in_filter = [model[2:-2] for model in model_column_list]
+
+            for model_name in models_in_filter:
+                expected_model_columns = [
+                    filter_name + "_" + model_name + "_" + model_key for model_key in MODEL_DEPENDENT_KEYS
+                ]
+                model_indices_list = [
+                    column_list.index(column_name) for column_name in expected_model_columns
+                ]
+                model_values = [fetched_data[a] for a in model_indices_list]
+                model_dependent_info = dict(zip(MODEL_DEPENDENT_KEYS, model_values))
+                model_dependent_info["model_name"] = model_name
+
+                self.populate_phase_parameters(filter_name, **model_dependent_info)
 
     def print_data(self):
         """Convenience method to clearly print the stored values."""
@@ -224,13 +293,16 @@ class AdlerData:
 
         return output_obj
 
-    def _get_database_connection(self, filepath):
+    def _get_database_connection(self, filepath, create_new=False):
         """Returns the connection to the output SQL database, creating it if it does not exist.
 
         Parameters
         -----------
         filepath : path-like object
             Filepath with the location of the output SQL database.
+
+        create_new : Boolean
+            Whether to create the database if it doesn't already exist. Default is False.
 
         Returns
         ----------
@@ -242,15 +314,20 @@ class AdlerData:
         database_exists = os.path.isfile(
             filepath
         )  # check this FIRST as the next statement creates the db if it doesn't exist
-        con = sqlite3.connect(filepath)
 
-        if not database_exists:  # we need to make the table and a couple of starter columns
+        if not database_exists and create_new:  # we need to make the table and a couple of starter columns
+            con = sqlite3.connect(filepath)
             cur = con.cursor()
             cur.execute("CREATE TABLE AdlerData(ssObjectId, timestamp)")
+        elif not database_exists and not create_new:
+            logger.error("ValueError: Database cannot be found at given filepath.")
+            raise ValueError("Database cannot be found at given filepath.")
+        else:
+            con = sqlite3.connect(filepath)
 
         return con
 
-    def _get_database_columns(self, con, table_name):
+    def _get_database_columns(self, con, tablename="AdlerData"):
         """Gets a list of the current columns in a given table in a SQL database.
 
         Parameters
@@ -258,8 +335,8 @@ class AdlerData:
         con : sqlite3 Connection object
             The connection to the output SQL database.
 
-        table_name : str
-            The name of the relevant table in the database.
+        tablename : str
+            The name of the relevant table in the database. Default is "AdlerData".
 
 
         Returns
@@ -270,7 +347,7 @@ class AdlerData:
         """
 
         cur = con.cursor()
-        cur.execute(f"""SELECT * from {table_name} where 1=0""")
+        cur.execute(f"""SELECT * from {tablename} where 1=0""")
         return [d[0] for d in cur.description]
 
     def _get_row_data_and_columns(self):
@@ -351,7 +428,7 @@ class AdlerData:
 
         """
 
-        con = self._get_database_connection(filepath)
+        con = self._get_database_connection(filepath, create_new=True)
 
         row_data, required_columns = self._get_row_data_and_columns()
         current_columns = self._get_database_columns(con, table_name)

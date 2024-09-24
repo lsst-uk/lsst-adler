@@ -21,6 +21,7 @@ dependencies = [
     "sbpy",
     "matplotlib", # for plotting
     "pandas",
+    "scipy",
 ]
 
 [project.urls]

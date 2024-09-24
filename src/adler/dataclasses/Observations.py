@@ -120,7 +120,7 @@ class Observations:
     num_obs: int = 0
 
     @classmethod
-    def construct_from_data_table(cls, ssObjectId, filter_name, data_table):
+    def construct_from_data_table(cls, ssObjectId, filter_name, data_table, cassandra=False):
         """Initialises the Observations object from a table of data.
 
         Parameters
@@ -144,7 +144,12 @@ class Observations:
         obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "num_obs": len(data_table)}
 
         for obs_key, obs_type in OBSERVATIONS_KEYS.items():
-            obs_dict[obs_key] = get_from_table(data_table, obs_key, obs_type, "SSSource/DIASource")
+            try:
+                obs_dict[obs_key] = get_from_table(data_table, obs_key, obs_type, "SSSource/DIASource")
+            except KeyError:  # sometimes we have case issues...
+                obs_dict[obs_key] = get_from_table(
+                    data_table, obs_key.casefold(), obs_type, "SSSource/DIASource"
+                )
 
         obs_dict["reduced_mag"] = cls.calculate_reduced_mag(
             cls, obs_dict["mag"], obs_dict["topocentricDist"], obs_dict["heliocentricDist"]
@@ -154,6 +159,25 @@ class Observations:
 
     @classmethod
     def construct_from_dictionary(cls, ssObjectId, filter_name, data_dict):
+        """Initialises the Observations object from a dictionary of data.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        filter_name : str
+            String of the filter the observations are taken in,
+
+        data_dict : dict or dict-like object
+            Dictionary of data from which attributes shoud be populated.
+
+        Returns
+        -----------
+        Observations object
+            Observations object with class attributes populated from data_dict.
+
+        """
         obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "num_obs": 1}
 
         for obs_key, obs_type in OBSERVATIONS_KEYS.items():
