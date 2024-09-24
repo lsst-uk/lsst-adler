@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 def runAdler(cli_args):
     logger.info("Beginning Adler.")
 
+    # adler parameters
     N_pc_fit = 10  # minimum number of data points to fit phase curve
     diff_cut = 1.0  # magnitude difference used to identify outliers
     obs_cols = ["diaSourceId", "midPointMjdTai", "outlier"]  # observation columns to use
