@@ -11,6 +11,9 @@
 This project was automatically generated using the LINCC-Frameworks 
 [python-project-template](https://github.com/lincc-frameworks/python-project-template).
 
+## Read the Docs
+
+Look here for information on adler, the API and some example notebooks: https://adler.readthedocs.io/en/latest/
 
 ## Dev Guide - Getting Started
 
