@@ -27,7 +27,7 @@ create and activate a new environment.
 ```
 
 Once you have created a new environment, you can install this project for local
-development using the following commands from within the adler folder:
+development. Git clone the repo and from the top directory run the following commands from within the adler folder:
 
 ```
 >> pip install -e .'[dev]'
