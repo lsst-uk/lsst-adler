@@ -6,7 +6,7 @@ import sqlite3
 
 from numpy.testing import assert_array_equal
 
-from adler.dataclasses.AdlerData import AdlerData
+from adler.objectdata.AdlerData import AdlerData
 from adler.utilities.tests_utilities import get_test_data_filepath
 
 # setting up the AdlerData object to be used for testing

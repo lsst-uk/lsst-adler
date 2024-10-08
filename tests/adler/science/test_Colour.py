@@ -7,8 +7,8 @@ import astropy.units as u
 
 from adler.science.Colour import col_obs_ref
 from adler.utilities.tests_utilities import get_test_data_filepath
-from adler.dataclasses.AdlerPlanetoid import AdlerPlanetoid
-from adler.dataclasses.AdlerData import AdlerData
+from adler.objectdata.AdlerPlanetoid import AdlerPlanetoid
+from adler.objectdata.AdlerData import AdlerData
 from adler.science.PhaseCurve import PhaseCurve
 from adler.utilities.science_utilities import get_df_obs_filt
 
