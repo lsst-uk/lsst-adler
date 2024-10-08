@@ -77,10 +77,12 @@ Notes:
 
 ## Dev Guide - Adding notebooks to Read The Docs
 
-- Copy notebook into `docs/notebooks` (N.B. the notebook must have at least one section header and be using the "Python 3 (ipykernel)" kernel, not some conda env kernel that may only be installed locally)
+- Copy notebook into `docs/notebooks` (N.B. the notebook must have at least one section header* and be using the "Python 3 (ipykernel)" kernel, not some conda env kernel that may only be installed locally)
 - Update the toctree in the file `docs/notebooks.rst`
 - Ensure necessary requirements are declared in `pyproject.toml` and `docs/requirements.txt`. Also, make sure that the notebook being added to the docs is using the python3 (ipykernel) kernel, not some conda env kernel that may only be installed locally
 - To update the docs locally, from the `docs` dir run: `python -m sphinx -T -E -b html -d _build/doctrees -D language=en . ../_readthedocs/html`
+
+* Multiple section headers from a notebook will also show up in the table of contents.
 
 ## Dev Guide - Updating pyproject.toml
 
