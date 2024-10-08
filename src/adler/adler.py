@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import os
 
-from adler.dataclasses.AdlerPlanetoid import AdlerPlanetoid
-from adler.dataclasses.AdlerData import AdlerData
+from adler.objectdata.AdlerPlanetoid import AdlerPlanetoid
+from adler.objectdata.AdlerData import AdlerData
 from adler.science.PhaseCurve import PhaseCurve
 from adler.science.Colour import col_obs_ref
 from adler.utilities.AdlerCLIArguments import AdlerCLIArguments

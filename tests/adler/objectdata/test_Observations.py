@@ -1,8 +1,8 @@
 from numpy.testing import assert_almost_equal
 import numpy as np
 
-from adler.dataclasses.Observations import Observations
-from adler.dataclasses.dataclass_utilities import get_data_table
+from adler.objectdata.Observations import Observations
+from adler.objectdata.objectdata_utilities import get_data_table
 from adler.utilities.tests_utilities import get_test_data_filepath
 
 

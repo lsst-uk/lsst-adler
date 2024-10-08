@@ -4,11 +4,11 @@ import numpy as np
 import logging
 import json
 
-from adler.dataclasses.Observations import Observations
-from adler.dataclasses.MPCORB import MPCORB
-from adler.dataclasses.SSObject import SSObject
-from adler.dataclasses.AdlerData import AdlerData
-from adler.dataclasses.dataclass_utilities import get_data_table
+from adler.objectdata.Observations import Observations
+from adler.objectdata.MPCORB import MPCORB
+from adler.objectdata.SSObject import SSObject
+from adler.objectdata.AdlerData import AdlerData
+from adler.objectdata.objectdata_utilities import get_data_table
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ import numpy as np
 from numpy.testing import assert_almost_equal
 
 from adler.utilities.tests_utilities import get_test_data_filepath
-from adler.dataclasses.AdlerPlanetoid import AdlerPlanetoid
+from adler.objectdata.AdlerPlanetoid import AdlerPlanetoid
 
 
 ssoid = 8268570668335894776

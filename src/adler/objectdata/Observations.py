@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 import numpy as np
 
-from adler.dataclasses.dataclass_utilities import get_from_table, get_from_dictionary
+from adler.objectdata.objectdata_utilities import get_from_table, get_from_dictionary
 
 OBSERVATIONS_KEYS = {
     "diaSourceId": np.ndarray,
