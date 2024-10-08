@@ -296,7 +296,7 @@ class AdlerPlanetoid:
         for filter_name in filter_list:
             observations_sql_query = f"""
                 SELECT
-                    ssObject.ssObjectId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
+                    ssObject.ssObjectId, ssSource.diaSourceId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
                     topocentricDist, heliocentricDist, heliocentricX, heliocentricY, heliocentricZ,
                     topocentricX, topocentricY, topocentricZ,
                     eclipticLambda, eclipticBeta

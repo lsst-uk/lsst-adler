@@ -3,10 +3,14 @@ import argparse
 import astropy.units as u
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import os
 
 from adler.dataclasses.AdlerPlanetoid import AdlerPlanetoid
+from adler.dataclasses.AdlerData import AdlerData
 from adler.science.PhaseCurve import PhaseCurve
+from adler.science.Colour import col_obs_ref
 from adler.utilities.AdlerCLIArguments import AdlerCLIArguments
 from adler.utilities.adler_logging import setup_adler_logging
 from adler.utilities.readin_utilities import read_in_SSObjectID_file
@@ -19,20 +23,35 @@ logger = logging.getLogger(__name__)
 def runAdler(cli_args):
     logger.info("Beginning Adler.")
 
+    # adler parameters
     N_pc_fit = 10  # minimum number of data points to fit phase curve
-    diff_cut = 1.0
+    diff_cut = 1.0  # magnitude difference used to identify outliers
+    obs_cols = ["diaSourceId", "midPointMjdTai", "outlier"]  # observation columns to use
+    phase_model = "HG12_Pen16"  # which phase curve model to fit
+
+    # Define colour parameters
+    # set number of reference observations to use for colour estimate
+    N_ref = 5
 
     if cli_args.ssObjectId_list:
         ssObjectId_list = read_in_SSObjectID_file(cli_args.ssObjectId_list)
     else:
         ssObjectId_list = [cli_args.ssObjectId]
 
+    # consider each ssObjectId in the list separately
     for i, ssObjectId in enumerate(ssObjectId_list):
         logger.info("Processing object {}/{}.".format(i + 1, len(ssObjectId_list)))
         logger.info("Ingesting all data for object {} from RSP...".format(cli_args.ssObjectId))
+        logger.info(
+            "Query data in the range: {} <= date <= {}".format(cli_args.date_range[0], cli_args.date_range[1])
+        )  # the adler planetoid date_range is used in an SQL BETWEEN statement which is inclusive
+        print(
+            "Query data in the range: {} <= date <= {}".format(cli_args.date_range[0], cli_args.date_range[1])
+        )  # the adler planetoid date_range is used in an SQL BETWEEN statement which is inclusive
+        logger.info("Consider the filters: {}".format(cli_args.filter_list))
 
-        # if cli_args.sql_filename != "None":
-        if cli_args.sql_filename:
+        # load ssObjectId data
+        if cli_args.sql_filename:  # load from a local database, if provided
             msg = "query sql database {}".format(cli_args.sql_filename)
             logger.info(msg)
             print(msg)
@@ -42,7 +61,7 @@ def runAdler(cli_args):
                 date_range=cli_args.date_range,
                 sql_filename=cli_args.sql_filename,
             )
-        else:
+        else:  # otherwise load from the Rubin Science Platform
             msg = "query RSP"
             logger.info(msg)
             print(msg)
@@ -50,52 +69,86 @@ def runAdler(cli_args):
                 ssObjectId, cli_args.filter_list, cli_args.date_range
             )
 
+        # TODO: Here we would load the AdlerData object from our data tables
+        adler_data = AdlerData(ssObjectId, planetoid.filter_list)
+        print(adler_data.__dict__)
+
         logger.info("Data successfully ingested.")
-        logger.info("Calculating phase curves...")
 
         # now let's do some phase curves!
+        logger.info("Calculating phase curves...")
 
-        # # operate on each filter in turn
-        for filt in planetoid.filter_list:
-            print("fit {} filter data".format(filt))
+        # operate on each filter in turn
+        for filt in cli_args.filter_list:
+            logger.info("fit {} filter data".format(filt))
 
             # get the filter SSObject metadata
-            sso = planetoid.SSObject_in_filter(filt)
+            try:
+                sso = planetoid.SSObject_in_filter(filt)
+            except:
+                logger.info("error loading SSObject in filter {}".format(filt))
+                continue
 
             # get the observations
             obs = planetoid.observations_in_filter(filt)
             df_obs = pd.DataFrame(obs.__dict__)
             df_obs["outlier"] = [False] * len(df_obs)
-            print(len(df_obs))
+            logger.info("{} observations retrieved".format(len(df_obs)))
 
             # load and merge the previous obs
-            save_file = "{}/df_outlier_{}.csv".format(cli_args.outpath, cli_args.ssObjectId)
+            # TODO: replace this part with classifications loaded from adlerData
+            save_file = "{}/df_outlier_{}_{}.csv".format(cli_args.outpath, cli_args.ssObjectId, filt)
             if os.path.isfile(save_file):
-                print("load {}".format(save_file))
+                logger.info("load previously classified observations: {}".format(save_file))
                 _df_obs = pd.read_csv(save_file, index_col=0)
-                df_obs = df_obs.merge(_df_obs, on="midPointMjdTai", how="left")
+                df_obs = df_obs.merge(_df_obs, on=["diaSourceId", "midPointMjdTai"], how="left")
+                df_obs.loc[
+                    pd.isnull(df_obs["outlier_y"]), "outlier_y"
+                ] = False  # ensure that classifications exist (nan entries can only be false?). Weird behaviour here for g filter, is it to do with when new g obs appear relative to r/i etc?
                 df_obs = df_obs.rename({"outlier_y": "outlier"}, axis=1)
                 df_obs = df_obs.drop("outlier_x", axis=1)
             else:
-                print("no previous obs to load")
+                logger.info("no previously classified observations to load")
 
-            print(cli_args.date_range)
-            print(np.amax(df_obs["midPointMjdTai"]))
+            # define the date range to for new observations taken in the night to be analysed
+            logger.info(
+                "Most recent {} filter observation in query: date = {}".format(
+                    filt, np.amax(df_obs["midPointMjdTai"])
+                )
+            )
             t1 = int(np.amax(df_obs["midPointMjdTai"])) + 1
             t0 = t1 - 1
 
-            # t_mask = (df_obs["midPointMjdTai"]<t1)
-            # _df_obs = df_obs[t_mask]
-            mask = df_obs["midPointMjdTai"] < t0
+            # get all past observations
+            # mask = df_obs["midPointMjdTai"] < t0
+            mask = (df_obs["midPointMjdTai"] < t0) & (df_obs["outlier"] == False)  # reject any past outliers
+
+            # split observations into "old" and "new"
             df_obs_old = df_obs[(mask)]
             df_obs_new = df_obs[~mask]
-            print(t0, t1, len(df_obs_old), len(df_obs_new))
+            logger.info("Previous observations (date < {}): {}".format(t0, len(df_obs_old)))
+            logger.info("New observations ({} <= date < {}): {}".format(t0, t1, len(df_obs_new)))
 
+            # Determine the reference phase curve model
+            # TODO: We would load the best phase curve model available in AdlerData here
+
+            # we need sufficient past observations to fit the phase curve model
             if len(df_obs_old) < 2:
                 print("save {}".format(save_file))
-                df_save = df_obs[["midPointMjdTai", "outlier"]]
+                df_save = df_obs[obs_cols]
                 df_save.to_csv(save_file)
-                print("insufficient data, continue")
+                print("insufficient data, use default SSObject phase model and continue")
+                logger.info("insufficient data, use default SSObject phase model and continue")
+
+                # use the default SSObject phase parameter if there is no better information
+                pc_dict = {
+                    "H": sso.H * u.mag,
+                    "H_err": sso.Herr * u.mag,
+                    "phase_parameter_1": sso.G12,
+                    "phase_parameter_1_err": sso.G12err,
+                    "model_name": "HG12_Pen16",
+                }
+                adler_data.populate_phase_parameters(filt, **pc_dict)
                 continue
 
             # initial simple phase curve filter model with fixed G12
@@ -105,13 +158,13 @@ def runAdler(cli_args):
                 model_name="HG12_Pen16",
             )
 
+            # only fit G12 when sufficient data is available
             if len(df_obs_old) < N_pc_fit:
-                # use an assumed value of G12 until more data is available
                 pc.model_function.G12.fixed = True
             else:
                 pc.model_function.G12.fixed = False
 
-            # do a simple HG12_Pen16 fit to the past data
+            # do a HG12_Pen16 fit to the past data
             pc_fit = pc.FitModel(
                 np.array(df_obs_old["phaseAngle"]) * u.deg,
                 np.array(df_obs_old["reduced_mag"]) * u.mag,
@@ -119,19 +172,21 @@ def runAdler(cli_args):
             )
             pc_fit = pc.InitModelSbpy(pc_fit)
 
+            # TODO: Here the best fit should be pushed back to our AdlerData tables
+            adler_data.populate_phase_parameters(filt, **pc_fit.__dict__)
+
             # find outliers in new data
             # calculate data - model residuals
             res = (np.array(df_obs_new["reduced_mag"]) * u.mag) - pc_fit.ReducedMag(
                 np.array(df_obs_new["phaseAngle"]) * u.deg
             )
-            # print(res)
             outlier_flag = sci_utils.outlier_diff(res.value, diff_cut=diff_cut)
-            print(outlier_flag)
             df_obs.loc[~mask, "outlier"] = outlier_flag
 
-            # save the df_obs subset
-            df_save = df_obs[["midPointMjdTai", "outlier"]]
-            print("save {}".format(save_file))
+            # save the df_obs subset with outlier classification
+            df_save = df_obs[obs_cols]
+            print("save classifications: {}".format(save_file))
+            logger.info("save classifications: {}".format(save_file))
             df_save.to_csv(save_file)
 
             # make a plot
@@ -143,7 +198,6 @@ def runAdler(cli_args):
             ax1.scatter(
                 df_obs_new["phaseAngle"], df_obs_new["reduced_mag"], edgecolor="r", facecolor="none", zorder=3
             )
-            # ax1.scatter(df_obs_new.loc[outlier_flag]["phaseAngle"], df_obs_new.loc[outlier_flag]["reduced_mag"], c = "r", marker = "x", s= 75, zorder = 3)
             out_mask = df_obs["outlier"] == True
             ax1.scatter(
                 df_obs.loc[out_mask]["phaseAngle"],
@@ -153,46 +207,81 @@ def runAdler(cli_args):
                 s=75,
                 zorder=3,
             )
-            fig_file = "{}/plots/phase_curve_{}_{}.png".format(cli_args.outpath, cli_args.ssObjectId, int(t0))
-            print(fig_file)
-            fig = plot_errorbar(planetoid, fig=fig, filename=fig_file)
+            fig_file = "{}/plots/phase_curve_{}_{}_{}.png".format(
+                cli_args.outpath, cli_args.ssObjectId, filt, int(t0)
+            )
+            # TODO: make the plots folder if it does not already exist?
+            print("Save figure: {}".format(fig_file))
+            logger.info("Save figure: {}".format(fig_file))
+            fig = plot_errorbar(planetoid, fig=fig, filename=fig_file)  # TODO: add titles with filter name?
+            plt.close()
 
-            # # when fitting, consider only the previous observations (not tonight's)
-            # mjd = obs.midPointMjdTai
-            # obs_mask = mjd < int(np.amax(mjd))
-            # # also drop any past outlying observations?
+        # analyse colours for the filters provided
+        logger.info("Calculate colours: {}".format(cli_args.colour_list))
 
-            # print("total N obs = {}".format(len(mjd)))
-            # print("number of past obs = {}".format(sum(obs_mask)))
-            # print("number of tonight's obs = {}".format(sum(~obs_mask)))
+        # if requested cycle through the filters, calculating a colour relative to the next filter
+        if not cli_args.colour_list:
+            colour_list = []
+        else:
+            colour_list = cli_args.colour_list
 
-            # if sum(obs_mask) < N_pc_fit:
-            #     # use an assumed value of G12 until more data is available
-            #     pc_fit = PhaseCurve(H=sso.H * u.mag, phase_parameter_1=0.62, model_name="HG12_Pen16")
-            # else:
-            #     # do a simple HG12_Pen16 fit to the past data
-            #     pc_fit = pc.FitModel(alpha[obs_mask], red_mag[obs_mask], mag_err[obs_mask])
-            #     pc_fit = pc.InitModelSbpy(pc_fit)
+        # note that the order in which cli_args.filter_list is passed will determine which colours are calculated
+        for colour in colour_list:
+            col_filts = colour.split("-")
+            filt_obs = col_filts[0]
+            filt_ref = col_filts[1]
 
-            # print(pc_fit)
-            # print(pc_fit.H)
-            # print(pc_fit.phase_parameter_1)
+            if ~np.isin([filt_obs, filt_ref], planetoid.filter_list).all():
+                missing_filts = np.array([filt_obs, filt_ref])[
+                    ~np.isin([filt_obs, filt_ref], planetoid.filter_list)
+                ]
+                logger.info(
+                    "Filter(s) {} are missing for determining {} colour".format(missing_filts, colour)
+                )
+                continue
 
-            # # now check if the new observations are outlying
-            # alpha_new = alpha[~obs_mask]
-            # red_mag_new = red_mag[~obs_mask]
-            # mag_err_new = mag_err[~obs_mask]
+            logger.info("Determine {} colour".format(colour))
 
-            # # calculate data - model residuals
-            # res = red_mag_new - pc_fit.ReducedMag(alpha_new)
-            # print(res)
+            # TODO: replace this with a colour loaded from adlerData
+            save_file_colour = "{}/df_colour_{}_{}.csv".format(cli_args.outpath, cli_args.ssObjectId, colour)
+            if os.path.isfile(save_file_colour):
+                print("load previous colours from file: {}".format(save_file_colour))
+                df_col = pd.read_csv(save_file_colour, index_col=0)
+                # Check the last colour calculation date (x_obs) to avoid recalculation
+                obs = planetoid.observations_in_filter(filt_obs)
+                df_obs = pd.DataFrame(obs.__dict__)
+                if np.amax(df_col["midPointMjdTai"]) >= np.amax(df_obs["midPointMjdTai"]):
+                    print("colour already calculated, skip")
+                    continue
 
-            # # also check for past observations that are outlying?
+            else:
+                df_col = pd.DataFrame()
 
-            # # output results:
-            # # flag outlying observations
-            # # output the phase curve model parameters
-            # # make a plot?
+            # determine the filt_obs - filt_ref colour
+            # generate a plot
+            col_dict = col_obs_ref(
+                planetoid,
+                adler_data,
+                phase_model=phase_model,
+                filt_obs=filt_obs,
+                filt_ref=filt_ref,
+                N_ref=N_ref,
+                # x1 = x1,
+                # x2 = x2,
+                plot_dir="{}/plots".format(cli_args.outpath),
+            )
+
+            print(col_dict)
+
+            # save the colour data
+            print("Append new colour and save to file: {}".format(save_file_colour))
+            df_col = pd.concat([df_col, pd.DataFrame([col_dict])])
+            df_col = df_col.reset_index(drop=True)
+            df_col.to_csv(save_file_colour)
+
+            # TODO: reject unreliable colours, e.g. high colErr or delta_t_col
+            # TODO: determine if colour is outlying
+            # compare this new colour to previous colour(s)
 
 
 def main():
@@ -213,10 +302,19 @@ def main():
     optional_group.add_argument(
         "-f",
         "--filter_list",
-        help="Filters required.",
+        help="Filters to be analysed.",
         nargs="*",
         type=str,
         default=["u", "g", "r", "i", "z", "y"],
+    )
+    optional_group.add_argument(
+        "-c",
+        "--colour_list",
+        help="Colours to be analysed.",
+        nargs="*",
+        type=str,
+        # default=["g-r", "r-i"],
+        default=None,
     )
     optional_group.add_argument(
         "-d",
@@ -229,7 +327,7 @@ def main():
     optional_group.add_argument(
         "-o",
         "--outpath",
-        help="Output path location. Default is current working directory.",
+        help="Output path location. Default is current working directory.",  # TODO: make adler create the outpath directory on start up if it does not exist? Also the "plots" dir within?
         type=str,
         default="./",
     )

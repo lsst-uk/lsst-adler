@@ -1,12 +1,13 @@
 import os
 import logging
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
 class AdlerCLIArguments:
     """
-    Class for storing abd validating Adler command-line arguments.
+    Class for storing and validating Adler command-line arguments.
 
     Attributes
     -----------
@@ -19,6 +20,7 @@ class AdlerCLIArguments:
         self.ssObjectId = args.ssObjectId
         self.ssObjectId_list = args.ssObjectId_list
         self.filter_list = args.filter_list
+        self.colour_list = args.colour_list
         self.date_range = args.date_range
         self.outpath = args.outpath
         self.db_name = args.db_name
@@ -42,6 +44,9 @@ class AdlerCLIArguments:
         if self.sql_filename:
             self._validate_sql_filename()
 
+        if self.colour_list:
+            self._validate_colour_list()
+
     def _validate_filter_list(self):
         """Validation checks for the filter_list command-line argument."""
         expected_filters = ["u", "g", "r", "i", "z", "y"]
@@ -53,6 +58,26 @@ class AdlerCLIArguments:
             raise ValueError(
                 "Unexpected filters found in --filter_list command-line argument. --filter_list must be a list of LSST filters."
             )
+
+    def _validate_colour_list(self):
+        # the expected format is a list of "g-r", "r-i" etc
+        expected_filters = ["u", "g", "r", "i", "z", "y"]
+        err_msg_filt1 = "Unexpected filters found in --colour_list command-line argument. --colour_list must contain LSST filters in the format 'filter2-filter1'."
+
+        try:
+            _colour_filters = np.array([x.split("-") for x in self.colour_list]).flatten()
+        except:
+            logging.error(err_msg_filt1)
+            raise ValueError(err_msg_filt1)
+
+        if not set(_colour_filters).issubset(expected_filters):
+            logging.error(err_msg_filt1)
+            raise ValueError(err_msg_filt1)
+
+        if not set(_colour_filters).issubset(self.filter_list):
+            err_msg = "The filters required to calculate the colours have not been requested in --filter-list"
+            logging.error(err_msg)
+            raise ValueError(err_msg)
 
     def _validate_ssObjectId(self):
         """
