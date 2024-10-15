@@ -51,6 +51,7 @@ class AdlerCLIArguments:
         """Validation checks for the filter_list command-line argument."""
         expected_filters = ["u", "g", "r", "i", "z", "y"]
 
+        # TODO: more informative error message, show an example of required filter_list format
         if not set(self.filter_list).issubset(expected_filters):
             logging.error(
                 "Unexpected filters found in --filter_list command-line argument. --filter_list must be a list of LSST filters."
