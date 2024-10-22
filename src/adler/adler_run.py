@@ -141,8 +141,8 @@ def runAdler(cli_args):
         # TODO: save the figures if an outpath is provided
         ax1.legend()
         if cli_args.outpath:
-            fig_file = "{}/phase_curve_{}_{}_{}.png".format(
-                cli_args.outpath, cli_args.ssObjectId, filt, int(np.amax(df_obs["midPointMjdTai"]))
+            fig_file = "{}/phase_curve_{}_{}.png".format(
+                cli_args.outpath, cli_args.ssObjectId, int(np.amax(df_obs["midPointMjdTai"]))
             )
             msg = "Save figure: {}".format(fig_file)
             print(msg)
