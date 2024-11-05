@@ -1,5 +1,6 @@
 from adler.objectdata.AdlerPlanetoid import AdlerPlanetoid
 from adler.science.PhaseCurve import PhaseCurve
+import os
 import pandas as pd
 import astropy.units as u
 import numpy as np
@@ -24,10 +25,12 @@ def run_adler_day(ssobject_list):
         planetoid = AdlerPlanetoid.construct_from_cassandra(ssoid, date_range=[60290.0, 61902])
 
         try:
-            planetoid.attach_previous_adler_data("adler-day-testing.db")
+            dirname = os.path.dirname(__file__)
+            database_path = os.path.join(dirname, "../../tests/data/adler-day-testing.db")
+            planetoid.attach_previous_adler_data(database_path)
             previousAdlerData = True  # this could be a flag on the AdlerPlanetoid object
         except ValueError:
-            # no AdlerData for this object ID as yet
+            print("No data found for this object in AdlerDatabase.")
             previousAdlerData = False
 
         for filt in planetoid.filter_list:
