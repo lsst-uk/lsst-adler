@@ -25,6 +25,8 @@ class AdlerCLIArguments:
         self.outpath = args.outpath
         self.db_name = args.db_name
         self.sql_filename = args.sql_filename
+        self.plot_show = args.plot_show
+        self.phase_model = args.phase_model
 
         self.validate_arguments()
 
@@ -46,6 +48,9 @@ class AdlerCLIArguments:
 
         if self.colour_list:
             self._validate_colour_list()
+
+        if self.phase_model:
+            self._validate_phase_model()
 
     def _validate_filter_list(self):
         """Validation checks for the filter_list command-line argument."""
@@ -149,3 +154,16 @@ class AdlerCLIArguments:
             raise ValueError(
                 "The file supplied for the command-line argument --sql_filename cannot be found."
             )
+
+    def _validate_phase_model(self):
+        """Validation checks for the phase_model command-line argument."""
+        expected_models = ["HG", "HG1G2", "HG12", "HG12_Pen16", "LinearPhaseFunc"]
+        err_msg_model = (
+            "Unexpected model in --phase_model command-line arguments. Please select from {}".format(
+                expected_models
+            )
+        )
+
+        if self.phase_model not in expected_models:
+            logging.error(err_msg_model)
+            raise ValueError(err_msg_model)

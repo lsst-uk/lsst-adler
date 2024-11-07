@@ -53,11 +53,18 @@ for filt in [column_dict["filt_obs"], column_dict["filt_ref"]]:
 
     H = sso.H
     G12 = sso.G12
-    pc = PhaseCurve(H=H * u.mag, phase_parameter_1=G12, model_name="HG12_Pen16")
+    pc = PhaseCurve(
+        H=H,
+        # H=H * u.mag,
+        phase_parameter_1=G12,
+        model_name="HG12_Pen16",
+    )
 
     pc_fit = pc.FitModel(
-        np.array(getattr(obs, "phaseAngle")) * u.deg,
-        np.array(getattr(obs, "reduced_mag")) * u.mag,
+        np.radians(np.array(getattr(obs, "phaseAngle"))),
+        np.array(getattr(obs, "reduced_mag")),
+        # np.array(getattr(obs, "phaseAngle")) * u.deg,
+        # np.array(getattr(obs, "reduced_mag")) * u.mag,
     )
     pc = pc.InitModelSbpy(pc_fit)
 
@@ -110,7 +117,17 @@ def test_col_obs_ref(
         )  # merge with observation data (avoiding duplicating x_col)
 
         # compare results df to stored df
+        # NB: see also pytest.approx for comparing dictionaries
         for x in list(df_col):
             print(x)
             assert_array_almost_equal(np.array(df_col[x]), np.array(df_ref[x]))
             # TODO: diasourceId failing on ubuntu tests, due to float? need to save as str/int?
+
+
+# test_col_obs_ref(
+#     planetoid=planetoid,
+#     adler_data=adler_data,
+#     column_dict=column_dict,
+#     N_ref_list=[1, 3, 5],
+#     df_ref_list=[df_N_ref_1, df_N_ref_3, df_N_ref_5],
+# )

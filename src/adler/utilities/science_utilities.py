@@ -78,7 +78,8 @@ def zero_func(x, axis=None):
     return 0
 
 
-def sigma_clip(data_res, kwargs={"maxiters": 1, "cenfunc": zero_func}):
+# def sigma_clip(data_res, kwargs={"sigma":3, "maxiters": 1, "cenfunc": zero_func}):
+def sigma_clip(data_res, **kwargs):
     """Wrapper function for astropy.stats.sigma_clip, here we define the default centre of the data (the data - model residuals) to be zero
 
     Parameters
@@ -206,7 +207,9 @@ def get_df_obs_filt(planetoid, filt, x_col="midPointMjdTai", x1=None, x2=None, c
     if "AbsMag" in col_list:
         # calculate the model absolute magnitude
         # TODO: add robustness to the units, phaseAngle and reduced_mag must match pc_model
-        df_obs["AbsMag"] = pc_model.AbsMag(obs.phaseAngle * u.deg, obs.reduced_mag * u.mag).value
+        # For now we must assume that there are no units, and that degrees have been passed...
+        # df_obs["AbsMag"] = pc_model.AbsMag(obs.phaseAngle * u.deg, obs.reduced_mag * u.mag).value
+        df_obs["AbsMag"] = pc_model.AbsMag(np.radians(obs.phaseAngle), obs.reduced_mag)
 
     # select only the required columns
     df_obs = df_obs[col_list]

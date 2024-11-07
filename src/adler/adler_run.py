@@ -1,6 +1,7 @@
 import logging
 import argparse
 import astropy.units as u
+from astropy.time import Time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -103,7 +104,8 @@ def runAdler(cli_args):
 
             # initial simple phase curve filter model with fixed G12
             pc = PhaseCurve(
-                H=sso.H * u.mag,
+                # H=sso.H * u.mag,
+                H=sso.H,
                 phase_parameter_1=0.62,
                 model_name="HG12_Pen16",
             )
@@ -118,14 +120,24 @@ def runAdler(cli_args):
 
             # do a HG12_Pen16 fit to the past data
             pc_fit = pc.FitModel(
-                np.array(df_obs["phaseAngle"]) * u.deg,
-                np.array(df_obs["reduced_mag"]) * u.mag,
-                np.array(df_obs["magErr"]) * u.mag,
+                # np.array(df_obs["phaseAngle"]) * u.deg,
+                # np.array(df_obs["reduced_mag"]) * u.mag,
+                # np.array(df_obs["magErr"]) * u.mag,
+                np.radians(np.array(df_obs["phaseAngle"])),
+                np.array(df_obs["reduced_mag"]),
+                np.array(df_obs["magErr"]),
             )
             pc_fit = pc.InitModelSbpy(pc_fit)
 
-            # Store the fitted values in an AdlerData object
-            adler_data.populate_phase_parameters(filt, **pc_fit.__dict__)
+            # Store the fitted values, and metadata, in an AdlerData object
+            ad_params = pc_fit.__dict__
+            ad_params["phaseAngle_min"] = np.amin(df_obs["phaseAngle"])  # * u.deg
+            ad_params["phaseAngle_range"] = np.ptp(df_obs["phaseAngle"])  # * u.deg
+            ad_params["arc"] = np.ptp(df_obs["midPointMjdTai"])  # * u.d
+            ad_params["nobs"] = len(df_obs)
+            ad_params["modelFitMjd"] = Time.now().mjd
+            # adler_data.populate_phase_parameters(filt, **pc_fit.__dict__)
+            adler_data.populate_phase_parameters(filt, **ad_params)
 
             # add to plot
             ax1 = fig.axes[0]
@@ -134,13 +146,18 @@ def runAdler(cli_args):
             alpha = np.linspace(0, np.amax(obs.phaseAngle)) * u.deg
             ax1.plot(
                 alpha.value,
-                pc_fit.ReducedMag(alpha).value,
-                label="{}, H={:.2f}, G12={:.2f}".format(filt, pc_fit.H.value, pc_fit.phase_parameter_1),
+                # pc_fit.ReducedMag(alpha).value,
+                # label="{}, H={:.2f}, G12={:.2f}".format(filt, pc_fit.H.value, pc_fit.phase_parameter_1),
+                pc_fit.ReducedMag(alpha),
+                label="{}, H={:.2f}, G12={:.2f}".format(filt, pc_fit.H, pc_fit.phase_parameter_1),
             )
-
-        # TODO: save the figures if an outpath is provided
         ax1.legend()
-        if cli_args.outpath:
+
+        # TODO: Use a CLI arg flag to open figure interactively instead of saving?
+        if cli_args.plot_show:
+            plt.show()
+        # Save figures at the outpath location
+        else:
             fig_file = "{}/phase_curve_{}_{}.png".format(
                 cli_args.outpath, cli_args.ssObjectId, int(np.amax(df_obs["midPointMjdTai"]))
             )
@@ -149,11 +166,15 @@ def runAdler(cli_args):
             logger.info(msg)
             fig = plot_errorbar(planetoid, fig=fig, filename=fig_file)  # TODO: add titles with filter name?
             plt.close()
-        else:
-            plt.show()
 
-        # TODO: output adler values to a database
+        # Output adler values to a database if a db_name is provided
         print(adler_data.__dict__)
+        if cli_args.db_name:
+            adler_db = "{}/{}".format(cli_args.outpath, cli_args.db_name)
+            msg = "write to {}".format(adler_db)
+            print(msg)
+            logger.info(msg)
+            adler_data.write_row_to_database(adler_db)
 
         # analyse colours for the filters provided
         logger.info("Calculate colours: {}".format(cli_args.colour_list))
@@ -183,10 +204,10 @@ def runAdler(cli_args):
 
             # determine the filt_obs - filt_ref colour
             # generate a plot
-            if cli_args.outpath:
-                plot_dir = cli_args.outpath
-            else:
+            if cli_args.plot_show:
                 plot_dir = None
+            else:
+                plot_dir = cli_args.outpath
 
             col_dict = col_obs_ref(
                 planetoid,
@@ -198,6 +219,7 @@ def runAdler(cli_args):
                 # x1 = x1,
                 # x2 = x2,
                 plot_dir=plot_dir,
+                plot_show=cli_args.plot_show,
             )
 
             print(col_dict)
@@ -253,16 +275,26 @@ def main():
     optional_group.add_argument(
         "-n",
         "--db_name",
-        help="Stem filename of output database. If this doesn't exist, it will be created. Default: adler_out.",
+        # help="Stem filename of output database. If this doesn't exist, it will be created. Default: adler_out.",
+        # type=str,
+        # default="adler_out",
+        help="Optional filename of output database, used to store Adler results in a db if provided.",
         type=str,
-        default="adler_out",
+        default=None,
     )
     optional_group.add_argument(
         "-i",
         "--sql_filename",
-        help="Optional input path location of a sql database file containing observations",
+        help="Optional input path location of a sql database file containing observations.",
         type=str,
         default=None,
+    )
+    # TODO: add flag argument to display plots instead of saving them
+    optional_group.add_argument(
+        "-p",
+        "--plot_show",
+        help="Optional flag to display plots interactively instead of saving to file.",
+        action="store_true",
     )
 
     args = parser.parse_args()
