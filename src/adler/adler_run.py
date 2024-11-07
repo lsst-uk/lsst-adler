@@ -10,7 +10,7 @@ import os
 
 from adler.objectdata.AdlerPlanetoid import AdlerPlanetoid
 from adler.objectdata.AdlerData import AdlerData
-from adler.science.PhaseCurve import PhaseCurve
+from adler.science.PhaseCurve import PhaseCurve, ADLER_SBPY_DICT
 from adler.science.Colour import col_obs_ref
 from adler.utilities.AdlerCLIArguments import AdlerCLIArguments
 from adler.utilities.adler_logging import setup_adler_logging
@@ -28,7 +28,19 @@ def runAdler(cli_args):
     N_pc_fit = 10  # minimum number of data points to fit phase curve
     diff_cut = 1.0  # magnitude difference used to identify outliers
     obs_cols = ["diaSourceId", "midPointMjdTai", "outlier"]  # observation columns to use
-    phase_model = "HG12_Pen16"  # which phase curve model to fit
+    phase_model = cli_args.phase_model  # which phase curve model to fit
+
+    # get the name of the phase parameter
+    # TODO: make an option for two parameter HG1G2
+    phase_parameter_1 = ADLER_SBPY_DICT[phase_model]["phase_parameter_1"]
+    print(phase_model, phase_parameter_1)
+
+    # set default phase parameter values
+    # TODO: make an option for two parameter HG1G2
+    if phase_model == "HG":
+        phase_param_1_default = 0.15
+    else:
+        phase_param_1_default = 0.62
 
     # Define colour parameters
     # set number of reference observations to use for colour estimate
@@ -102,23 +114,29 @@ def runAdler(cli_args):
             # Determine the reference phase curve model
             # TODO: We would load the best phase curve model available in AdlerData here
 
-            # initial simple phase curve filter model with fixed G12
+            # initial simple phase curve filter model with fixed phase_parameter
+            # use the ssObject value for H as initial guess, this is in HG12_Pen16
+            # TODO: use the ssObject value for phase parameter as initial guess?
             pc = PhaseCurve(
                 # H=sso.H * u.mag,
                 H=sso.H,
-                phase_parameter_1=0.62,
-                model_name="HG12_Pen16",
+                phase_parameter_1=phase_param_1_default,
+                model_name=phase_model,
             )
 
-            # only fit G12 when sufficient data is available
+            # only fit phase_parameter when sufficient data is available
             if len(df_obs) < N_pc_fit:
-                msg = "Do not fit G12, use G12={:.2f}".format(pc.phase_parameter_1)
+                msg = "Do not fit {}, use {}={:.2f}".format(
+                    phase_parameter_1, phase_parameter_1, pc.phase_parameter_1
+                )
                 logger.info(msg)
-                pc.model_function.G12.fixed = True
+                # pc.model_function.G12.fixed = True
+                getattr(pc.model_function, phase_parameter_1).fixed = True
             else:
-                pc.model_function.G12.fixed = False
+                # pc.model_function.G12.fixed = False
+                getattr(pc.model_function, phase_parameter_1).fixed = False
 
-            # do a HG12_Pen16 fit to the past data
+            # do a phase model fit to the past data
             pc_fit = pc.FitModel(
                 # np.array(df_obs["phaseAngle"]) * u.deg,
                 # np.array(df_obs["reduced_mag"]) * u.mag,
@@ -137,7 +155,10 @@ def runAdler(cli_args):
             ad_params["nobs"] = len(df_obs)
             ad_params["modelFitMjd"] = Time.now().mjd
             # adler_data.populate_phase_parameters(filt, **pc_fit.__dict__)
+            # TODO: replace any None with np.nan? e.g. phase_parameter_2?
             adler_data.populate_phase_parameters(filt, **ad_params)
+
+            print(adler_data.get_phase_parameters_in_filter(filt, phase_model).__dict__)
 
             # add to plot
             ax1 = fig.axes[0]
@@ -149,7 +170,9 @@ def runAdler(cli_args):
                 # pc_fit.ReducedMag(alpha).value,
                 # label="{}, H={:.2f}, G12={:.2f}".format(filt, pc_fit.H.value, pc_fit.phase_parameter_1),
                 pc_fit.ReducedMag(alpha),
-                label="{}, H={:.2f}, G12={:.2f}".format(filt, pc_fit.H, pc_fit.phase_parameter_1),
+                label="{}, H={:.2f}, {}={:.2f}".format(
+                    filt, pc_fit.H, phase_parameter_1, pc_fit.phase_parameter_1
+                ),
             )
         ax1.legend()
 
@@ -158,8 +181,8 @@ def runAdler(cli_args):
             plt.show()
         # Save figures at the outpath location
         else:
-            fig_file = "{}/phase_curve_{}_{}.png".format(
-                cli_args.outpath, cli_args.ssObjectId, int(np.amax(df_obs["midPointMjdTai"]))
+            fig_file = "{}/phase_curve_{}_{}_{}.png".format(
+                cli_args.outpath, cli_args.ssObjectId, phase_model, int(np.amax(df_obs["midPointMjdTai"]))
             )
             msg = "Save figure: {}".format(fig_file)
             print(msg)
@@ -289,12 +312,19 @@ def main():
         type=str,
         default=None,
     )
-    # TODO: add flag argument to display plots instead of saving them
     optional_group.add_argument(
         "-p",
         "--plot_show",
         help="Optional flag to display plots interactively instead of saving to file.",
         action="store_true",
+    )
+    # TODO: Add a model_name parameter
+    optional_group.add_argument(
+        "-m",
+        "--phase_model",
+        help="Select the phase parameter model_name. LIST OPTIONS AND DEFAULT",
+        type=str,
+        default="HG12_Pen16",
     )
 
     args = parser.parse_args()

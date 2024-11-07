@@ -165,8 +165,8 @@ def col_obs_ref(
         ax1.invert_yaxis()
 
         if plot_dir:
-            fname = "{}/colour_plot_{}_{}-{}_{}.png".format(
-                plot_dir, planetoid.ssObjectId, filt_obs, filt_ref, int(x_obs)
+            fname = "{}/colour_plot_{}_{}-{}_{}_{}.png".format(
+                plot_dir, planetoid.ssObjectId, filt_obs, filt_ref, phase_model, int(x_obs)
             )
             print("Save figure: {}".format(fname))
             plt.savefig(fname, facecolor="w", transparent=True, bbox_inches="tight")
