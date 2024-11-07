@@ -78,7 +78,6 @@ def zero_func(x, axis=None):
     return 0
 
 
-# def sigma_clip(data_res, kwargs={"sigma":3, "maxiters": 1, "cenfunc": zero_func}):
 def sigma_clip(data_res, **kwargs):
     """Wrapper function for astropy.stats.sigma_clip, here we define the default centre of the data (the data - model residuals) to be zero
 
@@ -88,7 +87,11 @@ def sigma_clip(data_res, **kwargs):
     data_res: array
         The residuals of the data compared to the model.
     kwargs: dict
-        Dictionary of keyword arguments from astropy.stats.sigma_clip
+        Dictionary of keyword arguments from astropy.stats.sigma_clip, namely:
+        sigma : default 3
+        maxiters: default 5
+        cenfunc: default 'median'
+
 
     Returns
     -----------
