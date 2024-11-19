@@ -3,8 +3,8 @@ from numpy.testing import assert_equal
 import numpy as np
 
 from adler.utilities.tests_utilities import get_test_data_filepath
-from adler.dataclasses.dataclass_utilities import get_data_table
-from adler.dataclasses.SSObject import SSObject
+from adler.objectdata.objectdata_utilities import get_data_table
+from adler.objectdata.SSObject import SSObject
 
 
 def test_construct_SSObject_from_data_table():

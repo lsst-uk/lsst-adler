@@ -1,13 +1,15 @@
 from dataclasses import dataclass
 
-from adler.dataclasses.dataclass_utilities import get_from_table
+from adler.objectdata.objectdata_utilities import get_from_table, get_from_dictionary
 
 MPCORB_KEYS = {
     "mpcDesignation": str,
+    "fullDesignation": str,
     "mpcNumber": int,
     "mpcH": float,
     "mpcG": float,
     "epoch": float,
+    "tperi": float,
     "peri": float,
     "node": float,
     "incl": float,
@@ -31,6 +33,9 @@ class MPCORB:
     mpcDesignation: str
         Number or provisional designation (in packed form)
 
+    fullDesignation: str
+        Number or provisional designation (in readable form)
+
     mpcNumber: int
         MPC number (if the asteroid has been numbered; NULL otherwise). Provided for convenience.
 
@@ -42,6 +47,9 @@ class MPCORB:
 
     epoch: float
         Epoch (in MJD, .0 TT)
+
+    tperi: float
+        MJD of pericentric passage
 
     peri: float
         Argument of perihelion, J2000.0 (degrees)
@@ -71,10 +79,12 @@ class MPCORB:
 
     ssObjectId: str = ""
     mpcDesignation: str = ""
+    fullDesignation: str = ""
     mpcNumber: int = 0
     mpcH: float = 0.0
     mpcG: float = 0.0
     epoch: float = 0.0
+    tperi: float = 0.0
     peri: float = 0.0
     node: float = 0.0
     incl: float = 0.0
@@ -107,5 +117,32 @@ class MPCORB:
 
         for mpcorb_key, mpcorb_type in MPCORB_KEYS.items():
             mpcorb_dict[mpcorb_key] = get_from_table(data_table, mpcorb_key, mpcorb_type, "MPCORB")
+
+        return cls(**mpcorb_dict)
+
+    @classmethod
+    def construct_from_dictionary(cls, ssObjectId, data_dict):
+        """Initialises the MPCORB object from a dictionary of data.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        data_dict : dict or dict-like object
+            Dictionary of data from which attributes shoud be populated.
+
+        Returns
+        -----------
+        MPCORB object
+            MPCORB object with class attributes populated from data_table.
+
+        """
+        mpcorb_dict = {"ssObjectId": ssObjectId}
+
+        for mpcorb_key, mpcorb_type in MPCORB_KEYS.items():
+            mpcorb_dict[mpcorb_key] = get_from_dictionary(
+                data_dict, mpcorb_key.casefold(), mpcorb_type, "MPCORB"
+            )
 
         return cls(**mpcorb_dict)

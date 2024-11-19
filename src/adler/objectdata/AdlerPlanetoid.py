@@ -1,12 +1,14 @@
 from lsst.rsp import get_tap_service
 import pandas as pd
+import numpy as np
 import logging
+import json
 
-from adler.dataclasses.Observations import Observations
-from adler.dataclasses.MPCORB import MPCORB
-from adler.dataclasses.SSObject import SSObject
-from adler.dataclasses.AdlerData import AdlerData
-from adler.dataclasses.dataclass_utilities import get_data_table
+from adler.objectdata.Observations import Observations
+from adler.objectdata.MPCORB import MPCORB
+from adler.objectdata.SSObject import SSObject
+from adler.objectdata.AdlerData import AdlerData
+from adler.objectdata.objectdata_utilities import get_data_table
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +29,7 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of int
+        date_range : list of float
             The minimum and maximum dates of the desired observations.
 
         observations_by_filter : list of Observations objects
@@ -74,7 +76,7 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of int
+        date_range : list of float
             The minimum and maximum dates of the desired observations.
 
         schema : str or None
@@ -115,6 +117,89 @@ class AdlerPlanetoid:
         return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
 
     @classmethod
+    def construct_from_cassandra(
+        cls,
+        ssObjectId,
+        filter_list=["u", "g", "r", "i", "z", "y"],
+        date_range=[60000.0, 67300.0],
+        cassandra_hosts=["10.21.3.123"],
+    ):  # pragma: no cover
+        """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects from
+        a Cassandra database. Used only for Lasair integration.
+
+        TODO: move method to its own class which inherits from AdlerPlanetoid and move to adler-lasair repo?
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        filter_list : list of str
+            A comma-separated list of the filters of interest.
+
+        date_range : list of float
+            The minimum and maximum dates of the desired observations.
+
+        cassandra_hosts : list of str
+            Location of the Cassandra database - usually an IP address. Default is ["10.21.3.123"].
+
+        """
+        # do not move this import! CassandraFetcher requires the non-mandatory
+        # cassandra-driver library - if not installed, and this import is at the top,
+        # test collection will break.
+        from adler.lasair.cassandra_fetcher import CassandraFetcher
+
+        fetcher = CassandraFetcher(cassandra_hosts=cassandra_hosts)
+
+        MPCORB_dict = fetcher.fetch_MPCORB(ssObjectId)
+        SSObject_dict = fetcher.fetch_SSObject(ssObjectId, filter_list)
+        observations_dict = fetcher.fetch_observations(ssObjectId)
+
+        # note that Cassandra doesn't allow filters/joins
+        # instead we pull all observations for this ID, then filter with Pandas later
+        observations_table = pd.DataFrame(observations_dict)
+        observations_table.rename(columns={"decl": "dec"}, inplace=True)
+
+        observations_by_filter = []
+        for filter_name in filter_list:
+            obs_slice = observations_table[
+                (observations_table["band"] == filter_name)
+                & (observations_table["midpointmjdtai"].between(date_range[0], date_range[1]))
+            ]
+
+            if len(obs_slice) == 0:
+                logger.warning(
+                    "No observations found in {} filter for this object. Skipping this filter.".format(
+                        filter_name
+                    )
+                )
+            else:
+                observations = Observations.construct_from_data_table(ssObjectId, filter_name, obs_slice)
+                observations_by_filter.append(observations)
+
+        if len(observations_by_filter) == 0:
+            logger.error(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
+            raise Exception(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
+
+        if len(filter_list) > len(observations_by_filter):
+            logger.info(
+                "Not all specified filters have observations. Recalculating filter list based on past observations."
+            )
+            filter_list = [obs_object.filter_name for obs_object in observations_by_filter]
+            logger.info("New filter list is: {}".format(filter_list))
+
+        mpcorb = MPCORB.construct_from_dictionary(ssObjectId, MPCORB_dict)
+        ssobject = SSObject.construct_from_dictionary(ssObjectId, filter_list, SSObject_dict)
+
+        adler_data = AdlerData(ssObjectId, filter_list)
+
+        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
+
+    @classmethod
     def construct_from_RSP(
         cls, ssObjectId, filter_list=["u", "g", "r", "i", "z", "y"], date_range=[60000.0, 67300.0]
     ):  # pragma: no cover
@@ -129,7 +214,7 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of int
+        date_range : list of float
             The minimum and maximum dates of the desired observations.
 
         """
@@ -187,7 +272,7 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of int
+        date_range : list of float
             The minimum and maximum dates of the desired observations.
 
         service : pyvo.dal.tap.TAPService object or None
@@ -211,8 +296,10 @@ class AdlerPlanetoid:
         for filter_name in filter_list:
             observations_sql_query = f"""
                 SELECT
-                    ssObject.ssObjectId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
-                    topocentricDist, heliocentricDist
+                    ssObject.ssObjectId, ssSource.diaSourceId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
+                    topocentricDist, heliocentricDist, heliocentricX, heliocentricY, heliocentricZ,
+                    topocentricX, topocentricY, topocentricZ,
+                    eclipticLambda, eclipticBeta
                 FROM
                     {schema}ssObject
                     JOIN {schema}diaSource ON {schema}ssObject.ssObjectId   = {schema}diaSource.ssObjectId
@@ -263,7 +350,7 @@ class AdlerPlanetoid:
 
         MPCORB_sql_query = f"""
             SELECT
-                ssObjectId, mpcDesignation, mpcNumber, mpcH, mpcG, epoch, peri, node, incl, e, n, q, 
+                ssObjectId, mpcDesignation, fullDesignation, mpcNumber, mpcH, mpcG, epoch, tperi, peri, node, incl, e, n, q, 
                 uncertaintyParameter, flags
             FROM
                 {schema}MPCORB
@@ -382,3 +469,18 @@ class AdlerPlanetoid:
             raise ValueError("Filter {} is not in AdlerPlanetoid.filter_list.".format(filter_name))
 
         return self.SSObject.filter_dependent_values[filter_index]
+
+    def attach_previous_adler_data(self, filepath):
+        """Attaches and returns an AdlerData object containing the most recent AdlerData
+        for this ssObjectId.
+
+        Parameters
+        -----------
+        filepath : path-like object
+            Filepath with the location of the output SQL database.
+        """
+
+        self.PreviousAdlerData = AdlerData(self.ssObjectId, self.filter_list)
+        self.PreviousAdlerData.populate_from_database(filepath)
+
+        return self.PreviousAdlerData

@@ -6,12 +6,12 @@ import sqlite3
 
 from numpy.testing import assert_array_equal
 
-from adler.dataclasses.AdlerData import AdlerData
+from adler.objectdata.AdlerData import AdlerData
 from adler.utilities.tests_utilities import get_test_data_filepath
 
 # setting up the AdlerData object to be used for testing
 
-test_object = AdlerData(666, ["u", "g", "r"])
+test_object = AdlerData("8268570668335894776", ["u", "g", "r"])
 
 u_model_1 = {
     "model_name": "model_1",
@@ -249,4 +249,38 @@ def test_write_row_to_database(tmp_path):
     # note that because I'm using Pandas there's some small dtype and np.nan/None stuff to clear up
     # but this makes for a quick streamlined test anyway
     expected_data = expected_data.replace({np.nan: None})
+    expected_data = expected_data.astype({"ssObjectId": str})
     pd.testing.assert_frame_equal(expected_data, written_data, check_dtype=False)
+
+
+def test_read_row_from_database():
+    # NOTE: the test database here has two rows, one with an earlier timestamp and different data
+    # So this test also ensures that only the most recent data for the object is pulled.
+
+    db_location = get_test_data_filepath("test_AdlerData_database.db")
+
+    new_object = AdlerData("8268570668335894776", ["u", "g", "r"])
+    new_object.populate_from_database(db_location)
+
+    assert new_object.__dict__ == test_object.__dict__
+
+    with pytest.raises(ValueError) as error_info_1:
+        empty_data = AdlerData("pretend_object", ["u", "g", "r"])
+        empty_data.populate_from_database(db_location)
+
+    assert error_info_1.value.args[0] == "No data found in this database for the supplied ssObjectId."
+
+    with pytest.raises(ValueError) as error_info_2:
+        bad_filter = AdlerData("8268570668335894776", ["u", "g", "h"])
+        bad_filter.populate_from_database(db_location)
+
+    assert (
+        error_info_2.value.args[0]
+        == "Data does not exist for some of the requested filters in this database. Filters in database for this object: ['u', 'g', 'r']"
+    )
+
+    with pytest.raises(ValueError) as error_info_3:
+        bad_filter = AdlerData("8268570668335894776", ["u", "g", "h"])
+        bad_filter.populate_from_database("./dummy_location.db")
+
+    assert error_info_3.value.args[0] == "Database cannot be found at given filepath."
