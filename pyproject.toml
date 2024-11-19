@@ -21,6 +21,7 @@ dependencies = [
     "sbpy",
     "matplotlib", # for plotting
     "pandas",
+    "scipy",
 ]
 
 [project.urls]
@@ -45,7 +46,7 @@ dev = [
 ]
 
 [project.scripts]
-adler = "adler.adler:main"
+adler = "adler.adler_run:main"
 
 [build-system]
 requires = [

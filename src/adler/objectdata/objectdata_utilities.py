@@ -109,6 +109,29 @@ def get_from_table(data_table, column_name, data_type, table_name="default"):
 
 
 def get_from_dictionary(data_dict, key_name, data_type, table_name="default"):
+    """Retrieves information from a dictionary and forces it to be a specified type.
+
+    Parameters
+    -----------
+    data_dict : dict or dict-like object
+        Dictionary containing columns of interest.
+
+    key_name : str
+        Key name under which the data of interest is stored.
+
+    data_type : type
+        Data type. Should be int, float, str or np.ndarray.
+
+    table_name : str
+        Name of the table or dictionary. This is mostly for more informative error messages. Default="default".
+
+    Returns
+    -----------
+    data_val : str, float, int or nd.array
+        The data requested from the dictionary cast to the type required.
+
+    """
+
     try:
         if data_type == str:
             data_val = str(data_dict[key_name])
@@ -124,14 +147,15 @@ def get_from_dictionary(data_dict, key_name, data_type, table_name="default"):
     except ValueError:
         print("error message")
 
-    data_val = check_value_populated(data_val, data_type, key_name, "JSON")
+    data_val = check_value_populated(data_val, data_type, key_name, "dictionary")
 
     return data_val
 
 
 def check_value_populated(data_val, data_type, column_name, table_name):
     """Checks to see if data_val populated properly and prints a helpful warning if it didn't.
-    Usually this will trigger because the RSP hasn't populated that field for this particular object.
+    Usually this will trigger because the RSP or Cassandra database hasn't populated that
+    field for this particular object.
 
     Parameters
     -----------

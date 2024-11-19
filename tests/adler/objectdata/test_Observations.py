@@ -1,8 +1,8 @@
 from numpy.testing import assert_almost_equal
 import numpy as np
 
-from adler.dataclasses.Observations import Observations
-from adler.dataclasses.dataclass_utilities import get_data_table
+from adler.objectdata.Observations import Observations
+from adler.objectdata.objectdata_utilities import get_data_table
 from adler.utilities.tests_utilities import get_test_data_filepath
 
 
@@ -14,8 +14,10 @@ def test_construct_observations_from_data_table():
 
     test_query = f"""
                     SELECT
-                        ssObject.ssObjectId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
-                        topocentricDist, heliocentricDist
+                        ssObject.ssObjectId, ssSource.diaSourceId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
+                        topocentricDist, heliocentricDist, heliocentricX, heliocentricY, heliocentricZ,
+                        topocentricX, topocentricY, topocentricZ,
+                        eclipticLambda, eclipticBeta
                     FROM
                         ssObject
                         JOIN diaSource ON ssObject.ssObjectId   = diaSource.ssObjectId

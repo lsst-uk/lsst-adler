@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
 import numpy as np
 
-from adler.dataclasses.dataclass_utilities import get_from_table, get_from_dictionary
+from adler.objectdata.objectdata_utilities import get_from_table, get_from_dictionary
 
 OBSERVATIONS_KEYS = {
+    "diaSourceId": np.ndarray,
     "mag": np.ndarray,
     "magErr": np.ndarray,
     "midPointMjdTai": np.ndarray,
@@ -12,6 +13,14 @@ OBSERVATIONS_KEYS = {
     "phaseAngle": np.ndarray,
     "topocentricDist": np.ndarray,
     "heliocentricDist": np.ndarray,
+    "heliocentricX": np.ndarray,
+    "heliocentricY": np.ndarray,
+    "heliocentricZ": np.ndarray,
+    "topocentricX": np.ndarray,
+    "topocentricY": np.ndarray,
+    "topocentricZ": np.ndarray,
+    "eclipticLambda": np.ndarray,
+    "eclipticBeta": np.ndarray,
 }
 
 
@@ -28,6 +37,9 @@ class Observations:
 
     filter_name : str
         Filter of the observations.
+
+    diaSourceId: array_like of ints
+        Unique identifier of the observation
 
     mag: array_like of floats
         Magnitude. This is a placeholder and will be replaced by flux.
@@ -53,6 +65,30 @@ class Observations:
     heliocentricDist: array_like of floats
         Heliocentric distance.
 
+    heliocentricX: array_like of floats
+        x-axis component of the heliocentric distance.
+
+    heliocentricY: array_like of floats
+        y-axis component of the heliocentric distance.
+
+    heliocentricZ: array_like of floats
+        z-axis component of the heliocentric distance.
+
+    topocentricX: array_like of floats
+        x-axis component of the topocentric distance.
+
+    topocentricY: array_like of floats
+        y-axis component of the topocentric distance.
+
+    topocentricZ: array_like of floats
+        z-axis component of the topocentric distance.
+
+    eclipticLambda: array_like of floats
+        The ecliptic longitude.
+
+    eclipticBeta: array_like of floats
+        The ecliptic latitude.
+
     reduced_mag: array_like of floats
         The reduced magnitude.
 
@@ -63,6 +99,7 @@ class Observations:
 
     ssObjectId: str = ""
     filter_name: str = ""
+    diaSourceId: np.ndarray = field(default_factory=lambda: np.zeros(0))
     mag: np.ndarray = field(default_factory=lambda: np.zeros(0))
     magErr: np.ndarray = field(default_factory=lambda: np.zeros(0))
     midPointMjdTai: np.ndarray = field(default_factory=lambda: np.zeros(0))
@@ -71,11 +108,19 @@ class Observations:
     phaseAngle: np.ndarray = field(default_factory=lambda: np.zeros(0))
     topocentricDist: np.ndarray = field(default_factory=lambda: np.zeros(0))
     heliocentricDist: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    heliocentricX: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    heliocentricY: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    heliocentricZ: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    topocentricX: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    topocentricY: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    topocentricZ: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    eclipticLambda: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    eclipticBeta: np.ndarray = field(default_factory=lambda: np.zeros(0))
     reduced_mag: np.ndarray = field(default_factory=lambda: np.zeros(0))
     num_obs: int = 0
 
     @classmethod
-    def construct_from_data_table(cls, ssObjectId, filter_name, data_table):
+    def construct_from_data_table(cls, ssObjectId, filter_name, data_table, cassandra=False):
         """Initialises the Observations object from a table of data.
 
         Parameters
@@ -99,7 +144,44 @@ class Observations:
         obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "num_obs": len(data_table)}
 
         for obs_key, obs_type in OBSERVATIONS_KEYS.items():
-            obs_dict[obs_key] = get_from_table(data_table, obs_key, obs_type, "SSSource/DIASource")
+            try:
+                obs_dict[obs_key] = get_from_table(data_table, obs_key, obs_type, "SSSource/DIASource")
+            except KeyError:  # sometimes we have case issues...
+                obs_dict[obs_key] = get_from_table(
+                    data_table, obs_key.casefold(), obs_type, "SSSource/DIASource"
+                )
+
+        obs_dict["reduced_mag"] = cls.calculate_reduced_mag(
+            cls, obs_dict["mag"], obs_dict["topocentricDist"], obs_dict["heliocentricDist"]
+        )
+
+        return cls(**obs_dict)
+
+    @classmethod
+    def construct_from_dictionary(cls, ssObjectId, filter_name, data_dict):
+        """Initialises the Observations object from a dictionary of data.
+
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        filter_name : str
+            String of the filter the observations are taken in,
+
+        data_dict : dict or dict-like object
+            Dictionary of data from which attributes shoud be populated.
+
+        Returns
+        -----------
+        Observations object
+            Observations object with class attributes populated from data_dict.
+
+        """
+        obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "num_obs": 1}
+
+        for obs_key, obs_type in OBSERVATIONS_KEYS.items():
+            obs_dict[obs_key] = get_from_dictionary(data_dict, obs_key, obs_type, "SSSource/DIASource")
 
         obs_dict["reduced_mag"] = cls.calculate_reduced_mag(
             cls, obs_dict["mag"], obs_dict["topocentricDist"], obs_dict["heliocentricDist"]

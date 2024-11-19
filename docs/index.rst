@@ -5,6 +5,11 @@
 Welcome to adler's documentation!
 ========================================================================================
 
+Introduction
+------------
+
+Adler is an open source package which provides tools for detecting and characterising activity in observations of solar system objects.
+
 Dev Guide - Getting Started
 ---------------------------
 

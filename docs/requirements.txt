@@ -8,3 +8,6 @@ jupyter
 astropy
 sbpy
 matplotlib
+numpy
+ipykernel
+scipy

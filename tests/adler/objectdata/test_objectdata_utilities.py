@@ -4,9 +4,9 @@ import numpy as np
 from pandas.testing import assert_frame_equal
 from numpy.testing import assert_equal
 
-from adler.dataclasses.dataclass_utilities import get_data_table
-from adler.dataclasses.dataclass_utilities import get_from_table
-from adler.dataclasses.dataclass_utilities import check_value_populated
+from adler.objectdata.objectdata_utilities import get_data_table
+from adler.objectdata.objectdata_utilities import get_from_table
+from adler.objectdata.objectdata_utilities import check_value_populated
 from adler.utilities.tests_utilities import get_test_data_filepath
 
 

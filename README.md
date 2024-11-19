@@ -11,6 +11,9 @@
 This project was automatically generated using the LINCC-Frameworks 
 [python-project-template](https://github.com/lincc-frameworks/python-project-template).
 
+## Read the Docs
+
+Look here for information on adler, the API and some example notebooks: https://adler.readthedocs.io/en/latest/
 
 ## Dev Guide - Getting Started
 
@@ -24,7 +27,7 @@ create and activate a new environment.
 ```
 
 Once you have created a new environment, you can install this project for local
-development using the following commands from within the adler folder:
+development. Git clone the repo and from the top directory run the following commands from within the adler folder:
 
 ```
 >> pip install -e .'[dev]'
@@ -71,6 +74,15 @@ Notes:
    into documentation for ReadTheDocs works as expected. For more information, see
    the Python Project Template documentation on
    [Sphinx and Python Notebooks](https://lincc-ppt.readthedocs.io/en/latest/practices/sphinx.html#python-notebooks)
+
+## Dev Guide - Adding notebooks to Read The Docs
+
+- Copy notebook into `docs/notebooks` (N.B. the notebook must have at least one section header* and be using the "Python 3 (ipykernel)" kernel, not some conda env kernel that may only be installed locally)
+- Update the toctree in the file `docs/notebooks.rst`
+- Ensure necessary requirements are declared in `pyproject.toml` and `docs/requirements.txt`. Also, make sure that the notebook being added to the docs is using the python3 (ipykernel) kernel, not some conda env kernel that may only be installed locally
+- To update the docs locally, from the `docs` dir run: `python -m sphinx -T -E -b html -d _build/doctrees -D language=en . ../_readthedocs/html`
+
+* Multiple section headers from a notebook will also show up in the table of contents.
 
 ## Dev Guide - Updating pyproject.toml
 
