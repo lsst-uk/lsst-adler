@@ -213,7 +213,7 @@ def test_zero_func():
 
 
 def test_sigma_clip():
-    outliers = sci_utils.sigma_clip(y_res, {"maxiters": 1, "cenfunc": sci_utils.zero_func})
+    outliers = sci_utils.sigma_clip(y_res, sigma=3, maxiters=1, cenfunc=sci_utils.zero_func)
     assert_array_equal(outliers, outliers_y)
 
 

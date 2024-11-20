@@ -19,6 +19,7 @@ def col_obs_ref(
     x1=None,
     x2=None,
     plot_dir=None,
+    plot_show=False,
 ):
     """A function to calculate the colour of an Adler planetoid object.
     An observation in a given filter (filt_obs) is compared to previous observation in a reference filter (filt_ref).
@@ -99,7 +100,8 @@ def col_obs_ref(
     x_obs = df_obs.iloc[i][x_col]
     y_obs = df_obs.iloc[i][y_col]
     yerr_obs = df_obs.iloc[i][yerr_col]
-    obsId = df_obs.iloc[i][obsId_col]
+    # obsId = df_obs.iloc[i][obsId_col] # NB: for some reason iloc here doesn't preserve the int64 dtype of obsId_col...?
+    obsId = df_obs[obsId_col].iloc[i]
 
     # select observations in the reference filter from before the new obs
     ref_mask = df_obs_ref[x_col] < x_obs
@@ -112,11 +114,11 @@ def col_obs_ref(
 
     # select only the N_ref ref obs for comparison
     _df_obs_ref = df_obs_ref[ref_mask].iloc[-_N_ref:]
-    print(len(_df_obs_ref))
-    print(np.array(_df_obs_ref[x_col]))
+    # print(len(_df_obs_ref))
+    # print(np.array(_df_obs_ref[x_col]))
     if len(_df_obs_ref) == 0:
-        print("no reference observations")  # TODO: add proper error handling and logging here
-        return df_obs
+        # print("insufficient reference observations")  # TODO: add proper error handling and logging here
+        return
 
     # determine reference observation values
     y_ref = np.mean(_df_obs_ref[y_col])  # TODO: add option to choose statistic, e.g. mean or median?
@@ -127,7 +129,9 @@ def col_obs_ref(
 
     # Create the colour dict
     col_dict = {}
-    col_dict[obsId_col] = obsId
+    col_dict[obsId_col] = np.int64(
+        obsId
+    )  # store id as an int to make sure it doesn't get stored as float e notation!
     col_dict[x_col] = x_obs
     col_dict[colour] = y_obs - y_ref
     col_dict[delta_t_col] = x_obs - x2_ref
@@ -141,7 +145,7 @@ def col_obs_ref(
     # need to test error case where there are no r filter obs yet
 
     # TODO: add a plotting option?
-    if plot_dir:
+    if plot_dir or plot_show:
         fig = plt.figure()
         gs = gridspec.GridSpec(1, 1)
         ax1 = plt.subplot(gs[0, 0])
@@ -160,13 +164,16 @@ def col_obs_ref(
         ax1.legend()
         ax1.invert_yaxis()
 
-        fname = "{}/colour_plot_{}_{}-{}_{}.png".format(
-            plot_dir, planetoid.ssObjectId, filt_obs, filt_ref, int(x_obs)
-        )
-        print("Save figure: {}".format(fname))
-        plt.savefig(fname, facecolor="w", transparent=True, bbox_inches="tight")
+        if plot_dir:
+            fname = "{}/colour_plot_{}_{}-{}_{}_{}.png".format(
+                plot_dir, planetoid.ssObjectId, filt_obs, filt_ref, phase_model, int(x_obs)
+            )
+            print("Save figure: {}".format(fname))
+            plt.savefig(fname, facecolor="w", transparent=True, bbox_inches="tight")
 
-        # plt.show() # TODO: add option to display figure, or to return the fig object?
-        plt.close()
+        if plot_show:
+            plt.show()  # TODO: add option to display figure, or to return the fig object?
+        else:
+            plt.close()
 
     return col_dict

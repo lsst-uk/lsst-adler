@@ -15,6 +15,7 @@ MODEL_DEPENDENT_KEYS = [
     "phase_parameter_1_err",
     "phase_parameter_2",
     "phase_parameter_2_err",
+    "modelFitMjd",
 ]
 ALL_FILTER_LIST = ["u", "g", "r", "i", "z", "y"]
 
@@ -522,6 +523,7 @@ class PhaseModelDependentAdler:
     phase_parameter_1_err: float = np.nan
     phase_parameter_2: float = np.nan
     phase_parameter_2_err: float = np.nan
+    modelFitMjd: float = np.nan
 
 
 class PhaseParameterOutput:
