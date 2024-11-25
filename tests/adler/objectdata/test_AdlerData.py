@@ -446,6 +446,15 @@ def test_write_row_to_database(tmp_path):
     # pd.testing.assert_frame_equal(expected_data, written_data, check_dtype=False)
     # assert expected_data.iloc[0].to_dict() == pytest.approx(written_data.iloc[0].to_dict())
 
+    # quick test to make sure we're overwriting correctly
+    test_object.write_row_to_database(db_location)
+
+    con = sqlite3.connect(db_location)
+    written_data = pd.read_sql_query("SELECT * from AdlerData", con)
+    con.close()
+
+    assert len(written_data) == 1
+
 
 def test_read_row_from_database():
     # NOTE: the test database here has two rows, one with an earlier timestamp and different data
