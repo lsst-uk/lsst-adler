@@ -4,7 +4,7 @@ import logging
 import re
 import numpy as np
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from astropy.time import Time
 
 
 FILTER_DEPENDENT_KEYS = ["phaseAngle_min", "phaseAngle_range", "nobs", "arc"]
@@ -365,7 +365,7 @@ class AdlerData:
 
         """
         required_columns = ["ssObjectId", "timestamp"]
-        row_data = [self.ssObjectId, str(datetime.now(timezone.utc))]
+        row_data = [self.ssObjectId, Time.now().mjd]
 
         for f, filter_name in enumerate(self.filter_list):
             columns_by_filter = ["_".join([filter_name, filter_key]) for filter_key in FILTER_DEPENDENT_KEYS]
