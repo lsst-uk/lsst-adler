@@ -365,7 +365,7 @@ class AdlerData:
 
         """
         required_columns = ["ssObjectId", "timestamp"]
-        row_data = [self.ssObjectId, Time.now().mjd]
+        row_data = [int(self.ssObjectId), Time.now().mjd]
 
         for f, filter_name in enumerate(self.filter_list):
             columns_by_filter = ["_".join([filter_name, filter_key]) for filter_key in FILTER_DEPENDENT_KEYS]
@@ -437,8 +437,15 @@ class AdlerData:
 
         column_names = ",".join(required_columns)
         column_spaces = ",".join(["?"] * len(required_columns))
-        sql_command = "INSERT OR REPLACE INTO %s (%s) values(%s)" % (table_name, column_names, column_spaces)
-
+        update_clause = ", ".join([f"{col} = excluded.{col}" for col in required_columns[1:]])
+        print(update_clause)
+        print(column_names)
+        sql_command = f"""
+                        INSERT INTO {table_name} ({column_names})
+                        VALUES ({column_spaces})
+                        ON CONFLICT(ssObjectId) DO UPDATE SET {update_clause};
+                        """
+        print(sql_command)
         cur = con.cursor()
         cur.execute(sql_command, row_data)
         con.commit()
