@@ -11,7 +11,6 @@ from adler.utilities.tests_utilities import get_test_data_filepath
 
 # setting up the AdlerData object to be used for testing
 
-
 test_object = AdlerData("8268570668335894776", ["g", "r", "i"])
 model_1 = "HG12_Pen16"
 model_2 = "HG"
@@ -104,53 +103,6 @@ i_model_2 = {
     "phase_parameter_2_err": np.nan,
 }
 
-# u_model_1 = {
-#     "model_name": "model_1",
-#     "phaseAngle_min": 11.0,
-#     "phaseAngle_range": 12.0,
-#     "nobs": 13,
-#     "arc": 14.0,
-#     "H": 15.0,
-#     "H_err": 16.0,
-#     "phase_parameter_1": 17.0,
-#     "phase_parameter_1_err": 18.0,
-# }
-
-# u_model_2 = {
-#     "model_name": "model_2",
-#     "H": 25.0,
-#     "H_err": 26.0,
-#     "phase_parameter_1": 27.0,
-#     "phase_parameter_1_err": 28.0,
-#     "phase_parameter_2": 29.0,
-#     "phase_parameter_2_err": 30.0,
-# }
-
-# g_model_1 = {
-#     "model_name": "model_1",
-#     "phaseAngle_min": 31.0,
-#     "phaseAngle_range": 32.0,
-#     "nobs": 33,
-#     "arc": 34.0,
-#     "H": 35.0,
-#     "H_err": 36.0,
-#     "phase_parameter_1": 37.0,
-#     "phase_parameter_1_err": 38.0,
-# }
-
-# r_model_2 = {
-#     "model_name": "model_2",
-#     "phaseAngle_min": 41.0,
-#     "phaseAngle_range": 42.0,
-#     "nobs": 43,
-#     "arc": 44.0,
-#     "H": 45.0,
-#     "H_err": 46.0,
-#     "phase_parameter_1": 47.0,
-#     "phase_parameter_1_err": 48.0,
-#     "phase_parameter_2": 49.0,
-#     "phase_parameter_2_err": 50.0,
-# }
 
 _g_model_1 = g_model_1.copy()
 del _g_model_1["filter_name"]
@@ -192,54 +144,6 @@ def test_populate_phase_parameters():
         [g_model_1["arc"], r_model_1["arc"], i_model_1["arc"]],
     )
 
-    # assert test_object.filter_dependent_values[0].model_dependent_values[0].__dict__ == g_model_1
-    # {
-    #     "filter_name": "u",
-    #     "model_name": "model_1",
-    #     "H": 15.0,
-    #     "H_err": 16.0,
-    #     "phase_parameter_1": 17.0,
-    #     "phase_parameter_1_err": 18.0,
-    #     "phase_parameter_2": np.nan,
-    #     "phase_parameter_2_err": np.nan,
-    # }
-
-    # assert test_object.filter_dependent_values[0].model_dependent_values[1].__dict__ == g_model_2
-    # {
-    #     "filter_name": "u",
-    #     "model_name": "model_2",
-    #     "H": 25.0,
-    #     "H_err": 26.0,
-    #     "phase_parameter_1": 27.0,
-    #     "phase_parameter_1_err": 28.0,
-    #     "phase_parameter_2": 29.0,
-    #     "phase_parameter_2_err": 30.0,
-    # }
-
-    # assert test_object.filter_dependent_values[1].model_dependent_values[0].__dict__ == r_model_1
-    # {
-    #     "filter_name": "g",
-    #     "model_name": "model_1",
-    #     "H": 35.0,
-    #     "H_err": 36.0,
-    #     "phase_parameter_1": 37.0,
-    #     "phase_parameter_1_err": 38.0,
-    #     "phase_parameter_2": np.nan,
-    #     "phase_parameter_2_err": np.nan,
-    # }
-
-    # assert test_object.filter_dependent_values[2].model_dependent_values[0].__dict__ == i_model_2
-    # {
-    #     "filter_name": "r",
-    #     "model_name": "model_2",
-    #     "H": 45.0,
-    #     "H_err": 46.0,
-    #     "phase_parameter_1": 47.0,
-    #     "phase_parameter_1_err": 48.0,
-    #     "phase_parameter_2": 49.0,
-    #     "phase_parameter_2_err": 50.0,
-    # }
-
     test_dict_list = [
         test_object.get_phase_parameters_in_filter("g", model_1).__dict__,
         test_object.get_phase_parameters_in_filter("g", model_2).__dict__,
@@ -264,17 +168,10 @@ def test_populate_phase_parameters():
     test_object.populate_phase_parameters("g", model_name=model_1, H=g_model_1["H"])
 
     # check to make sure filter-dependent parameter is correctly updated (then return it to previous)
-    # print(test_object.__dict__)
+
     test_object.populate_phase_parameters("r", model_name=model_1, nobs=99)
-    # print(test_object.__dict__)
-    # print(r_model_1["nobs"])
-    # print(test_object.get_phase_parameters_in_filter("r",model_1).__dict__)
-    # print(test_object.get_phase_parameters_in_filter("r",model_1).nobs)
-    # assert test_object.filter_dependent_values[0].nobs == 99 # TODO: the indexing in this line does not access the correct filter
     assert test_object.get_phase_parameters_in_filter("r", model_1).nobs == 99
-    # print(r_model_1["nobs"])
     test_object.populate_phase_parameters("r", model_name=model_1, nobs=r_model_1["nobs"])
-    # print(test_object.get_phase_parameters_in_filter("r",model_1).nobs)
 
     # testing to make sure the correct error messages trigger
     test_filt = "y"
@@ -292,69 +189,6 @@ def test_populate_phase_parameters():
 
 
 def test_get_phase_parameters_in_filter():
-    # assert test_object.get_phase_parameters_in_filter("g", model_1).__dict__ == g_model_1
-    # {
-    #     "filter_name": "u",
-    #     "phaseAngle_min": 11.0,
-    #     "phaseAngle_range": 12.0,
-    #     "nobs": 13,
-    #     "arc": 14.0,
-    #     "model_name": "model_1",
-    #     "H": 15.0,
-    #     "H_err": 16.0,
-    #     "phase_parameter_1": 17.0,
-    #     "phase_parameter_1_err": 18.0,
-    #     "phase_parameter_2": np.nan,
-    #     "phase_parameter_2_err": np.nan,
-    # }
-
-    # assert test_object.get_phase_parameters_in_filter("g", model_2).__dict__ == g_model_2
-    # {
-    #     "filter_name": "u",
-    #     "phaseAngle_min": 11.0,
-    #     "phaseAngle_range": 12.0,
-    #     "nobs": 13,
-    #     "arc": 14.0,
-    #     "model_name": "model_2",
-    #     "H": 25.0,
-    #     "H_err": 26.0,
-    #     "phase_parameter_1": 27.0,
-    #     "phase_parameter_1_err": 28.0,
-    #     "phase_parameter_2": 29.0,
-    #     "phase_parameter_2_err": 30.0,
-    # }
-
-    # assert test_object.get_phase_parameters_in_filter("r", model_1).__dict__ == r_model_1
-    # {
-    #     "filter_name": "g",
-    #     "phaseAngle_min": 31.0,
-    #     "phaseAngle_range": 32.0,
-    #     "nobs": 33,
-    #     "arc": 34.0,
-    #     "model_name": "model_1",
-    #     "H": 35.0,
-    #     "H_err": 36.0,
-    #     "phase_parameter_1": 37.0,
-    #     "phase_parameter_1_err": 38.0,
-    #     "phase_parameter_2": np.nan,
-    #     "phase_parameter_2_err": np.nan,
-    # }
-
-    # assert test_object.get_phase_parameters_in_filter("i", model_2).__dict__ == i_model_2
-    # {
-    #     "filter_name": "r",
-    #     "phaseAngle_min": 41.0,
-    #     "phaseAngle_range": 42.0,
-    #     "nobs": 43,
-    #     "arc": 44.0,
-    #     "model_name": "model_2",
-    #     "H": 45.0,
-    #     "H_err": 46.0,
-    #     "phase_parameter_1": 47.0,
-    #     "phase_parameter_1_err": 48.0,
-    #     "phase_parameter_2": 49.0,
-    #     "phase_parameter_2_err": 50.0,
-    # }
 
     test_dict_list = [
         test_object.get_phase_parameters_in_filter("g", model_1).__dict__,
@@ -430,30 +264,38 @@ def test_write_row_to_database(tmp_path):
     written_data = written_data.replace({None: np.nan})  # TODO: fix weirdness between nan and None?
     expected_data = expected_data.astype({"ssObjectId": str})
     written_data = written_data.astype({"ssObjectId": str})
-    # print(expected_data.dtypes)
-    # print(written_data.dtypes)
-    # print(expected_data.iloc[0].to_dict())
-    # print(written_data.iloc[0].to_dict())
+
     for x in written_data.columns:
-        # print(x)
-        # print(expected_data.iloc[0][x],written_data.iloc[0][x])
-        # print(type(expected_data.iloc[0][x]),type(written_data.iloc[0][x]))
-        # print(expected_data.iloc[0][x]==written_data.iloc[0][x])
         if type(written_data.iloc[0][x]) == str:
             assert expected_data.iloc[0][x] == written_data.iloc[0][x]
         else:
             assert_almost_equal(expected_data.iloc[0][x], written_data.iloc[0][x])
-    # pd.testing.assert_frame_equal(expected_data, written_data, check_dtype=False)
-    # assert expected_data.iloc[0].to_dict() == pytest.approx(written_data.iloc[0].to_dict())
 
-    # quick test to make sure we're overwriting correctly
+
+def test_overwriting_rows_in_database(tmp_path):
+    # a test to ensure we're overwriting correctly
+
+    # write the initial object
+    db_location = os.path.join(tmp_path, "test_AdlerData_database.db")
     test_object.write_row_to_database(db_location)
+
+    # make a change to a value, then create a new AdlerData object
+    # and write that to the database
+    test_object_2 = AdlerData("8268570668335894776", ["g"])
+    _g_model_1["nobs"] = 666
+    test_object_2.populate_phase_parameters("g", **_g_model_1)
+    test_object_2.write_row_to_database(db_location)
 
     con = sqlite3.connect(db_location)
     written_data = pd.read_sql_query("SELECT * from AdlerData", con)
     con.close()
 
+    # should only have one row in the database
     assert len(written_data) == 1
+
+    # we should have a new value for g_nobs but r_nobs should be unchanged
+    assert written_data["g_nobs"][0] == 666
+    assert written_data["r_nobs"][0] == 38
 
 
 def test_read_row_from_database():
