@@ -18,7 +18,7 @@ dependencies = [
     "numpy",
     "lsst-rsp",
     "astropy",
-    "sbpy<=0.4.0",
+    "sbpy",
     "matplotlib", # for plotting
     "pandas",
     "scipy",
