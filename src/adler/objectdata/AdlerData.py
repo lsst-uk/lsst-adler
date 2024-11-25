@@ -319,7 +319,7 @@ class AdlerData:
         if not database_exists and create_new:  # we need to make the table and a couple of starter columns
             con = sqlite3.connect(filepath)
             cur = con.cursor()
-            cur.execute("CREATE TABLE AdlerData(ssObjectId, timestamp)")
+            cur.execute("CREATE TABLE AdlerData(ssObjectId INTEGER PRIMARY KEY, timestamp TEXT)")
         elif not database_exists and not create_new:
             logger.error("ValueError: Database cannot be found at given filepath.")
             raise ValueError("Database cannot be found at given filepath.")
@@ -437,7 +437,7 @@ class AdlerData:
 
         column_names = ",".join(required_columns)
         column_spaces = ",".join(["?"] * len(required_columns))
-        sql_command = "INSERT INTO %s (%s) values(%s)" % (table_name, column_names, column_spaces)
+        sql_command = "INSERT OR REPLACE INTO %s (%s) values(%s)" % (table_name, column_names, column_spaces)
 
         cur = con.cursor()
         cur.execute(sql_command, row_data)

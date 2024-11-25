@@ -410,8 +410,6 @@ def test_print_data(capsys):
 
 def test_write_row_to_database(tmp_path):
     db_location = os.path.join(tmp_path, "test_AdlerData_database.db")
-    # print(db_location)
-    # print(test_object.__dict__)
     test_object.write_row_to_database(db_location)
 
     con = sqlite3.connect(db_location)
@@ -431,6 +429,7 @@ def test_write_row_to_database(tmp_path):
     # expected_data = expected_data.replace({np.nan: None}) # TODO: fix weirdness between nan and None?
     written_data = written_data.replace({None: np.nan})  # TODO: fix weirdness between nan and None?
     expected_data = expected_data.astype({"ssObjectId": str})
+    written_data = written_data.astype({"ssObjectId": str})
     # print(expected_data.dtypes)
     # print(written_data.dtypes)
     # print(expected_data.iloc[0].to_dict())
