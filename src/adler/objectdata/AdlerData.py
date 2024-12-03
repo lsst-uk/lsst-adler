@@ -4,7 +4,7 @@ import logging
 import re
 import numpy as np
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from astropy.time import Time
 
 
 FILTER_DEPENDENT_KEYS = ["phaseAngle_min", "phaseAngle_range", "nobs", "arc"]
@@ -319,7 +319,7 @@ class AdlerData:
         if not database_exists and create_new:  # we need to make the table and a couple of starter columns
             con = sqlite3.connect(filepath)
             cur = con.cursor()
-            cur.execute("CREATE TABLE AdlerData(ssObjectId, timestamp)")
+            cur.execute("CREATE TABLE AdlerData(ssObjectId INTEGER PRIMARY KEY, timestamp REAL)")
         elif not database_exists and not create_new:
             logger.error("ValueError: Database cannot be found at given filepath.")
             raise ValueError("Database cannot be found at given filepath.")
@@ -365,7 +365,7 @@ class AdlerData:
 
         """
         required_columns = ["ssObjectId", "timestamp"]
-        row_data = [self.ssObjectId, str(datetime.now(timezone.utc))]
+        row_data = [int(self.ssObjectId), Time.now().mjd]
 
         for f, filter_name in enumerate(self.filter_list):
             columns_by_filter = ["_".join([filter_name, filter_key]) for filter_key in FILTER_DEPENDENT_KEYS]
@@ -437,8 +437,12 @@ class AdlerData:
 
         column_names = ",".join(required_columns)
         column_spaces = ",".join(["?"] * len(required_columns))
-        sql_command = "INSERT INTO %s (%s) values(%s)" % (table_name, column_names, column_spaces)
-
+        update_clause = ", ".join([f"{col} = excluded.{col}" for col in required_columns[1:]])
+        sql_command = f"""
+                        INSERT INTO {table_name} ({column_names})
+                        VALUES ({column_spaces})
+                        ON CONFLICT(ssObjectId) DO UPDATE SET {update_clause};
+                        """
         cur = con.cursor()
         cur.execute(sql_command, row_data)
         con.commit()
