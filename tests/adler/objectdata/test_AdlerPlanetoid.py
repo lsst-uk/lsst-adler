@@ -6,7 +6,7 @@ from adler.utilities.tests_utilities import get_test_data_filepath
 from adler.objectdata.AdlerPlanetoid import AdlerPlanetoid
 
 
-ssoid = 8268570668335894776
+ssoid = "8268570668335894776"
 test_db_path = get_test_data_filepath("testing_database.db")
 
 
@@ -160,25 +160,43 @@ def test_failed_SQL_queries():
 def test_attach_previous_adlerdata():
     test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path, filter_list=["g", "r"])
 
+    # TODO: this setup is currently a bit dodgy. Because AdlerData write_row_to_database appends a new line to the db the most recent model for a given object may be nan in that row
+    # as such this test depends on the order/number of times the adler commands have been run to make it
+
+    # the test database can be recreated by running the Adler commands in the tests/data dir:
+    # adler -s 8268570668335894776 -i testing_database.db -n test_AdlerData_database.db
+    # adler -s 8268570668335894776 -i testing_database.db -n test_AdlerData_database.db -m HG
     db_location = get_test_data_filepath("test_AdlerData_database.db")
+    print(db_location)
 
     test_planetoid.attach_previous_adler_data(db_location)
 
-    test_output = test_planetoid.PreviousAdlerData.get_phase_parameters_in_filter("g", "model_1")
+    test_output = test_planetoid.PreviousAdlerData.get_phase_parameters_in_filter("r", "HG12_Pen16")
+    print(test_output.__dict__)
 
     expected_output = {
-        "filter_name": "g",
-        "phaseAngle_min": 31.0,
-        "phaseAngle_range": 32.0,
-        "nobs": 33,
-        "arc": 34.0,
-        "model_name": "model_1",
-        "H": 35.0,
-        "H_err": 36.0,
-        "phase_parameter_1": 37.0,
-        "phase_parameter_1_err": 38.0,
+        "filter_name": "r",
+        "phaseAngle_min": 2.553332567214966,
+        "phaseAngle_range": 124.23803400993347,
+        "nobs": 38,
+        "arc": 3338.0655999999944,
+        "model_name": "HG12_Pen16",
+        "H": 19.92863542616601,
+        "H_err": 0.018525355171274356,
+        "phase_parameter_1": 1.0,
+        "phase_parameter_1_err": 0.05300829494059732,
         "phase_parameter_2": np.nan,
         "phase_parameter_2_err": np.nan,
     }
+    print(expected_output)
 
-    assert test_output.__dict__ == expected_output
+    # assert test_output.__dict__ == pytest.approx(expected_output) # TODO: why isn't this working now?
+
+    for x in test_output.__dict__.keys():
+        print(x)
+        test_val = test_output.__dict__[x]
+        expect_val = expected_output[x]
+        if type(expect_val) == str:
+            assert test_val == expect_val
+        else:
+            assert_almost_equal(test_val, expect_val)

@@ -117,7 +117,7 @@ def test_PhaseCurve_FitModel_HG_fixed():
     pc2 = pc1.InitModelSbpy(pc_fit)
 
     # the new fitted model should have the same parameters as the input model, but G is fixed
-    assert pc_fit._fixed["G"] is True
+    assert pc_fit.fixed["G"] is True
     assert pc2.H == pc1.H
     assert pc2.phase_parameter_1 == pc1.phase_parameter_1
     assert pc2.phase_parameter_1_err is None  # the fitted model has no uncertainties when param is fixed
