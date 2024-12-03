@@ -160,6 +160,10 @@ class PhaseCurve:
 
         # clean the input dictionary
         del_keys = []
+        # make sure that there is not an existing model_function parameter
+        if "model_function" in model_dict:
+            del_keys.append("model_function")
+        # remove keys that aren't PhaseCurve parameters
         for key, value in model_dict.items():
             if not hasattr(self, key):
                 del_keys.append(key)
@@ -361,8 +365,13 @@ class PhaseCurve:
                 #     else:
                 #         setattr(model_fit, "{}_err".format(x), fit_errs[i])
                 for i, x in enumerate(param_names[fit_mask]):
-                    setattr(model_fit, "{}_err".format(x), fit_errs[i])
+                    # setattr(model_fit, "{}_err".format(x), fit_errs[i])
                     # TODO: return uncertainties with units if units are passed - see MC resample code below
+                    p = getattr(model_fit, x)
+                    if hasattr(p, "unit") and (p.unit is not None):
+                        setattr(model_fit, "{}_err".format(x), fit_errs[i] * p.unit)
+                    else:
+                        setattr(model_fit, "{}_err".format(x), fit_errs[i])
             # else:
             ### TODO log covariance is None error here - no uncertainties
 
