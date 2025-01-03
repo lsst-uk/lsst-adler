@@ -227,3 +227,30 @@ def get_df_obs_filt(planetoid, filt, x_col="midPointMjdTai", x1=None, x2=None, c
     df_obs = df_obs.reset_index(drop=True)
 
     return df_obs
+
+
+def running_stats(N, sum_x, sum_x2):
+    """
+    Function to calculate the running mean and std statistics from the number, sum and sum of the squares of a dataset.
+    This function allows us to calculate stats for a dataset where we do not record every value, we record only the three summary values:
+    https://en.wikipedia.org/wiki/Standard_deviation#Rapid_calculation_methods
+
+    Parameters
+    -----------
+
+    N: int
+        Number of data points, x
+    sum_x: float
+        Sum of all data points, x
+    sum_x2: float
+        Sum of the square of each data point, x**2
+
+    Returns
+    -----------
+    mean_x, std_x: float, float
+        Then mean and std of the data, x
+
+    """
+    mean_x = sum_x / N
+    std_x = np.sqrt((N * sum_x2) - (sum_x**2.0)) / N
+    return mean_x, std_x
