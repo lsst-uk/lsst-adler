@@ -25,8 +25,9 @@ class AdlerCLIArguments:
         self.outpath = args.outpath
         self.db_name = args.db_name
         self.sql_filename = args.sql_filename
-        self.plot_show = args.plot_show
         self.phase_model = args.phase_model
+        self.plot_show = args.plot_show
+        self.no_plot = args.no_plot
 
         self.validate_arguments()
 
@@ -51,6 +52,9 @@ class AdlerCLIArguments:
 
         if self.phase_model:
             self._validate_phase_model()
+
+        if self.plot_show or self.no_plot:
+            self._validate_plot_options()
 
     def _validate_filter_list(self):
         """Validation checks for the filter_list command-line argument."""
@@ -167,3 +171,12 @@ class AdlerCLIArguments:
         if self.phase_model not in expected_models:
             logging.error(err_msg_model)
             raise ValueError(err_msg_model)
+
+    def _validate_plot_options(self):
+        """Validation checks for the plotting options."""
+
+        err_msg_plot = "Both the --plot_show and --no_plot flags have been selected. Please choose only one."
+
+        if self.plot_show and self.no_plot:
+            logging.error(err_msg_plot)
+            raise ValueError(err_msg_plot)
