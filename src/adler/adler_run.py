@@ -343,7 +343,10 @@ def main():
 
     cli_args = AdlerCLIArguments(args)
 
-    adler_logger = setup_adler_logging(cli_args.outpath)
+    log_loc = "{}/log_files".format(cli_args.outpath)
+    if not os.path.isdir(log_loc):
+        os.mkdir(log_loc)
+    adler_logger = setup_adler_logging(log_loc)
 
     cli_args.logger = adler_logger
 
