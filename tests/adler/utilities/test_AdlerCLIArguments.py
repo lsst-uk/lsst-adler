@@ -16,6 +16,8 @@ class args:
         outpath,
         db_name,
         sql_filename,
+        plot_show,
+        phase_model,
     ):
         self.ssObjectId = ssObjectId
         self.ssObjectId_list = ssObjectId_list
@@ -25,6 +27,8 @@ class args:
         self.outpath = outpath
         self.db_name = db_name
         self.sql_filename = sql_filename
+        self.plot_show = plot_show
+        self.phase_model = phase_model
 
 
 def test_AdlerCLIArguments_population():
@@ -38,6 +42,8 @@ def test_AdlerCLIArguments_population():
         "outpath": "./",
         "db_name": "output",
         "sql_filename": None,
+        "plot_show": False,
+        "phase_model": "HG12_Pen16",
     }
     good_arguments = args(**good_input_dict)
     good_arguments_object = AdlerCLIArguments(good_arguments)
@@ -64,7 +70,16 @@ def test_AdlerCLIArguments_population():
 def test_AdlerCLIArguments_badSSOID():
     # test that a bad ssObjectId triggers the right error
     bad_ssoid_arguments = args(
-        "hello!", None, ["g", "r", "i"], ["g-r", "r-i"], [60000.0, 67300.0], "./", "output", "None"
+        "hello!",
+        None,
+        ["g", "r", "i"],
+        ["g-r", "r-i"],
+        [60000.0, 67300.0],
+        "./",
+        "output",
+        "None",
+        False,
+        "HG12_Pen16",
     )
 
     with pytest.raises(ValueError) as bad_ssoid_error:
@@ -79,7 +94,16 @@ def test_AdlerCLIArguments_badSSOID():
 def test_AdlerCLIArguments_badfilters():
     # test that non-LSST or unexpected filters trigger the right error
     bad_filter_arguments = args(
-        "666", None, ["g", "r", "i", "m"], ["g-r", "r-i"], [60000.0, 67300.0], "./", "output", None
+        "666",
+        None,
+        ["g", "r", "i", "m"],
+        ["g-r", "r-i"],
+        [60000.0, 67300.0],
+        "./",
+        "output",
+        None,
+        False,
+        "HG12_Pen16",
     )
 
     with pytest.raises(ValueError) as bad_filter_error:
@@ -91,7 +115,16 @@ def test_AdlerCLIArguments_badfilters():
     )
 
     bad_filter_arguments_2 = args(
-        "666", None, ["pony"], ["g-r", "r-i"], [60000.0, 67300.0], "./", "output", None
+        "666",
+        None,
+        ["pony"],
+        ["g-r", "r-i"],
+        [60000.0, 67300.0],
+        "./",
+        "output",
+        None,
+        False,
+        "HG12_Pen16",
     )
 
     with pytest.raises(ValueError) as bad_filter_error_2:
@@ -108,7 +141,16 @@ def test_AdlerCLIArguments_badfilters():
 
     # the colours are not in the right format
     bad_colour_arguments_1 = args(
-        "666", None, ["g", "r", "i"], ["g - r", "r x i"], [60000.0, 67300.0], "./", "output", None
+        "666",
+        None,
+        ["g", "r", "i"],
+        ["g - r", "r x i"],
+        [60000.0, 67300.0],
+        "./",
+        "output",
+        None,
+        False,
+        "HG12_Pen16",
     )
     err_msg1 = "Unexpected filters found in --colour_list command-line argument. --colour_list must contain LSST filters in the format 'filter2-filter1'."
 
@@ -119,7 +161,16 @@ def test_AdlerCLIArguments_badfilters():
 
     # colours are requested in filters that are not available
     bad_colour_arguments_2 = args(
-        "666", None, ["g", "r", "i"], ["g-r", "r-j"], [60000.0, 67300.0], "./", "output", None
+        "666",
+        None,
+        ["g", "r", "i"],
+        ["g-r", "r-j"],
+        [60000.0, 67300.0],
+        "./",
+        "output",
+        None,
+        False,
+        "HG12_Pen16",
     )
     err_msg2 = err_msg1
 
@@ -130,7 +181,16 @@ def test_AdlerCLIArguments_badfilters():
 
     # colours are requested in filters that are not available
     bad_colour_arguments_3 = args(
-        "666", None, ["g", "r"], ["g-r", "r-i"], [60000.0, 67300.0], "./", "output", None
+        "666",
+        None,
+        ["g", "r"],
+        ["g-r", "r-i"],
+        [60000.0, 67300.0],
+        "./",
+        "output",
+        None,
+        False,
+        "HG12_Pen16",
     )
     err_msg3 = "The filters required to calculate the colours have not been requested in --filter-list"
 
@@ -143,7 +203,16 @@ def test_AdlerCLIArguments_badfilters():
 def test_AdlerCLIArguments_baddates():
     # test that overly-large dates trigger the right error
     big_date_arguments = args(
-        "666", None, ["g", "r", "i"], ["g-r", "r-i"], [260000.0, 267300.0], "./", "output", None
+        "666",
+        None,
+        ["g", "r", "i"],
+        ["g-r", "r-i"],
+        [260000.0, 267300.0],
+        "./",
+        "output",
+        None,
+        False,
+        "HG12_Pen16",
     )
 
     with pytest.raises(ValueError) as big_date_error:
@@ -156,7 +225,16 @@ def test_AdlerCLIArguments_baddates():
 
     # test that unexpected date values trigger the right error
     bad_date_arguments = args(
-        "666", None, ["g", "r", "i"], ["g-r", "r-i"], [60000.0, "cheese"], "./", "output", None
+        "666",
+        None,
+        ["g", "r", "i"],
+        ["g-r", "r-i"],
+        [60000.0, "cheese"],
+        "./",
+        "output",
+        None,
+        False,
+        "HG12_Pen16",
     )
 
     with pytest.raises(ValueError) as bad_date_error:
@@ -178,6 +256,8 @@ def test_AdlerCLIArguments_badoutput():
         "./definitely_fake_folder/",
         "output",
         None,
+        False,
+        "HG12_Pen16",
     )
 
     with pytest.raises(ValueError) as bad_output_error:
@@ -199,6 +279,8 @@ def test_AdlerCLIArguments_badlist():
         "./",
         "output",
         "./",
+        False,
+        "HG12_Pen16",
     )
 
     with pytest.raises(ValueError) as bad_list_error:
@@ -220,6 +302,8 @@ def test_AdlerCLIArguments_badsql():
         "./",
         "output",
         "./dummy_database.db",
+        False,
+        "HG12_Pen16",
     )
 
     with pytest.raises(ValueError) as bad_sql_error:
@@ -229,3 +313,6 @@ def test_AdlerCLIArguments_badsql():
         bad_sql_error.value.args[0]
         == "The file supplied for the command-line argument --sql_filename cannot be found."
     )
+
+
+# TODO: test plot_show somehow, and phase_model
