@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import numpy as np
 
 
 def plot_errorbar(
@@ -87,6 +88,76 @@ def plot_errorbar(
 
         if c_plot is not None:
             cbar1 = plt.colorbar(s1)
+
+    # save the figure?
+    if filename:
+        fig.savefig(filename, facecolor="w", transparent=True, bbox_inches="tight")
+
+    return fig
+
+
+def plot_phasecurve(
+    pc,
+    x=np.radians(np.linspace(0, 30)),
+    x_plot="phaseAngle",
+    y_plot="reduced_mag",
+    fig=None,
+    label=None,
+    col=None,
+    alpha=None,
+    filename=None,
+    bounds_std=None,
+):
+    """Display the possible range of model values for a PhaseCurve object with uncertainty.
+
+    pc: PhaseCurve
+        PhaseCurve object containing the PhaseCurve model parameters
+    filt_list: list
+        List of filters to be plotted
+    x : array
+           Array of x values (phase angle) at which to evaluate the PhaseCurve model
+    x_plot: str
+        x axis label
+    y_plot: str
+        y axis label
+    fig: matplotlib.figure.Figure
+        Optional, pass an existing figure object to be added to
+    label: str
+        Optional, label for the plot element
+    col: str
+        Optional, color for the plot element
+    alpha: float
+        Optional, transparency for the plot element
+    filename: str
+        Optional, if provided save the figure with this filename
+    bounds_std : float
+           Optional, if included plot the bounds of the PhaseCurve function. Number of standard deviations we want to consider when determining the minimum/maximum parameter values, where we assume that the parameter uncertainty is representative of a 1 sigma std in a gaussian distribution.
+
+    Returns
+    -----------
+    fig: matplotlib.figure.Figure
+        The figure object which can be manipulated further if required
+
+    """
+
+    if fig:
+        # use the figure object that was passed
+        ax1 = fig.axes[0]
+    else:
+        # set up a new figure object
+        fig = plt.figure()
+        gs = gridspec.GridSpec(1, 1)
+        ax1 = plt.subplot(gs[0, 0])
+        ax1.invert_yaxis()
+        ax1.set_xlabel(x_plot)
+        ax1.set_ylabel(y_plot)
+
+    if bounds_std:
+        pc_bounds = pc.ReducedMagBounds(x, std=bounds_std)
+        ax1.fill_between(x, pc_bounds["mag_min"], pc_bounds["mag_max"], alpha=alpha, color=col, label=label)
+    else:
+        y = pc.ReducedMag(x)
+        ax1.plot(x, y, alpha=alpha, color=col, label=label)
 
     # save the figure?
     if filename:
