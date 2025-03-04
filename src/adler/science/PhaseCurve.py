@@ -142,6 +142,26 @@ class PhaseCurve:
 
         return self.__dict__
 
+    def ReturnParamStr(self):
+        """Return a string with the PhaseCurve model parameters. Useful for plot labels etc.
+
+        Returns
+        ----------
+
+        label : str
+           A label containing the PhaseCurve parameters.
+
+        """
+
+        p_names = ADLER_SBPY_DICT[self.model_name]
+        label = (
+            "H={:.2f}".format(self.H)
+            + ","
+            + ",".join(["{}={:.2f}".format(p_names[x], getattr(self, x)) for x in p_names.keys()])
+        )
+
+        return label
+
     def InitModelDict(self, model_dict):
         """Set up a new PhaseCurve model object from a dictionary.
         This could be written by the user or generated from another PhaseCurve object using ReturnModelDict

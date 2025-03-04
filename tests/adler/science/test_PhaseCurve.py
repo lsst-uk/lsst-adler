@@ -144,7 +144,7 @@ def test_PhaseCurve_FitModel_HG_bounds():
 
 
 def test_PhaseCurve_ReducedMagBounds():
-    """Test calculating the reduced magnitude from a PhaseCurve object."""
+    """Test calculating the reduced magnitude bounds from a PhaseCurve object."""
 
     # define the phase angles
     alpha = np.radians(np.array([0, 10]))
@@ -188,6 +188,16 @@ def test_PhaseCurve_ReducedMagBounds():
     assert len(pc_bounds["PhaseCurves"]) == 4
     assert_array_less(pc_bounds["mag_min"], red_mag)
     assert_array_less(red_mag, pc_bounds["mag_max"])
+
+
+def test_PhaseCurve_ReturnParamStr():
+    """Test generating a label for a PhaseCurve object."""
+
+    pc = PhaseCurve()
+    assert pc.ReturnParamStr() == "H=18.00,G=0.20"
+
+    pc = PhaseCurve(model_name="HG1G2")
+    assert pc.ReturnParamStr() == "H=18.00,G1=0.20,G2=0.20"
 
 
 # TODO: test absmag
