@@ -2,6 +2,7 @@ from sbpy.photometry import HG, HG1G2, HG12, HG12_Pen16, LinearPhaseFunc
 import astropy.units as u
 import numpy as np
 from astropy.modeling.fitting import LevMarLSQFitter
+import itertools
 
 # translation between sbpy and adler field names
 SBPY_ADLER_DICT = {
@@ -246,9 +247,7 @@ class PhaseCurve:
         return self.model_function(phase_angle)
 
     def ReducedMagBounds(self, phase_angle, std=1):
-        """Accounting for the parameter uncertainties, return the minimum and maximum reduced magnitudes of the phasecurve model for a given phase angle(s)
-
-        phase_angle - value or array, must have astropy units of degrees
+        """Accounting for the parameter uncertainties, return the minimum and maximum reduced magnitudes of the phasecurve model for a given phase angle(s). This is done by determining the minimum and maximum values of each parameter given the uncertainty (and some std, assuming a gaussian distribution). A PhaseCurve model is made for all unique combinations of the min, max of each parameter. For each PhaseCurve model the ReducedMag is calculated; the overall min/max ReducedMag is determined at each phase angle.
 
         Parameters
         -----------
@@ -260,14 +259,55 @@ class PhaseCurve:
         Returns
         ----------
 
-        return_value : float or array
-           The phasecurve model reduced magnitude at the given phase angle(s)
+        pc_bounds : dict
+           mag_min - The minimum reduced magnitude of all PhaseCurve models at every phase angle
+           mag_max - The maximum reduced magnitude of all PhaseCurve models at every phase angle
+           mag_mean - The mean reduced magnitude of all PhaseCurve models at every phase angle
+           PhaseCurves - A list of all unique PhaseCurve models given the possible combinations of parameters and their uncertainties
 
         """
 
-        self.model_function(phase_angle)
+        # Get all parameters in the model that have an uncertainty
+        err_keys = [x for x in self.__dict__.keys() if "_err" in x and getattr(self, x) is not None]
 
-        return np.amin(red_mag), np.amax(red_mag)
+        # calculate the min, max for each parameter with uncertainty
+        params = {}
+        for x_err in err_keys:
+            x = x_err.replace("_err", "")
+            _x = getattr(self, x)
+            _x_err = getattr(self, x_err)
+            plus = _x + (std * _x_err)
+            minus = _x - (std * _x_err)
+            params[x] = [plus, minus]
+
+        # Get all possible combinations of the min, max for each parameter
+        p_vals = [params[x] for x in params.keys()]
+        all_p_vals = list(itertools.product(*p_vals))
+
+        # make a new PhaseCurve model for each set of parameters
+        # Determine the reduced magnitudes for the given phase angle range
+        mags = []
+        pcs = []
+        for p in all_p_vals:
+            _dict = self.__dict__.copy()
+            for i, x in enumerate(params.keys()):
+                _dict[x] = p[i]
+            _pc = PhaseCurve().InitModelDict(_dict)
+            pcs.append(_pc)
+            _mag = _pc.ReducedMag(phase_angle)
+            mags.append(_mag)
+        mags = np.array(mags)
+
+        # Calculate the magnitude statistics
+        # Get the absolute maximum and minimum value at each phase angle for all possible models
+        mag_min = np.amin(mags, axis=0)
+        mag_max = np.amax(mags, axis=0)
+        mag_mean = np.mean(mags, axis=0)
+
+        # Store results in a dictionary
+        pc_bounds = {"mag_min": mag_min, "mag_max": mag_max, "mag_mean": mag_mean, "PhaseCurves": pcs}
+
+        return pc_bounds
 
     def ModelResiduals(self, phase_angle, reduced_mag):
         """For a set of phase curve observations, return the residuals to the PhaseCurve model.
