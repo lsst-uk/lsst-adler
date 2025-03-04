@@ -73,7 +73,6 @@ def test_PhaseCurve_FitModel_HG():
     # the new fitted model should have the same parameters as the input model
     assert pc2.H == pc1.H
     assert pc2.phase_parameter_1 == pc1.phase_parameter_1
-    assert pc2.phase_parameter_2 is None
     assert pc1.phase_parameter_1_err is None  # the first model had no uncertainties
     assert pc2.phase_parameter_1_err is not None  # the fitted model has some uncertainties
 
@@ -95,7 +94,6 @@ def test_PhaseCurve_FitModel_HG_no_units():
     # the new fitted model should have the same parameters as the input model
     assert pc2.H == pc1.H
     assert pc2.phase_parameter_1 == pc1.phase_parameter_1
-    assert pc2.phase_parameter_2 is None
     assert pc1.phase_parameter_1_err is None  # the first model had no uncertainties
     assert pc2.phase_parameter_1_err is not None  # the fitted model has some uncertainties
 

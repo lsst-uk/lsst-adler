@@ -61,7 +61,7 @@ class PhaseCurve:
         self,
         H=18,
         phase_parameter_1=0.2,
-        phase_parameter_2=None,
+        phase_parameter_2=0.2,
         model_name="HG",
         H_err=None,
         phase_parameter_1_err=None,
@@ -78,7 +78,7 @@ class PhaseCurve:
         if model_name == "HG":
             self.model_function = HG(H=H, G=self.phase_parameter_1)
         elif model_name == "HG1G2":
-            self.model_function = HG1G2(H=H, G1=self.phase_parameter_1, G2=self.phase_parameter_1)
+            self.model_function = HG1G2(H=H, G1=self.phase_parameter_1, G2=self.phase_parameter_2)
         elif model_name == "HG12":
             self.model_function = HG12(H=H, G12=self.phase_parameter_1)
         elif model_name == "HG12_Pen16":
@@ -160,6 +160,8 @@ class PhaseCurve:
 
         # clean the input dictionary
         del_keys = []
+        if "model_function" in model_dict.keys():
+            del_keys.append("model_function")
         for key, value in model_dict.items():
             if not hasattr(self, key):
                 del_keys.append(key)
@@ -242,6 +244,30 @@ class PhaseCurve:
         """
 
         return self.model_function(phase_angle)
+
+    def ReducedMagBounds(self, phase_angle, std=1):
+        """Accounting for the parameter uncertainties, return the minimum and maximum reduced magnitudes of the phasecurve model for a given phase angle(s)
+
+        phase_angle - value or array, must have astropy units of degrees
+
+        Parameters
+        -----------
+        phase_angle : float or array
+           value or array of phase angles at which to evaluate the phasecurve model.
+           Must have astropy units of degrees if sbpy model uses units, otherwise pass radian values.
+        std : float
+           Number of standard deviations we want to consider when determining the minimum/maximum parameter values, where we assume that the parameter uncertainty is representative of a 1 sigma std in a gaussian distribution.
+        Returns
+        ----------
+
+        return_value : float or array
+           The phasecurve model reduced magnitude at the given phase angle(s)
+
+        """
+
+        self.model_function(phase_angle)
+
+        return np.amin(red_mag), np.amax(red_mag)
 
     def ModelResiduals(self, phase_angle, reduced_mag):
         """For a set of phase curve observations, return the residuals to the PhaseCurve model.
