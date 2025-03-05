@@ -161,8 +161,10 @@ class PhaseCurve:
 
         # clean the input dictionary
         del_keys = []
-        if "model_function" in model_dict.keys():
+        # make sure that there is not an existing model_function parameter
+        if "model_function" in model_dict:
             del_keys.append("model_function")
+        # remove keys that aren't PhaseCurve parameters
         for key, value in model_dict.items():
             if not hasattr(self, key):
                 del_keys.append(key)
@@ -211,7 +213,9 @@ class PhaseCurve:
                         x.unit == ""
                     ):  # if there are no units (or weird blank units?) get just the value
                         x = x.value
-                    else:
+                    if hasattr(
+                        x, "quantity"
+                    ):  # catch any sbpy parameters returned as astropy.modeling.parameters.Parameter
                         x = x.quantity
                 # look up the correct adler parameter name (accounting for additional uncertainty, "_err", parameters)
                 if p.endswith("_err"):  # assumes the uncertainty parameter always ends in "_err"
@@ -362,7 +366,7 @@ class PhaseCurve:
 
         return abs_mag
 
-    def FitModel(self, phase_angle, reduced_mag, mag_err=None, fitter=None):
+    def FitModel(self, phase_angle, reduced_mag, mag_err=None, fitter=None, resample=None):
         """Fit the phasecurve model parameters to observations.
         starts with a phase curve model as an initial guess for parameters.
         fits model to phase angle and reduced magnitude.
@@ -387,6 +391,10 @@ class PhaseCurve:
            Select a fitting function from astropy.modeling.fitting, defaults to astropy.modeling.fitting.LevMarLSQFitter.
            N.B. that LevMarLSQFitter cannot handle inequality constraints for the HG1G2 model, use something like SLSQPLSQFitter from astropy.modeling.fitting (does not return covariance matrix!).
 
+        resample : int
+            Optional - if passed this forces a monte carlo resampling of data points within their uncertainties.
+            This the number of times to resample and fit the phase curve.
+            The phase curve parameter value and uncertainties are determined from the mean and std of the fitted values respectively.
         Returns
         ----------
 
@@ -405,7 +413,7 @@ class PhaseCurve:
             model_fit = fitter(self.model_function, phase_angle, reduced_mag)
 
         # Add fitted uncertainties as an additional attribute within the sbpy object
-        if "param_cov" in fitter.fit_info:
+        if ("param_cov" in fitter.fit_info) and (resample is None):
             # get the covariance matrix from the fit
             covariance = fitter.fit_info["param_cov"]
             if covariance is not None:
@@ -414,15 +422,52 @@ class PhaseCurve:
                 # update only the uncertainties for parameters used in the fit
                 param_names = np.array(model_fit.param_names)
                 fit_mask = ~np.array([getattr(model_fit, x).fixed for x in param_names])
+                # for i, x in enumerate(param_names[fit_mask]):
+                #     p = getattr(model_fit, x)
+                #     if hasattr(p, "unit") and (p.unit is not None):
+                #         setattr(model_fit, "{}_err".format(x), fit_errs[i] * p.unit)
+                #     else:
+                #         setattr(model_fit, "{}_err".format(x), fit_errs[i])
                 for i, x in enumerate(param_names[fit_mask]):
-                    setattr(model_fit, "{}_err".format(x), fit_errs[i])
+                    # setattr(model_fit, "{}_err".format(x), fit_errs[i])
+                    # TODO: return uncertainties with units if units are passed - see MC resample code below
+                    p = getattr(model_fit, x)
+                    if hasattr(p, "unit") and (p.unit is not None):
+                        setattr(model_fit, "{}_err".format(x), fit_errs[i] * p.unit)
+                    else:
+                        setattr(model_fit, "{}_err".format(x), fit_errs[i])
             # else:
-            ### TODO log covariance is None error here
+            ### TODO log covariance is None error here - no uncertainties
 
-        ### TODO
-        # else:
-        #     log lack of uncertainties for fitter
-        #     run an MCMC estimate of uncertainty?
+        # run an MC reasmple fit to estimate parameter value and uncertainty
+        elif (resample is not None) and (mag_err is not None):
+            mc_models = []  # list to store MC model fits
+            for i in range(resample):  # TODO: try optimise/parallelise this loop?
+                _reduced_mag = np.random.normal(loc=np.array(reduced_mag), scale=np.array(mag_err)) * u.mag
+                _model_fit = fitter(self.model_function, phase_angle, _reduced_mag)
+                mc_models.append(_model_fit)
+
+            # Update the model_fit parameters with the MC values
+            param_names = np.array(model_fit.param_names)
+            # update only the uncertainties for parameters used in the fit
+            fit_mask = ~np.array([getattr(model_fit, x).fixed for x in param_names])
+            for i, x in enumerate(param_names[fit_mask]):
+                # check if the parameter has units and then get array of the MC model values
+                m = mc_models[0]
+                p = getattr(m, x)
+                if hasattr(p, "unit") and (p.unit is not None):
+                    fit_vals = np.array([getattr(m, x).value for m in mc_models]) * p.unit
+                else:
+                    fit_vals = np.array([getattr(m, x) for m in mc_models])
+
+                # set the parameter value as the mean of the MC values
+                setattr(model_fit, "{}".format(x), np.mean(fit_vals))
+                # set the parameter uncertainty as the std of the MC values
+                setattr(model_fit, "{}_err".format(x), np.std(fit_vals))
+
+        else:
+            #     log lack of uncertainties for fitter
+            print("no phase curve parameter uncertainties calculated")
 
         ### if overwrite_model: # add an overwrite option?
         # redo __init__ with the new fitted parameters
