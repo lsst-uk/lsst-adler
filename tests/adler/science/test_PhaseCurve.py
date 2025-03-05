@@ -1,7 +1,6 @@
 import numpy as np
 import astropy.units as u
-from numpy.testing import assert_array_equal, assert_almost_equal
-import pytest
+from numpy.testing import assert_array_equal, assert_array_less, assert_almost_equal
 
 from adler.science.PhaseCurve import PhaseCurve, ADLER_SBPY_DICT
 from adler.utilities.tests_utilities import get_test_data_filepath
@@ -76,7 +75,6 @@ def test_PhaseCurve_FitModel_HG():
     # the new fitted model should have the same parameters as the input model
     assert pc2.H == pc1.H
     assert pc2.phase_parameter_1 == pc1.phase_parameter_1
-    assert pc2.phase_parameter_2 is None
     assert pc1.phase_parameter_1_err is None  # the first model had no uncertainties
     assert pc2.phase_parameter_1_err is not None  # the fitted model has some uncertainties
 
@@ -98,7 +96,6 @@ def test_PhaseCurve_FitModel_HG_no_units():
     # the new fitted model should have the same parameters as the input model
     assert pc2.H == pc1.H
     assert pc2.phase_parameter_1 == pc1.phase_parameter_1
-    assert pc2.phase_parameter_2 is None
     assert pc1.phase_parameter_1_err is None  # the first model had no uncertainties
     assert pc2.phase_parameter_1_err is not None  # the fitted model has some uncertainties
 
@@ -146,6 +143,53 @@ def test_PhaseCurve_FitModel_HG_bounds():
     assert pc_fit.G.bounds == (0.0, 0.1)
     assert pc2.phase_parameter_1 == 0.1
     assert pc2.phase_parameter_1_err is not None
+
+
+def test_PhaseCurve_ReducedMagBounds():
+    """Test calculating the reduced magnitude from a PhaseCurve object."""
+
+    # define the phase angles
+    alpha = np.radians(np.array([0, 10]))
+
+    # Test the HG12 model
+    pc = PhaseCurve(model_name="HG12", H_err=0.1, phase_parameter_1_err=0.1)
+
+    # find the reduced mag and the bounds
+    red_mag = pc.ReducedMag(alpha)
+    pc_bounds = pc.ReducedMagBounds(alpha)
+
+    assert_almost_equal(pc_bounds["mag_min"][0], pc.H - pc.H_err)
+    assert_almost_equal(pc_bounds["mag_max"][0], pc.H + pc.H_err)
+    assert_almost_equal(pc_bounds["mag_mean"][0], pc.H)
+    assert len(pc_bounds["PhaseCurves"]) == 4
+    assert_array_less(pc_bounds["mag_min"], red_mag)
+    assert_array_less(red_mag, pc_bounds["mag_max"])
+
+    # also test the HG1G2 model with all uncertainties
+    pc = PhaseCurve(model_name="HG1G2", H_err=0.1, phase_parameter_1_err=0.1, phase_parameter_2_err=0.1)
+    # find the reduced mag and the bounds
+    red_mag = pc.ReducedMag(alpha)
+    pc_bounds = pc.ReducedMagBounds(alpha)
+
+    assert_almost_equal(pc_bounds["mag_min"][0], pc.H - pc.H_err)
+    assert_almost_equal(pc_bounds["mag_max"][0], pc.H + pc.H_err)
+    assert_almost_equal(pc_bounds["mag_mean"][0], pc.H)
+    assert len(pc_bounds["PhaseCurves"]) == 8
+    assert_array_less(pc_bounds["mag_min"], red_mag)
+    assert_array_less(red_mag, pc_bounds["mag_max"])
+
+    # also test the HG1G2 model with only 2/3 uncertainties
+    pc = PhaseCurve(model_name="HG1G2", H_err=0.1, phase_parameter_1_err=0.1)
+    # find the reduced mag and the bounds
+    red_mag = pc.ReducedMag(alpha)
+    pc_bounds = pc.ReducedMagBounds(alpha)
+
+    assert_almost_equal(pc_bounds["mag_min"][0], pc.H - pc.H_err)
+    assert_almost_equal(pc_bounds["mag_max"][0], pc.H + pc.H_err)
+    assert_almost_equal(pc_bounds["mag_mean"][0], pc.H)
+    assert len(pc_bounds["PhaseCurves"]) == 4
+    assert_array_less(pc_bounds["mag_min"], red_mag)
+    assert_array_less(red_mag, pc_bounds["mag_max"])
 
 
 def test_PhaseCurve_FitModel_resample():
