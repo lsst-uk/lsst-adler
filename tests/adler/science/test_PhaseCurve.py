@@ -144,6 +144,7 @@ def test_PhaseCurve_FitModel_HG_bounds():
     assert pc2.phase_parameter_1 == 0.1
     assert pc2.phase_parameter_1_err is not None
 
+
 def test_PhaseCurve_ReducedMagBounds():
     """Test calculating the reduced magnitude from a PhaseCurve object."""
 
@@ -189,6 +190,7 @@ def test_PhaseCurve_ReducedMagBounds():
     assert len(pc_bounds["PhaseCurves"]) == 4
     assert_array_less(pc_bounds["mag_min"], red_mag)
     assert_array_less(red_mag, pc_bounds["mag_max"])
+
 
 def test_PhaseCurve_FitModel_resample():
 
