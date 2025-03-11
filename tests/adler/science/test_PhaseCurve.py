@@ -146,7 +146,7 @@ def test_PhaseCurve_FitModel_HG_bounds():
 
 
 def test_PhaseCurve_ReducedMagBounds():
-    """Test calculating the reduced magnitude from a PhaseCurve object."""
+    """Test calculating the reduced magnitude bounds from a PhaseCurve object."""
 
     # define the phase angles
     alpha = np.radians(np.array([0, 10]))
@@ -190,6 +190,31 @@ def test_PhaseCurve_ReducedMagBounds():
     assert len(pc_bounds["PhaseCurves"]) == 4
     assert_array_less(pc_bounds["mag_min"], red_mag)
     assert_array_less(red_mag, pc_bounds["mag_max"])
+
+    # test bounds with units
+    alpha = np.array([0, 10]) * u.deg
+    pc = PhaseCurve(model_name="HG12", H=18.0 * u.mag, H_err=0.1 * u.mag, phase_parameter_1_err=0.1)
+    red_mag = pc.ReducedMag(alpha)
+    pc_bounds = pc.ReducedMagBounds(alpha)
+
+    assert pc_bounds["mag_min"][0].unit == (pc.H - pc.H_err).unit
+    assert_almost_equal(pc_bounds["mag_min"][0].to_value(), (pc.H - pc.H_err).to_value())
+    assert pc_bounds["mag_max"][0].unit == (pc.H + pc.H_err).unit
+    assert_almost_equal(pc_bounds["mag_max"][0].to_value(), (pc.H + pc.H_err).to_value())
+    assert_almost_equal(pc_bounds["mag_mean"][0].to_value(), pc.H.to_value())
+    assert len(pc_bounds["PhaseCurves"]) == 4
+    assert_array_less(pc_bounds["mag_min"].to_value(), red_mag.to_value())
+    assert_array_less(red_mag.to_value(), pc_bounds["mag_max"].to_value())
+
+
+def test_PhaseCurve_ReturnParamStr():
+    """Test generating a label for a PhaseCurve object."""
+
+    pc = PhaseCurve()
+    assert pc.ReturnParamStr() == "H=18.00,G=0.20"
+
+    pc = PhaseCurve(model_name="HG1G2")
+    assert pc.ReturnParamStr() == "H=18.00,G1=0.20,G2=0.20"
 
 
 def test_PhaseCurve_FitModel_resample():
