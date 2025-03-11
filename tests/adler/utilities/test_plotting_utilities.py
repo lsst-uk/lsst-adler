@@ -85,7 +85,7 @@ def test_plot_errorbar_legend():
     assert ax1.get_legend_handles_labels()[1] == ["r", "g"]
 
 
-# TODO: test no xerr_plot
+# TODO: test no yerr_plot
 # TODO: test col_list
 
 if __name__ == "__main__":
