@@ -40,7 +40,9 @@ def runAdler(cli_args):
     if phase_model == "HG":
         phase_param_1_default = 0.15
     else:
-        phase_param_1_default = 0.62
+        phase_param_1_default = (
+            0.62  # The HG12_Pen16 equivalent for G=0.15 (see Robinson et al. 2024 eqn B1a)
+        )
 
     # Define colour parameters
     # set number of reference observations to use for colour estimate
@@ -91,8 +93,9 @@ def runAdler(cli_args):
         # now let's do some phase curves!
         logger.info("Calculating phase curves...")
 
-        # make an empty figure
-        fig = plot_errorbar(planetoid, filt_list=[])
+        if not cli_args.no_plot:
+            # make an empty figure
+            fig = plot_errorbar(planetoid, filt_list=[])
 
         # operate on each filter in turn
         for filt in cli_args.filter_list:
@@ -160,35 +163,39 @@ def runAdler(cli_args):
 
             print(adler_data.get_phase_parameters_in_filter(filt, phase_model).__dict__)
 
-            # add to plot
-            ax1 = fig.axes[0]
-            # TODO: set colours based on filter
-            ax1.scatter(df_obs["phaseAngle"], df_obs["reduced_mag"])
-            alpha = np.linspace(0, np.amax(obs.phaseAngle)) * u.deg
-            ax1.plot(
-                alpha.value,
-                # pc_fit.ReducedMag(alpha).value,
-                # label="{}, H={:.2f}, G12={:.2f}".format(filt, pc_fit.H.value, pc_fit.phase_parameter_1),
-                pc_fit.ReducedMag(alpha),
-                label="{}, H={:.2f}, {}={:.2f}".format(
-                    filt, pc_fit.H, phase_parameter_1, pc_fit.phase_parameter_1
-                ),
-            )
-        ax1.legend()
+            if not cli_args.no_plot:
+                # add to plot
+                ax1 = fig.axes[0]
+                # TODO: set colours based on filter
+                ax1.scatter(df_obs["phaseAngle"], df_obs["reduced_mag"])
+                alpha = np.linspace(0, np.amax(obs.phaseAngle)) * u.deg
+                ax1.plot(
+                    alpha.value,
+                    # pc_fit.ReducedMag(alpha).value,
+                    # label="{}, H={:.2f}, G12={:.2f}".format(filt, pc_fit.H.value, pc_fit.phase_parameter_1),
+                    pc_fit.ReducedMag(alpha),
+                    label="{}, H={:.2f}, {}={:.2f}".format(
+                        filt, pc_fit.H, phase_parameter_1, pc_fit.phase_parameter_1
+                    ),
+                )
+        if not cli_args.no_plot:
+            ax1.legend()
 
-        # TODO: Use a CLI arg flag to open figure interactively instead of saving?
-        if cli_args.plot_show:
-            plt.show()
-        # Save figures at the outpath location
-        else:
-            fig_file = "{}/phase_curve_{}_{}_{}.png".format(
-                cli_args.outpath, cli_args.ssObjectId, phase_model, int(np.amax(df_obs["midPointMjdTai"]))
-            )
-            msg = "Save figure: {}".format(fig_file)
-            print(msg)
-            logger.info(msg)
-            fig = plot_errorbar(planetoid, fig=fig, filename=fig_file)  # TODO: add titles with filter name?
-            plt.close()
+            # open figure interactively instead of saving
+            if cli_args.plot_show:
+                plt.show()
+            # Save figures at the outpath location
+            else:
+                fig_file = "{}/phase_curve_{}_{}_{}.png".format(
+                    cli_args.outpath, cli_args.ssObjectId, phase_model, int(np.amax(df_obs["midPointMjdTai"]))
+                )
+                msg = "Save figure: {}".format(fig_file)
+                print(msg)
+                logger.info(msg)
+                fig = plot_errorbar(
+                    planetoid, fig=fig, filename=fig_file
+                )  # TODO: add titles with filter name?
+                plt.close()
 
         # Output adler values to a database if a db_name is provided
         print(adler_data.__dict__)
@@ -226,8 +233,8 @@ def runAdler(cli_args):
             logger.info("Determine {} colour".format(colour))
 
             # determine the filt_obs - filt_ref colour
-            # generate a plot
-            if cli_args.plot_show:
+            # There is an option to generate a plot
+            if cli_args.no_plot:
                 plot_dir = None
             else:
                 plot_dir = cli_args.outpath
@@ -313,25 +320,33 @@ def main():
         default=None,
     )
     optional_group.add_argument(
-        "-p",
-        "--plot_show",
-        help="Optional flag to display plots interactively instead of saving to file.",
-        action="store_true",
-    )
-    # TODO: Add a model_name parameter
-    optional_group.add_argument(
         "-m",
         "--phase_model",
         help="Select the phase parameter model_name. LIST OPTIONS AND DEFAULT",
         type=str,
         default="HG12_Pen16",
     )
+    optional_group.add_argument(
+        "-p",
+        "--plot_show",
+        help="Optional flag to display plots interactively instead of saving to file.",
+        action="store_true",
+    )
+    optional_group.add_argument(
+        "-np",
+        "--no_plot",
+        help="Optional flag to create no plots alongside the analysis",
+        action="store_true",
+    )
 
     args = parser.parse_args()
 
     cli_args = AdlerCLIArguments(args)
 
-    adler_logger = setup_adler_logging(cli_args.outpath)
+    log_loc = "{}/log_files".format(cli_args.outpath)
+    if not os.path.isdir(log_loc):
+        os.mkdir(log_loc)
+    adler_logger = setup_adler_logging(log_loc)
 
     cli_args.logger = adler_logger
 

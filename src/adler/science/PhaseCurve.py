@@ -89,6 +89,8 @@ class PhaseCurve:
         else:
             print("no model selected")
 
+    # TODO: set "bounds" parameter in __init__?
+
     def SetModelBounds(self, param, bound_vals=(None, None)):
         """Set the "bounds" attribute of an sbpy model parameter, i.e. the lower and upper constraints for the fitter.
 
