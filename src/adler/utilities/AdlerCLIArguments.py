@@ -180,3 +180,6 @@ class AdlerCLIArguments:
         if self.plot_show and self.no_plot:
             logging.error(err_msg_plot)
             raise ValueError(err_msg_plot)
+
+
+# TODO: test plot_show and no_plot options more than just checking they are set. Check that the plot is made and displayed (or not)?

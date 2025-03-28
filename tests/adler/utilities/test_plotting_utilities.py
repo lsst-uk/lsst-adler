@@ -87,6 +87,7 @@ def test_plot_errorbar_legend():
 
 # TODO: test no yerr_plot
 # TODO: test col_list
+# TODO: test plot_phasecurve
 
 if __name__ == "__main__":
     print(test_planetoid.__dict__)
