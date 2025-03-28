@@ -1,7 +1,7 @@
 from sbpy.photometry import HG, HG1G2, HG12, HG12_Pen16, LinearPhaseFunc
 import astropy.units as u
 import numpy as np
-from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.fitting import LevMarLSQFitter, SLSQPLSQFitter
 import itertools
 
 # translation between sbpy and adler field names
@@ -405,9 +405,15 @@ class PhaseCurve:
 
         """
 
-        # use the LevMarLSQFitter by default
+        # use the LevMarLSQFitter by default, unless the HG1G2 model is used
         if fitter is None:
-            fitter = LevMarLSQFitter()
+            if self.model_name == "HG1G2":
+                # The HG1G2 model has bounds and inequality constraints by default, needs something like Sequential Least Squares Programming (SLSQP) optimization algorithm and least squares statistic
+                fitter = (
+                    SLSQPLSQFitter()
+                )  # fit with constraints, NB does not provide a covariance matrix, might need to resample for uncertainties
+            else:
+                fitter = LevMarLSQFitter()
 
         if mag_err is not None:  # fit weighted by photometric uncertainty
             model_fit = fitter(self.model_function, phase_angle, reduced_mag, weights=1.0 / mag_err)
