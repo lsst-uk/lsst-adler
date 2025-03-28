@@ -228,3 +228,5 @@ def test_outlier_sigma_diff():
 # TODO: test get_df_obs_filt, check filter and sorting/time range constraints,
 # check the column list behaviour
 # check AbsMag calculation
+
+# TODO: test running_stats

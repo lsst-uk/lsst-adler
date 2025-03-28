@@ -190,3 +190,6 @@ def plot_phasecurve(
         fig.savefig(filename, facecolor="w", transparent=True, bbox_inches="tight")
 
     return fig
+
+
+# TODO: add plot_phasecurves to the read the docs? e.g. plotting_utilities_example.ipynb
