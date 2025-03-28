@@ -8,7 +8,7 @@ def plot_errorbar(
     filt_list=[],
     x_plot="phaseAngle",
     y_plot="reduced_mag",
-    xerr_plot="magErr",
+    yerr_plot="magErr",
     c_plot=None,
     fig=None,
     label_list=None,
@@ -25,8 +25,8 @@ def plot_errorbar(
         Name of the AdlerPlanetoid attribute to be plotted on the x axis
     y_plot: str
         Name of the AdlerPlanetoid attribute to be plotted on the y axis
-    xerr_plot: str
-        Name of the AdlerPlanetoid attribute for the x axis uncertainties
+    yerr_plot: str
+        Name of the AdlerPlanetoid attribute for the y axis uncertainties
     c_plot: str
         Name of the AdlerPlanetoid attribute used for the colour scale
     fig: matplotlib.figure.Figure
@@ -78,10 +78,10 @@ def plot_errorbar(
         else:
             c = None
 
-        if xerr_plot is not None:
+        if yerr_plot is not None:
             # plot the errorbars
-            xerr = getattr(obs_filt, xerr_plot)
-            s1 = ax1.errorbar(x, y, xerr, color=c, fmt="o", label=l)  # TODO: get cmap working with errorbar
+            yerr = getattr(obs_filt, yerr_plot)
+            s1 = ax1.errorbar(x, y, yerr, color=c, fmt="o", label=l)  # TODO: get cmap working with errorbar
         else:
             # just plot scatter
             s1 = ax1.scatter(x, y, c=c, label=l)
