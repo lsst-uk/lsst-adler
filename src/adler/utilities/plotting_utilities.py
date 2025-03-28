@@ -1,6 +1,6 @@
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import numpy as np
 
 
 def plot_errorbar(
@@ -32,7 +32,7 @@ def plot_errorbar(
     fig: matplotlib.figure.Figure
         Optional, pass an existing figure object to be added to
     label_list: list
-        Optional, labels for errorbar plot elements
+        Optional, labels for errorbar plot elements. The user can add the legend manually after the fact in case additional elements are added to the figure.
     col_list: list
         Optional, colors for errorbar scatter points
     filename: str
