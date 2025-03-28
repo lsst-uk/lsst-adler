@@ -62,7 +62,7 @@ class PhaseCurve:
         self,
         H=18,
         phase_parameter_1=0.2,
-        phase_parameter_2=0.2,
+        phase_parameter_2=None,
         model_name="HG",
         H_err=None,
         phase_parameter_1_err=None,
@@ -79,6 +79,9 @@ class PhaseCurve:
         if model_name == "HG":
             self.model_function = HG(H=H, G=self.phase_parameter_1)
         elif model_name == "HG1G2":
+            # If two parameter model is selected, phase_parameter_2 must be defined. If not defined by user, use a default value (similar behaviour to phase_parameter_1)
+            if not self.phase_parameter_2:
+                self.phase_parameter_2 = 0.2
             self.model_function = HG1G2(H=H, G1=self.phase_parameter_1, G2=self.phase_parameter_2)
         elif model_name == "HG12":
             self.model_function = HG12(H=H, G12=self.phase_parameter_1)
