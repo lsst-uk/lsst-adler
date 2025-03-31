@@ -21,6 +21,12 @@ ALL_FILTER_LIST = ["u", "g", "r", "i", "z", "y"]
 
 logger = logging.getLogger(__name__)
 
+# Ensure that numpy dtypes correctly map to SQL types
+sqlite3.register_adapter(np.float64, float)
+sqlite3.register_adapter(np.float32, float)
+sqlite3.register_adapter(np.int64, int)
+sqlite3.register_adapter(np.int32, int)
+
 
 @dataclass
 class AdlerData:

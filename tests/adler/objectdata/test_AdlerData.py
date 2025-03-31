@@ -351,3 +351,68 @@ def test_read_row_from_database():
         bad_filter.populate_from_database("./dummy_location.db")
 
     assert error_info_3.value.args[0] == "Database cannot be found at given filepath."
+
+
+def test_write_db_dtypes():
+    # Tests creating and reading an AdlerData SQL database
+    # Importantly, this checks that different python dtypes (np.float32, np.float64) do not cause problems with SQL types (See: https://github.com/lsst-uk/lsst-adler/issues/188)
+    db_location = "test_write_AdlerData_database.db"
+
+    # make a test AdlerData object
+    filt = "r"
+    model_1 = "HG12_Pen16"
+    objid = "6098332225018"
+    test_object = AdlerData(objid, [filt])
+    # results for "adler -s 6098332225018 -n adler_data_61562.db -d 60000.0 61561.5 -np" (see notebooks/adler_demo_rsp)
+    filt_model_1 = {
+        # 'filter_name': str(filt),
+        "phaseAngle_min": np.float32(2.0016675),
+        "phaseAngle_range": np.float32(14.333714),
+        "nobs": int(29),
+        "arc": np.float64(1328.0008499999967),
+        "model_name": str(model_1),
+        "H": np.float64(16.298209121561705),
+        "H_err": np.float64(0.01159924566937738),
+        "phase_parameter_1": np.float64(0.634134437903631),
+        "phase_parameter_1_err": np.float64(0.06199827430819154),
+        "phase_parameter_2": float(0.2),
+        "phase_parameter_2_err": None,
+    }
+    test_object.populate_phase_parameters(filt, **filt_model_1)
+    ad = test_object.get_phase_parameters_in_filter(filt, model_1).__dict__
+
+    # delete database file so that it is made from scratch
+    if os.path.isfile(db_location):
+        os.remove(db_location)
+
+    # create an AdlerData database for this object
+    test_object.write_row_to_database(db_location)
+
+    # Check that the database file exists
+    assert os.path.isfile(db_location)
+
+    # read the database
+    con = sqlite3.connect(db_location)
+    written_data = pd.read_sql_query("SELECT * from AdlerData", con)
+    con.close()
+
+    # we expect the following data types for each field
+    expected_dtypes = {
+        "ssObjectId": np.int64,
+        "timestamp": np.float64,
+        "r_phaseAngle_min": np.float64,
+        "r_phaseAngle_range": np.float64,
+        "r_nobs": np.int64,
+        "r_arc": np.float64,
+        "r_HG12_Pen16_H": np.float64,
+        "r_HG12_Pen16_H_err": np.float64,
+        "r_HG12_Pen16_phase_parameter_1": np.float64,
+        "r_HG12_Pen16_phase_parameter_1_err": np.float64,
+        "r_HG12_Pen16_phase_parameter_2": np.float64,
+        "r_HG12_Pen16_phase_parameter_2_err": object,
+        "r_HG12_Pen16_modelFitMjd": object,
+    }
+
+    # check the type of each field
+    for x in expected_dtypes:
+        assert isinstance(written_data.iloc[0][x], expected_dtypes[x])
