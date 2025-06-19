@@ -222,6 +222,15 @@ def test_outlier_sigma_diff():
     assert_array_equal(outliers, outliers_y)
 
 
+def test_running_stats():
+    sum_y = np.sum(y_res)
+    sum_y2 = np.sum(y_res**2.0)
+    running_mean_y, running_std_y = sci_utils.running_stats(len(y_res), sum_y, sum_y2)
+
+    assert running_mean_y == np.mean(y_res)
+    assert running_std_y == np.std(y_res)
+
+
 # TODO: test apparition_gap_finder, correct number of groups identified? correct boundaries?
 # check boundaires are in ascending order
 
