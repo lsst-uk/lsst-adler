@@ -8,6 +8,9 @@ import numpy as np
 
 def run_adler_day(ssobject_list):
     """Runs the Adler day process for a list of SSObjectIds.
+    I.e. retrieve all observations for an object and fit phase curve models.
+    In the context of Lasair broker integration "day-time" operations are when the broker is not currently ingesting alerts and we are able to query the databases of past observations for each object.
+    Phase curve models are saved to an AdlerData database, which are then available during "night-time" operations, when we are testing incoming observations for outlying the model.
 
     Parameters
     -----------
