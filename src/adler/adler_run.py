@@ -22,6 +22,16 @@ logger = logging.getLogger(__name__)
 
 
 def runAdler(cli_args):
+    """
+    Function behind the "adler" command line tool (see pyproject.toml where this is setup).
+    Running adler will retrieve observations of an SSO from either RSP or a local database and fits a selected phase curve model to each filter.
+    SSO colour as a function of time can be calculated between data in two filters.
+    Plots can be generated (interactive or saved to file).
+    The calculated values are determined as an AdlerData object which can be saved to a database file.
+
+    Run "adler --help" to see all command line options.
+    """
+
     logger.info("Beginning Adler.")
 
     # adler parameters
@@ -255,6 +265,8 @@ def runAdler(cli_args):
             )
 
             print(col_dict)
+
+            # TODO: save the col_dict or add the relevant metrics to AdlerData?
 
 
 def main():

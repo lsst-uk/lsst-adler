@@ -21,6 +21,12 @@ logger = logging.getLogger(__name__)
 
 
 def runAdlerDemo(cli_args):
+    """
+    This function is an experimental version of adlerRun (adler_run.py).
+    Here the observations are split into "past" and "present" and the phase curve model is fit to past observations.
+    The "present" observations are tested to see if they are outlying the phase curve model.
+    Colours and plots are also made.
+    """
     logger.info("Beginning Adler.")
 
     # adler parameters
