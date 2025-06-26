@@ -1,7 +1,7 @@
 from sbpy.photometry import HG, HG1G2, HG12, HG12_Pen16, LinearPhaseFunc
 import astropy.units as u
 import numpy as np
-from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.modeling.fitting import LevMarLSQFitter, SLSQPLSQFitter
 import itertools
 
 # translation between sbpy and adler field names
@@ -62,7 +62,7 @@ class PhaseCurve:
         self,
         H=18,
         phase_parameter_1=0.2,
-        phase_parameter_2=0.2,
+        phase_parameter_2=None,
         model_name="HG",
         H_err=None,
         phase_parameter_1_err=None,
@@ -79,6 +79,9 @@ class PhaseCurve:
         if model_name == "HG":
             self.model_function = HG(H=H, G=self.phase_parameter_1)
         elif model_name == "HG1G2":
+            # If two parameter model is selected, phase_parameter_2 must be defined. If not defined by user, use a default value (similar behaviour to phase_parameter_1)
+            if not self.phase_parameter_2:
+                self.phase_parameter_2 = 0.2
             self.model_function = HG1G2(H=H, G1=self.phase_parameter_1, G2=self.phase_parameter_2)
         elif model_name == "HG12":
             self.model_function = HG12(H=H, G12=self.phase_parameter_1)
@@ -451,9 +454,15 @@ class PhaseCurve:
 
         """
 
-        # use the LevMarLSQFitter by default
+        # use the LevMarLSQFitter by default, unless the HG1G2 model is used
         if fitter is None:
-            fitter = LevMarLSQFitter()
+            if self.model_name == "HG1G2":
+                # The HG1G2 model has bounds and inequality constraints by default, needs something like Sequential Least Squares Programming (SLSQP) optimization algorithm and least squares statistic
+                fitter = (
+                    SLSQPLSQFitter()
+                )  # fit with constraints, NB does not provide a covariance matrix, might need to resample for uncertainties
+            else:
+                fitter = LevMarLSQFitter()
 
         if mag_err is not None:  # fit weighted by photometric uncertainty
             model_fit = fitter(self.model_function, phase_angle, reduced_mag, weights=1.0 / mag_err)

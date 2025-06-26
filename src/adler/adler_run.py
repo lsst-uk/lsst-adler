@@ -22,6 +22,16 @@ logger = logging.getLogger(__name__)
 
 
 def runAdler(cli_args):
+    """
+    Function behind the "adler" command line tool (see pyproject.toml where this is setup).
+    Running adler will retrieve observations of an SSO from either RSP or a local database and fits a selected phase curve model to each filter.
+    SSO colour as a function of time can be calculated between data in two filters.
+    Plots can be generated (interactive or saved to file).
+    The calculated values are determined as an AdlerData object which can be saved to a database file.
+
+    Run "adler --help" to see all command line options.
+    """
+
     logger.info("Beginning Adler.")
 
     # adler parameters
@@ -123,11 +133,12 @@ def runAdler(cli_args):
             pc = PhaseCurve(
                 # H=sso.H * u.mag,
                 H=sso.H,
-                phase_parameter_1=phase_param_1_default,
+                # phase_parameter_1=phase_param_1_default,
                 model_name=phase_model,
             )
 
             # only fit phase_parameter when sufficient data is available
+            # TODO: update here for two phase parameter models
             if len(df_obs) < N_pc_fit:
                 msg = "Do not fit {}, use {}={:.2f}".format(
                     phase_parameter_1, phase_parameter_1, pc.phase_parameter_1
@@ -149,6 +160,7 @@ def runAdler(cli_args):
                 np.array(df_obs["magErr"]),
             )
             pc_fit = pc.InitModelSbpy(pc_fit)
+            # TODO: log fitter and associated parameters
 
             # Store the fitted values, and metadata, in an AdlerData object
             ad_params = pc_fit.__dict__
@@ -254,6 +266,8 @@ def runAdler(cli_args):
 
             print(col_dict)
 
+            # TODO: save the col_dict or add the relevant metrics to AdlerData?
+
 
 def main():
     parser = argparse.ArgumentParser(description="Runs Adler for select planetoid(s) and given user input.")
@@ -322,7 +336,7 @@ def main():
     optional_group.add_argument(
         "-m",
         "--phase_model",
-        help="Select the phase parameter model_name. LIST OPTIONS AND DEFAULT",
+        help="Select the phase parameter model_name. Choice of sbpy models: HG, HG1G2, HG12, HG12_Pen16, LinearPhaseFunc. Default: HG12_Pen16",
         type=str,
         default="HG12_Pen16",
     )
