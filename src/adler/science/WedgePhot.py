@@ -25,7 +25,6 @@ class WedgePhot:
         E.g.: sum,mean,median,sigclip-mean,sigclip-std
     ap_rad_out: float
         (Optional) Maximum radius (pixels) to calculate radial profile over.
-
     """
 
     def __init__(
@@ -42,6 +41,12 @@ class WedgePhot:
         self.measure = measure
         self.N_wedge = N_wedge
         self.ap_rad_out = ap_rad_out
+
+        # define the current working directory, i.e. where subprocess is running
+        # this is needed for working with the output files
+        self.cwd = (
+            os.getcwd()
+        )  # TODO: include option to set cwd? use cd <cwd> in subprocess to control where everything runs?
 
         # set up azimuthal bin edges (degrees)
         self.az = np.linspace(0, 360, self.N_wedge + 1)
@@ -101,6 +106,9 @@ class WedgePhot:
 
         print(ast_cmd)
 
+        result = subprocess.Popen("pwd", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print(result.communicate()[0].decode("utf-8"))
+
         # run the command
         result = subprocess.Popen(ast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         # print(result)
@@ -111,6 +119,8 @@ class WedgePhot:
         col_names = [x.split(": ")[-1].split(" ")[0] for x in data.split("\n") if self.col_fmt in x]
         # print(col_names)
         df_results = pd.read_csv(StringIO(data), sep="\s+", names=col_names, comment="#")
+
+        # TODO: properly log the output from astscript-radial-profile
 
         return df_results
 
@@ -131,7 +141,7 @@ class WedgePhot:
         for i in range(len(self.az) - 1):
             az_min = self.az[i]
             az_max = self.az[i + 1]
-            outfile = "wedge_out_{}.txt".format(i)
+            outfile = "{}/wedge_out_{}.txt".format(self.cwd, i)
 
             # run radial profile for a single bin
             df = self.astscript_radial_profile(az_min, az_max, outfile)
