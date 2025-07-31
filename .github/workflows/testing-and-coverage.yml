@@ -38,6 +38,7 @@ jobs:
       run: |
         conda install -y conda-forge::gnuastro
         conda list gnuastro
+        which astscript-radial-profile
     - name: Run unit tests with pytest
       run: |
         python -m pytest tests --cov=adler --cov-report=xml
