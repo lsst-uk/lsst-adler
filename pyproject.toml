@@ -23,6 +23,7 @@ dependencies = [
     "pandas",
     "scipy",
     "photutils",
+    "gnuastro",
 ]
 
 [project.urls]
