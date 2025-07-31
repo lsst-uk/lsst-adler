@@ -29,12 +29,6 @@ jobs:
         pip install -e .
         pip install -e .[dev]
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Install gnuastro
-      uses: conda-incubator/setup-miniconda@v2
-      run: |
-        conda info
-        conda list
-        conda install -y conda-forge::gnuastro
     - name: Run unit tests with pytest
       run: |
         python -m pytest tests --cov=adler --cov-report=xml
