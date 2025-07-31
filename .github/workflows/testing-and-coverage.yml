@@ -36,7 +36,7 @@ jobs:
         conda list
     - name: Install gnuastro
       run: |
-        conda install -y conda-forge::gnuastro
+        conda install -y conda-forge::gnuastro=0.23
         conda list gnuastro
         which astscript-radial-profile
     - name: Run unit tests with pytest
