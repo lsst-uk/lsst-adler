@@ -30,9 +30,9 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f docs/requirements.txt ]; then pip install -r docs/requirements.txt; fi
         pip install .
-    - name: Install gnuastro
-      run: |
-        conda install conda-forge::gnuastro
+    # - name: Install gnuastro
+    #   run: |
+    #     conda install conda-forge::gnuastro
     - name: Install notebook requirements
       run: |
         sudo apt-get install pandoc

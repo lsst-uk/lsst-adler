@@ -30,6 +30,7 @@ jobs:
         pip install -e .[dev]
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Install gnuastro
+      uses: conda-incubator/setup-miniconda@v2
       run: |
         conda install conda-forge::gnuastro
     - name: Run unit tests with pytest
