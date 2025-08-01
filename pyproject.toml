@@ -22,6 +22,7 @@ dependencies = [
     "matplotlib", # for plotting
     "pandas",
     "scipy",
+    "photutils",
 ]
 
 [project.urls]
