@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import logging
 import json
+import astropy.units as u
 
 from adler.objectdata.Observations import Observations
 from adler.objectdata.MPCORB import MPCORB
@@ -201,7 +202,7 @@ class AdlerPlanetoid:
 
     @classmethod
     def construct_from_RSP(
-        cls, ssObjectId, filter_list=["u", "g", "r", "i", "z", "y"], date_range=[60000.0, 67300.0]
+        cls, ssObjectId, filter_list=["u", "g", "r", "i", "z", "y"], date_range=[60000.0, 67300.0], schema="dp03_catalogs_10yr"
     ):  # pragma: no cover
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects
         from the RSP.
@@ -221,11 +222,14 @@ class AdlerPlanetoid:
 
         if len(date_range) != 2:
             raise Exception("date_range argument must be of length 2.")
-
+        
+        #TODO tap vs ssotap for dp0.3 vs dp1
         service = get_tap_service("ssotap")
         logger.info("Getting past observations from DIASource/SSSource...")
+        #TODO edit here for DP0.3 vs DP1 flag? And trailFlux vs apFlux flag?
+        #TODO convert fluxes to mags somewhere?
         observations_by_filter = cls.populate_observations(
-            cls, ssObjectId, filter_list, date_range, service=service
+            cls, ssObjectId, filter_list, date_range, service=service, schema=schema
         )
 
         if len(observations_by_filter) == 0:
@@ -244,9 +248,9 @@ class AdlerPlanetoid:
             logger.info("New filter list is: {}".format(filter_list))
 
         logger.info("Populating MPCORB metadata...")
-        mpcorb = cls.populate_MPCORB(cls, ssObjectId, service=service)
+        mpcorb = cls.populate_MPCORB(cls, ssObjectId, service=service, schema=schema)
         logger.info("Populating SSObject metadata...")
-        ssobject = cls.populate_SSObject(cls, ssObjectId, filter_list, service=service)
+        ssobject = cls.populate_SSObject(cls, ssObjectId, filter_list, service=service, schema=schema)
 
         adler_data = AdlerData(ssObjectId, filter_list)
 
@@ -294,20 +298,26 @@ class AdlerPlanetoid:
         observations_by_filter = []
 
         for filter_name in filter_list:
+            #TODO edit this query to create a DP1 version
+            #TODO add flag for whether to use DP1 or DP0.3 version
+            #TODO add flag for trailFlux or apFlux (trailFlux has no error). 
+            #TODO trailRa, trailDec when using trailFlux
+            #TODO dp1 table is case sensitive for the table names? Fix this by just updating all table names to be correct case as DP0.3 doesn't care
             observations_sql_query = f"""
                 SELECT
-                    ssObject.ssObjectId, ssSource.diaSourceId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
+                    SSObject.ssObjectId, SSSource.diaSourceId, trailFlux, psfFluxErr, band, midPointMjdTai, ra, dec, phaseAngle,
                     topocentricDist, heliocentricDist, heliocentricX, heliocentricY, heliocentricZ,
                     topocentricX, topocentricY, topocentricZ,
                     eclipticLambda, eclipticBeta
                 FROM
-                    {schema}ssObject
-                    JOIN {schema}diaSource ON {schema}ssObject.ssObjectId   = {schema}diaSource.ssObjectId
-                    JOIN {schema}ssSource  ON {schema}diaSource.diaSourceId = {schema}ssSource.diaSourceId
+                    {schema}SSObject
+                    JOIN {schema}DiaSource ON {schema}SSObject.ssObjectId   = {schema}DiaSource.ssObjectId
+                    JOIN {schema}SSSource  ON {schema}DiaSource.diaSourceId = {schema}SSSource.diaSourceId
                 WHERE
-                    ssObject.ssObjectId = {ssObjectId} AND band = '{filter_name}' AND midPointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
+                    SSObject.ssObjectId = {ssObjectId} AND band = '{filter_name}' AND midPointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
                 """
-
+            
+            #This function submits the query and gets the results (or pulls from the SQL database)
             data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
 
             if len(data_table) == 0:
@@ -317,6 +327,11 @@ class AdlerPlanetoid:
                     )
                 )
             else:
+                # TODO calculate mags here?
+
+                #Use astropy units and convert to AB mag?
+                # Replace flux/fluxErr columns with mag/magErr
+                # Should work as normal from there onwards (repeating for the populate MPCORB/SSObject)
                 observations_by_filter.append(
                     Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
                 )
@@ -347,6 +362,10 @@ class AdlerPlanetoid:
             schema = schema + "."
         else:
             schema = ""
+
+        #TODO edit this query to create a DP1 version
+        #TODO add flag for whether to use DP1 or DP0.3 version
+        #TODO add flag for trailFlux or apFlux (trailFlux has no error)
 
         MPCORB_sql_query = f"""
             SELECT
@@ -404,6 +423,12 @@ class AdlerPlanetoid:
             )
 
             filter_dependent_columns += filter_string
+
+        #TODO edit this query to create a DP1 version
+        #TODO add flag for whether to use DP1 or DP0.3 version
+        #TODO add flag for trailFlux or apFlux (trailFlux has no error)
+
+        #TODO could change to SELECT *, may need to calculate values in interim
 
         SSObject_sql_query = f"""
             SELECT
