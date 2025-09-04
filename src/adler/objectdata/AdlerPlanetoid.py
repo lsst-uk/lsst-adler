@@ -339,7 +339,7 @@ class AdlerPlanetoid:
 
                 # Remove the old flux columns
                 data_table_astropy.remove_columns(["trailFlux", "psfFluxErr"])
-                
+
                 observations_by_filter.append(
                     Observations.construct_from_data_table(ssObjectId, filter_name, data_table_astropy)
                 )
@@ -377,8 +377,7 @@ class AdlerPlanetoid:
 
         MPCORB_sql_query = f"""
             SELECT
-                ssObjectId, mpcDesignation, fullDesignation, mpcNumber, mpcH, mpcG, epoch, tperi, peri, node, incl, e, n, q, 
-                uncertaintyParameter, flags
+                *
             FROM
                 {schema}MPCORB
             WHERE
