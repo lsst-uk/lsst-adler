@@ -9,7 +9,7 @@ from adler.objectdata.Observations import Observations
 from adler.objectdata.MPCORB import MPCORB
 from adler.objectdata.SSObject import SSObject
 from adler.objectdata.AdlerData import AdlerData
-from adler.objectdata.objectdata_utilities import get_data_table
+from adler.objectdata.objectdata_utilities import get_data_table, flux_to_magnitude
 
 logger = logging.getLogger(__name__)
 
@@ -223,10 +223,13 @@ class AdlerPlanetoid:
         if len(date_range) != 2:
             raise Exception("date_range argument must be of length 2.")
         
-        #TODO tap vs ssotap for dp0.3 vs dp1
-        service = get_tap_service("ssotap")
+        #Select correct TAP service depending on schema chosen
+        if schema=="dp03_catalogs_10yr":
+            service = get_tap_service("ssotap")
+        elif schema=="dp1":
+            service = get_tap_service("tap")
+        #TODO Error handling if schema not recognised
         logger.info("Getting past observations from DIASource/SSSource...")
-        #TODO edit here for DP0.3 vs DP1 flag? And trailFlux vs apFlux flag?
         #TODO convert fluxes to mags somewhere?
         observations_by_filter = cls.populate_observations(
             cls, ssObjectId, filter_list, date_range, service=service, schema=schema
@@ -298,11 +301,8 @@ class AdlerPlanetoid:
         observations_by_filter = []
 
         for filter_name in filter_list:
-            #TODO edit this query to create a DP1 version
-            #TODO add flag for whether to use DP1 or DP0.3 version
             #TODO add flag for trailFlux or apFlux (trailFlux has no error). 
             #TODO trailRa, trailDec when using trailFlux
-            #TODO dp1 table is case sensitive for the table names? Fix this by just updating all table names to be correct case as DP0.3 doesn't care
             observations_sql_query = f"""
                 SELECT
                     SSObject.ssObjectId, SSSource.diaSourceId, trailFlux, psfFluxErr, band, midPointMjdTai, ra, dec, phaseAngle,
@@ -327,13 +327,21 @@ class AdlerPlanetoid:
                     )
                 )
             else:
-                # TODO calculate mags here?
+                #Convert to astropy table so we can operate on it and add mag,magErr columns
+                data_table_astropy = data_table.to_table()
 
-                #Use astropy units and convert to AB mag?
-                # Replace flux/fluxErr columns with mag/magErr
-                # Should work as normal from there onwards (repeating for the populate MPCORB/SSObject)
+                # Compute magnitudes
+                mag, mag_err = flux_to_magnitude(data_table_astropy["trailFlux"], data_table_astropy["psfFluxErr"])
+
+                # Insert the new columns at the same positions
+                data_table_astropy.add_column(mag, name="mag", index=data_table_astropy.colnames.index("trailFlux"))
+                data_table_astropy.add_column(mag_err, name="magErr", index=data_table_astropy.colnames.index("psfFluxErr"))
+
+                # Remove the old flux columns
+                data_table_astropy.remove_columns(["trailFlux", "psfFluxErr"])
+                
                 observations_by_filter.append(
-                    Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
+                    Observations.construct_from_data_table(ssObjectId, filter_name, data_table_astropy)
                 )
 
         return observations_by_filter
@@ -425,16 +433,23 @@ class AdlerPlanetoid:
             filter_dependent_columns += filter_string
 
         #TODO edit this query to create a DP1 version
-        #TODO add flag for whether to use DP1 or DP0.3 version
-        #TODO add flag for trailFlux or apFlux (trailFlux has no error)
 
         #TODO could change to SELECT *, may need to calculate values in interim
 
+        # SSObject_sql_query = f"""
+        #     SELECT
+        #         discoverySubmissionDate, firstObservationDate, arc, numObs, 
+        #         {filter_dependent_columns}
+        #         maxExtendedness, minExtendedness, medianExtendedness
+        #     FROM
+        #         {schema}SSObject
+        #     WHERE
+        #         ssObjectId = {ssObjectId}
+        # """
+
         SSObject_sql_query = f"""
             SELECT
-                discoverySubmissionDate, firstObservationDate, arc, numObs, 
-                {filter_dependent_columns}
-                maxExtendedness, minExtendedness, medianExtendedness
+                *
             FROM
                 {schema}SSObject
             WHERE
