@@ -487,7 +487,7 @@ class AdlerPlanetoid:
         elif schema == "dp1":
             SSObject_sql_query = f"""
                 SELECT
-                    discoverySubmissionDate, numObs
+                    ssObjectId, discoverySubmissionDate, numObs
                 FROM
                     {sql_schema}SSObject
                 WHERE
