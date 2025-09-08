@@ -428,7 +428,7 @@ class AdlerPlanetoid:
                 ['ssObjectId', 'mpcDesignation', 'fullDesignation', 'mpcNumber', 'mpcH', 'mpcG',
                 'epoch', 'tperi', 'peri', 'node', 'incl', 'e', 'n', 'q', 'uncertaintyParameter', 'flags']
             ]
-            return MPCORB.construct_from_data_table(ssObjectId, data_table)
+            return MPCORB.construct_from_data_table(ssObjectId, data_qtable)
 
             #TODO error handle is schema not one of the options
 
