@@ -493,6 +493,9 @@ class AdlerPlanetoid:
                 WHERE
                     ssObjectId = {ssObjectId}
             """
+        else:
+            logger.error(f"Schema {schema} not recognised.")
+            raise Exception(f"Schema {schema} not recognised.")
 
         #TODO edit this query to create a DP1 version
 
