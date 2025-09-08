@@ -366,6 +366,13 @@ class AdlerPlanetoid:
 
         """
 
+        if schema=="dp03_catalogs_10yr":
+            sql_cols = "ssObjectId, mpcDesignation, fullDesignation, mpcNumber, mpcH, mpcG, epoch, tperi, peri, node, incl, e, n, q, uncertaintyParameter, flags"
+        elif schema=="dp1":
+            sql_cols = "ssObjectId, mpcDesignation, mpcH, epoch, t_p AS tperi, peri, node, incl, e, q"
+        #TODO Error handling if schema not recognised
+
+
         if schema:  # pragma: no cover
             schema = schema + "."
         else:
@@ -377,20 +384,55 @@ class AdlerPlanetoid:
 
         MPCORB_sql_query = f"""
             SELECT
-                *
+                {sql_cols}
             FROM
                 {schema}MPCORB
             WHERE
                 ssObjectId = {ssObjectId}
         """
 
+        # MPCORB_sql_query = f"""
+        #     SELECT
+        #         *
+        #     FROM
+        #         {schema}MPCORB
+        #     WHERE
+        #         ssObjectId = {ssObjectId}
+        # """
+
         data_table = get_data_table(MPCORB_sql_query, service=service, sql_filename=sql_filename)
 
         if len(data_table) == 0:
             logger.error("No MPCORB data for this object could be found for this SSObjectId.")
             raise Exception("No MPCORB data for this object could be found for this SSObjectId.")
+        
+        if schema=="dp03_catalogs_10yr":
+            return MPCORB.construct_from_data_table(ssObjectId, data_table)
+        elif schema=="dp1":
+            #Convert to astropy QTable and add in nans for the columns that do not appear in DP1
+            data_qtable = data_table.to_qtable()
+            data_qtable.add_columns(
+                cols=[
+                    np.full(len(data_qtable), np.nan),  # fullDesignation
+                    np.full(len(data_qtable), np.nan),  # mpcNumber
+                    np.full(len(data_qtable), np.nan),  # mpcG
+                    np.full(len(data_qtable), np.nan),  # n
+                    np.full(len(data_qtable), np.nan),  # uncertaintyParameter
+                    np.full(len(data_qtable), np.nan)   # flags
+                ],
+                names=['fullDesignation', 'mpcNumber', 'mpcG', 'n', 'uncertaintyParameter', 'flags']
+            )
 
-        return MPCORB.construct_from_data_table(ssObjectId, data_table)
+            # Reorder columns to DP0.3 order
+            data_qtable = data_qtable[
+                ['ssObjectId', 'mpcDesignation', 'fullDesignation', 'mpcNumber', 'mpcH', 'mpcG',
+                'epoch', 'tperi', 'peri', 'node', 'incl', 'e', 'n', 'q', 'uncertaintyParameter', 'flags']
+            ]
+            return MPCORB.construct_from_data_table(ssObjectId, data_table)
+
+        #TODO error handle is schema not one of the options
+
+        
 
     def populate_SSObject(
         self, ssObjectId, filter_list, service=None, sql_filename=None, schema="dp03_catalogs_10yr"
@@ -431,6 +473,27 @@ class AdlerPlanetoid:
 
             filter_dependent_columns += filter_string
 
+        if schema == "dp03_catalogs_10yr":
+            SSObject_sql_query = f"""
+                SELECT
+                    discoverySubmissionDate, firstObservationDate, arc, numObs, 
+                    {filter_dependent_columns}
+                    maxExtendedness, minExtendedness, medianExtendedness
+                FROM
+                    {schema}SSObject
+                WHERE
+                    ssObjectId = {ssObjectId}
+            """
+        elif schema == "dp1":
+            SSObject_sql_query = f"""
+                SELECT
+                    discoverySubmissionDate, numObs
+                FROM
+                    {schema}SSObject
+                WHERE
+                    ssObjectId = {ssObjectId}
+            """
+
         #TODO edit this query to create a DP1 version
 
         #TODO could change to SELECT *, may need to calculate values in interim
@@ -446,22 +509,52 @@ class AdlerPlanetoid:
         #         ssObjectId = {ssObjectId}
         # """
 
-        SSObject_sql_query = f"""
-            SELECT
-                *
-            FROM
-                {schema}SSObject
-            WHERE
-                ssObjectId = {ssObjectId}
-        """
-
         data_table = get_data_table(SSObject_sql_query, service=service, sql_filename=sql_filename)
 
         if len(data_table) == 0:
             logger.error("No SSObject data for this object could be found for this SSObjectId.")
             raise Exception("No SSObject data for this object could be found for this SSObjectId.")
 
-        return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table)
+        if schema == "dp03_catalogs_10yr":
+            return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table)
+        elif schema == "dp1":
+            # Convert to QTable
+            data_qtable = data_table.to_qtable()
+
+            missing_cols = [
+                "firstObservationDate", "arc", "maxExtendedness", "minExtendedness", "medianExtendedness"
+            ]
+            # Also add all filter-dependent columns
+            for filter_name in filter_list:
+                missing_cols += [
+                    f"{filter_name}_H",
+                    f"{filter_name}_G12",
+                    f"{filter_name}_HErr",
+                    f"{filter_name}_G12Err",
+                    f"{filter_name}_Ndata"
+                ]
+
+            # Add all missing columns at the end
+            data_qtable.add_columns(
+                cols=[np.full(len(data_qtable), np.nan) for _ in missing_cols],
+                names=missing_cols
+            )
+
+            # Reorder columns to match DP0.3 expected order
+            dp03_cols_order = ["ssObjectId", "discoverySubmissionDate", "firstObservationDate", "arc", "numObs"]
+            for filter_name in filter_list:
+                dp03_cols_order += [
+                    f"{filter_name}_H",
+                    f"{filter_name}_G12",
+                    f"{filter_name}_HErr",
+                    f"{filter_name}_G12Err",
+                    f"{filter_name}_Ndata"
+                ]
+            dp03_cols_order += ["maxExtendedness", "minExtendedness", "medianExtendedness"]
+
+            data_qtable = data_qtable[dp03_cols_order]
+
+            return SSObject.construct_from_data_table(ssObjectId, filter_list, data_qtable)
 
     def observations_in_filter(self, filter_name):
         """User-friendly helper function. Returns the Observations object for a given filter.
