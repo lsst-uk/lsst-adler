@@ -10,7 +10,7 @@ MPCORB_KEYS = {
     "mpcH": float,
     "mpcG": float,
     "epoch": float,
-    "t_p": float,
+    "tperi": float,
     "peri": float,
     "node": float,
     "incl": float,
