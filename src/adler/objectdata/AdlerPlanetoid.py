@@ -294,9 +294,9 @@ class AdlerPlanetoid:
         """
 
         if schema:  # pragma: no cover
-            schema = schema + "."
+            sql_schema = schema + "."
         else:
-            schema = ""
+            sql_schema = ""
 
         observations_by_filter = []
 
@@ -310,9 +310,9 @@ class AdlerPlanetoid:
                     topocentricX, topocentricY, topocentricZ,
                     eclipticLambda, eclipticBeta
                 FROM
-                    {schema}SSObject
-                    JOIN {schema}DiaSource ON {schema}SSObject.ssObjectId   = {schema}DiaSource.ssObjectId
-                    JOIN {schema}SSSource  ON {schema}DiaSource.diaSourceId = {schema}SSSource.diaSourceId
+                    {sql_schema}SSObject
+                    JOIN {sql_schema}DiaSource ON {sql_schema}SSObject.ssObjectId   = {sql_schema}DiaSource.ssObjectId
+                    JOIN {sql_schema}SSSource  ON {sql_schema}DiaSource.diaSourceId = {sql_schema}SSSource.diaSourceId
                 WHERE
                     SSObject.ssObjectId = {ssObjectId} AND band = '{filter_name}' AND midPointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
                 """
@@ -374,9 +374,9 @@ class AdlerPlanetoid:
 
 
         if schema:  # pragma: no cover
-            schema = schema + "."
+            sql_schema = schema + "."
         else:
-            schema = ""
+            sql_schema = ""
 
         #TODO edit this query to create a DP1 version
         #TODO add flag for whether to use DP1 or DP0.3 version
@@ -386,7 +386,7 @@ class AdlerPlanetoid:
             SELECT
                 {sql_cols}
             FROM
-                {schema}MPCORB
+                {sql_schema}MPCORB
             WHERE
                 ssObjectId = {ssObjectId}
         """
@@ -430,7 +430,7 @@ class AdlerPlanetoid:
             ]
             return MPCORB.construct_from_data_table(ssObjectId, data_table)
 
-        #TODO error handle is schema not one of the options
+            #TODO error handle is schema not one of the options
 
         
 
@@ -460,9 +460,9 @@ class AdlerPlanetoid:
         """
 
         if schema:  # pragma: no cover
-            schema = schema + "."
+            sql_schema = schema + "."
         else:
-            schema = ""
+            sql_schema = ""
 
         filter_dependent_columns = ""
 
@@ -480,7 +480,7 @@ class AdlerPlanetoid:
                     {filter_dependent_columns}
                     maxExtendedness, minExtendedness, medianExtendedness
                 FROM
-                    {schema}SSObject
+                    {sql_schema}SSObject
                 WHERE
                     ssObjectId = {ssObjectId}
             """
@@ -489,7 +489,7 @@ class AdlerPlanetoid:
                 SELECT
                     discoverySubmissionDate, numObs
                 FROM
-                    {schema}SSObject
+                    {sql_schema}SSObject
                 WHERE
                     ssObjectId = {ssObjectId}
             """
