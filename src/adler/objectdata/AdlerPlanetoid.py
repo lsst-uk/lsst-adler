@@ -413,12 +413,12 @@ class AdlerPlanetoid:
             data_qtable = data_table.to_qtable()
             data_qtable.add_columns(
                 cols=[
-                    np.full(len(data_qtable), np.nan),  # fullDesignation
-                    np.full(len(data_qtable), np.nan),  # mpcNumber
+                    np.full(len(data_qtable), ""),  # fullDesignation
+                    np.full(len(data_qtable), 0),  # mpcNumber
                     np.full(len(data_qtable), np.nan),  # mpcG
                     np.full(len(data_qtable), np.nan),  # n
-                    np.full(len(data_qtable), np.nan),  # uncertaintyParameter
-                    np.full(len(data_qtable), np.nan)   # flags
+                    np.full(len(data_qtable), ""),  # uncertaintyParameter
+                    np.full(len(data_qtable), "")   # flags
                 ],
                 names=['fullDesignation', 'mpcNumber', 'mpcG', 'n', 'uncertaintyParameter', 'flags']
             )
@@ -524,24 +524,30 @@ class AdlerPlanetoid:
             # Convert to QTable
             data_qtable = data_table.to_qtable()
 
-            missing_cols = [
-                "firstObservationDate", "arc", "maxExtendedness", "minExtendedness", "medianExtendedness"
-            ]
+            # Add non-filter-dependent columns
+            data_qtable.add_columns(
+                cols=[
+                    np.full(len(data_qtable), np.nan),  # firstObservationDate
+                    np.full(len(data_qtable), np.nan),  # arc
+                    np.full(len(data_qtable), np.nan),  # maxExtendedness
+                    np.full(len(data_qtable), np.nan),  # minExtendedness
+                    np.full(len(data_qtable), np.nan)  # medianExtendedness
+                ],
+                names=["firstObservationDate", "arc", "maxExtendedness", "minExtendedness", "medianExtendedness"]
+            )
+
             # Also add all filter-dependent columns
             for filter_name in filter_list:
-                missing_cols += [
-                    f"{filter_name}_H",
-                    f"{filter_name}_G12",
-                    f"{filter_name}_HErr",
-                    f"{filter_name}_G12Err",
-                    f"{filter_name}_Ndata"
-                ]
-
-            # Add all missing columns at the end
-            data_qtable.add_columns(
-                cols=[np.full(len(data_qtable), np.nan) for _ in missing_cols],
-                names=missing_cols
-            )
+                data_qtable.add_columns(
+                    cols=[
+                        np.full(len(data_qtable), np.nan),  # f"{filter_name}_H"
+                        np.full(len(data_qtable), np.nan),  # f"{filter_name}_G12"
+                        np.full(len(data_qtable), np.nan),  # f"{filter_name}_HErr"
+                        np.full(len(data_qtable), np.nan),  # f"{filter_name}_G12Err"
+                        np.full(len(data_qtable), 0)   # Ndata
+                    ],
+                    names=[f"{filter_name}_H", f"{filter_name}_G12", f"{filter_name}_HErr", f"{filter_name}_G12Err", f"{filter_name}_Ndata"]
+                )
 
             # Reorder columns to match DP0.3 expected order
             dp03_cols_order = ["ssObjectId", "discoverySubmissionDate", "firstObservationDate", "arc", "numObs"]
