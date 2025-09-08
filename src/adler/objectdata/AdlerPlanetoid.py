@@ -410,25 +410,25 @@ class AdlerPlanetoid:
             return MPCORB.construct_from_data_table(ssObjectId, data_table)
         elif schema=="dp1":
             #Convert to astropy QTable and add in nans for the columns that do not appear in DP1
-            data_qtable = data_table.to_qtable()
-            data_qtable.add_columns(
+            data_table_astropy = data_table.to_table()
+            data_table_astropy.add_columns(
                 cols=[
-                    np.full(len(data_qtable), ""),  # fullDesignation
-                    np.full(len(data_qtable), 0),  # mpcNumber
-                    np.full(len(data_qtable), np.nan),  # mpcG
-                    np.full(len(data_qtable), np.nan),  # n
-                    np.full(len(data_qtable), ""),  # uncertaintyParameter
-                    np.full(len(data_qtable), "")   # flags
+                    np.full(len(data_table_astropy), ""),  # fullDesignation
+                    np.full(len(data_table_astropy), 0),  # mpcNumber
+                    np.full(len(data_table_astropy), np.nan),  # mpcG
+                    np.full(len(data_table_astropy), np.nan),  # n
+                    np.full(len(data_table_astropy), ""),  # uncertaintyParameter
+                    np.full(len(data_table_astropy), "")   # flags
                 ],
                 names=['fullDesignation', 'mpcNumber', 'mpcG', 'n', 'uncertaintyParameter', 'flags']
             )
 
             # Reorder columns to DP0.3 order
-            data_qtable = data_qtable[
+            data_table_astropy = data_table_astropy[
                 ['ssObjectId', 'mpcDesignation', 'fullDesignation', 'mpcNumber', 'mpcH', 'mpcG',
                 'epoch', 'tperi', 'peri', 'node', 'incl', 'e', 'n', 'q', 'uncertaintyParameter', 'flags']
             ]
-            return MPCORB.construct_from_data_table(ssObjectId, data_qtable)
+            return MPCORB.construct_from_data_table(ssObjectId, data_table_astropy)
 
             #TODO error handle is schema not one of the options
 
@@ -522,29 +522,29 @@ class AdlerPlanetoid:
             return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table)
         elif schema == "dp1":
             # Convert to QTable
-            data_qtable = data_table.to_qtable()
+            data_table_astropy = data_table.to_table()
 
             # Add non-filter-dependent columns
-            data_qtable.add_columns(
+            data_table_astropy.add_columns(
                 cols=[
-                    np.full(len(data_qtable), np.nan),  # firstObservationDate
-                    np.full(len(data_qtable), np.nan),  # arc
-                    np.full(len(data_qtable), np.nan),  # maxExtendedness
-                    np.full(len(data_qtable), np.nan),  # minExtendedness
-                    np.full(len(data_qtable), np.nan)  # medianExtendedness
+                    np.full(len(data_table_astropy), np.nan),  # firstObservationDate
+                    np.full(len(data_table_astropy), np.nan),  # arc
+                    np.full(len(data_table_astropy), np.nan),  # maxExtendedness
+                    np.full(len(data_table_astropy), np.nan),  # minExtendedness
+                    np.full(len(data_table_astropy), np.nan)  # medianExtendedness
                 ],
                 names=["firstObservationDate", "arc", "maxExtendedness", "minExtendedness", "medianExtendedness"]
             )
 
             # Also add all filter-dependent columns
             for filter_name in filter_list:
-                data_qtable.add_columns(
+                data_table_astropy.add_columns(
                     cols=[
-                        np.full(len(data_qtable), np.nan),  # f"{filter_name}_H"
-                        np.full(len(data_qtable), np.nan),  # f"{filter_name}_G12"
-                        np.full(len(data_qtable), np.nan),  # f"{filter_name}_HErr"
-                        np.full(len(data_qtable), np.nan),  # f"{filter_name}_G12Err"
-                        np.full(len(data_qtable), 0)   # Ndata
+                        np.full(len(data_table_astropy), np.nan),  # f"{filter_name}_H"
+                        np.full(len(data_table_astropy), np.nan),  # f"{filter_name}_G12"
+                        np.full(len(data_table_astropy), np.nan),  # f"{filter_name}_HErr"
+                        np.full(len(data_table_astropy), np.nan),  # f"{filter_name}_G12Err"
+                        np.full(len(data_table_astropy), 0)   # Ndata
                     ],
                     names=[f"{filter_name}_H", f"{filter_name}_G12", f"{filter_name}_HErr", f"{filter_name}_G12Err", f"{filter_name}_Ndata"]
                 )
@@ -561,9 +561,9 @@ class AdlerPlanetoid:
                 ]
             dp03_cols_order += ["maxExtendedness", "minExtendedness", "medianExtendedness"]
 
-            data_qtable = data_qtable[dp03_cols_order]
+            data_table_astropy = data_table_astropy[dp03_cols_order]
 
-            return SSObject.construct_from_data_table(ssObjectId, filter_list, data_qtable)
+            return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table_astropy)
 
     def observations_in_filter(self, filter_name):
         """User-friendly helper function. Returns the Observations object for a given filter.
