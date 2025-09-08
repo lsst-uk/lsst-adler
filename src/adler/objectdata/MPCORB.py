@@ -85,7 +85,7 @@ class MPCORB:
     mpcH: float = 0.0
     mpcG: float = 0.0
     epoch: float = 0.0
-    t_p: float = 0.0
+    tperi: float = 0.0
     peri: float = 0.0
     node: float = 0.0
     incl: float = 0.0
