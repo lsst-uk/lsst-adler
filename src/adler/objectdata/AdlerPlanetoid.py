@@ -451,23 +451,23 @@ class AdlerPlanetoid:
         elif schema=="dp1":
             #Convert to astropy Table and add in NaNs/0/empty strings for the columns that do not appear in DP1
             data_table_astropy = data_table.to_table()
-            # data_table_astropy.add_columns(
-            #     cols=[
-            #         np.full(len(data_table_astropy), ""),  # fullDesignation (str)
-            #         np.full(len(data_table_astropy), 0),  # mpcNumber (int)
-            #         np.full(len(data_table_astropy), np.nan),  # mpcG (float)
-            #         np.full(len(data_table_astropy), np.nan),  # n (float)
-            #         np.full(len(data_table_astropy), ""),  # uncertaintyParameter (str)
-            #         np.full(len(data_table_astropy), "")   # flags (str) #TODO test if we should set to 0 as an int
-            #     ],
-            #     names=['fullDesignation', 'mpcNumber', 'mpcG', 'n', 'uncertaintyParameter', 'flags']
-            # )
+            data_table_astropy.add_columns(
+                cols=[
+                    np.full(len(data_table_astropy), ""),  # fullDesignation (str)
+                    np.full(len(data_table_astropy), 0),  # mpcNumber (int)
+                    np.full(len(data_table_astropy), np.nan),  # mpcG (float)
+                    np.full(len(data_table_astropy), np.nan),  # n (float)
+                    np.full(len(data_table_astropy), ""),  # uncertaintyParameter (str)
+                    np.full(len(data_table_astropy), "")   # flags (str) #TODO test if we should set to 0 as an int
+                ],
+                names=['fullDesignation', 'mpcNumber', 'mpcG', 'n', 'uncertaintyParameter', 'flags']
+            )
 
-            # # Reorder columns to match DP0.3 expected order
-            # data_table_astropy = data_table_astropy[
-            #     ['ssObjectId', 'mpcDesignation', 'fullDesignation', 'mpcNumber', 'mpcH', 'mpcG',
-            #     'epoch', 'tperi', 'peri', 'node', 'incl', 'e', 'n', 'q', 'uncertaintyParameter', 'flags']
-            # ]
+            # Reorder columns to match DP0.3 expected order
+            data_table_astropy = data_table_astropy[
+                ['ssObjectId', 'mpcDesignation', 'fullDesignation', 'mpcNumber', 'mpcH', 'mpcG',
+                'epoch', 'tperi', 'peri', 'node', 'incl', 'e', 'n', 'q', 'uncertaintyParameter', 'flags']
+            ]
             return MPCORB.construct_from_data_table(ssObjectId, data_table_astropy)
         else:
             logger.error(f"Schema {schema} not recognised.")
