@@ -454,11 +454,11 @@ class AdlerPlanetoid:
             data_table_astropy.add_columns(
                 cols=[
                     np.full(len(data_table_astropy), ""),  # fullDesignation (str)
-                    np.full(len(data_table_astropy), 0),  # mpcNumber (int)
+                    np.full(len(data_table_astropy), None),  # mpcNumber (int)
                     np.full(len(data_table_astropy), np.nan),  # mpcG (float)
                     np.full(len(data_table_astropy), np.nan),  # n (float)
                     np.full(len(data_table_astropy), ""),  # uncertaintyParameter (str)
-                    np.full(len(data_table_astropy), "")   # flags (str) #TODO test if we should set to 0 as an int
+                    np.full(len(data_table_astropy), "")   # flags (str)
                 ],
                 names=['fullDesignation', 'mpcNumber', 'mpcG', 'n', 'uncertaintyParameter', 'flags']
             )
@@ -528,7 +528,6 @@ class AdlerPlanetoid:
             """
         elif schema == "dp1":
             # Query for DP1. Selecting the columns that still exist in the DP1 table
-            # We include an explicit query for ssObjectId here to aid with the column sorting below TODO check if those broke
             SSObject_sql_query = f"""
                 SELECT
                     discoverySubmissionDate, numObs
