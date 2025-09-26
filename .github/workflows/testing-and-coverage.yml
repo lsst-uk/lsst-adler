@@ -43,6 +43,7 @@ jobs:
         which python
         which conda
         conda list gnuastro
+        ls /Users/runner/miniconda3/condabin
         astfits
         astscript-radial-profile
     - name: Run unit tests with pytest
