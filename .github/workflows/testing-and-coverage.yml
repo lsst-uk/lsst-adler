@@ -38,6 +38,11 @@ jobs:
       run: |
         conda info
         conda list
+    - name: Test conda install
+      run: |
+        which wget
+        conda install conda-forge::wget
+        which wget
     - name: Check gnuastro
       run: |
         which python
