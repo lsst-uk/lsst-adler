@@ -87,10 +87,16 @@ class WedgePhot:
         """
 
         # Construct the gnuastro command
+        # ENV = "adler-dev-gnu"
+        # ast_cmd = "echo $0; which /bin/bash; /bin/bash; . ~/.bashrc; echo $0; conda run -n {} {} -q -h{} {} -a {},{} --measure={} -o {}".format(
+        #     ENV,self.ast_radial_profile, self.i_hdu, self.fits_file, az_min, az_max, self.measure, out_file
+        # )
         ast_cmd = "{} -q -h{} {} -a {},{} --measure={} -o {}".format(
             self.ast_radial_profile, self.i_hdu, self.fits_file, az_min, az_max, self.measure, out_file
         )
-
+        # ast_cmd = "astscript-radial-profile -q -h{} {} -a {},{} --measure={} -o {}".format(
+        #     self.i_hdu, self.fits_file, az_min, az_max, self.measure, out_file
+        # )
         # Set the maximum aperture radius if required
         if self.ap_rad_out is not None:
             ast_cmd += " -R {};".format(self.ap_rad_out)
@@ -106,19 +112,44 @@ class WedgePhot:
 
         print(ast_cmd)
 
-        result = subprocess.Popen("pwd", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print(result.communicate()[0].decode("utf-8"))
+        # result = subprocess.Popen("pwd", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # print(result.communicate()[0].decode("utf-8"))
 
-        # run the command
-        result = subprocess.Popen(ast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # # run the command
+        # result = subprocess.Popen(ast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         # print(result)
 
+        # # decode the results from the terminal
+        # out,err = result.communicate()
+        # out = out.decode("utf8")
+        # err = err.decode("utf8")
+        # print(out)
+        # print(err)
+
+        result = subprocess.run("pwd", shell=True, capture_output=True, text=True)
+        print(result)
+
+        # run the command
+        result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
+        print(result)
+
+        # return the output and errors from the terminal
+        out = result.stdout
+        err = result.stderr
+        print(out)
+        print(err)
+
         # get the results as a dataframe
-        data = result.communicate()[0].decode("utf-8")
-        # print(data)
-        col_names = [x.split(": ")[-1].split(" ")[0] for x in data.split("\n") if self.col_fmt in x]
-        # print(col_names)
-        df_results = pd.read_csv(StringIO(data), sep="\s+", names=col_names, comment="#")
+        if out != "":
+            data = out  # .decode("utf-8")
+            print(data)
+            col_names = [x.split(": ")[-1].split(" ")[0] for x in data.split("\n") if self.col_fmt in x]
+            # print(col_names)
+            df_results = pd.read_csv(StringIO(data), sep="\s+", names=col_names, comment="#")
+        else:
+            df_results = None
+            # TODO: log the error
+            print(err)
 
         # TODO: properly log the output from astscript-radial-profile
 
