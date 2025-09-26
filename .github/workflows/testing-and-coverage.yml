@@ -43,8 +43,8 @@ jobs:
         which python
         which conda
         conda list gnuastro
-        which astfits
-        which astscript-radial-profile
+        astfits
+        astscript-radial-profile
     - name: Run unit tests with pytest
       run: |
         python -m pytest tests --cov=adler --cov-report=xml
