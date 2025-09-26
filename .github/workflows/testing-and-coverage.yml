@@ -21,7 +21,7 @@ jobs:
     - uses: conda-incubator/setup-miniconda@v3
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
@@ -38,21 +38,17 @@ jobs:
       run: |
         conda info
         conda list
-    - name: Test conda install
-      run: |
-        which wget
-        conda install conda-forge::wget
-        which wget
     - name: Check gnuastro
       run: |
         which python
         python --version
         which conda
         conda list gnuastro
+        $CONDA_PREFIX/bin/astfits
         astfits
         astscript-radial-profile
     - name: Run unit tests with pytest
       run: |
         python -m pytest tests --cov=adler --cov-report=xml
     - name: Upload coverage report to codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v3
