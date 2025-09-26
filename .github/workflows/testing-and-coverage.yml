@@ -42,8 +42,10 @@ jobs:
       run: |
         which python
         python --version
-        which conda
         conda list gnuastro
+        which conda
+        echo $CONDA_DEFAULT_ENV
+        echo $CONDA_PREFIX
         $CONDA_PREFIX/bin/astfits
         astfits
         astscript-radial-profile
