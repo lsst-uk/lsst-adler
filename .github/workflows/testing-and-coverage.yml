@@ -50,6 +50,7 @@ jobs:
         which conda
         echo $CONDA_DEFAULT_ENV
         echo $CONDA_PREFIX
+        $CONDA_PREFIX/astfits
         astfits
         astscript-radial-profile
     - name: Run unit tests with pytest
