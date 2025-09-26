@@ -41,7 +41,7 @@ jobs:
     - name: Check gnuastro
       run: |
         conda init
-        reset
+        conda activate
         which python
         python --version
         conda list gnuastro
