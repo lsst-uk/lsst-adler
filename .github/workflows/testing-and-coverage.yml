@@ -38,8 +38,8 @@ jobs:
         conda list gnuastro
         ls $CONDA_PREFIX/lib/libgsl*
     - name: Fix gnuastro
-      if: ${{ matrix.os }} == 'ubuntu-latest'
       shell: bash -l {0}
+      if: ${{ matrix.os }} == 'ubuntu-latest'
       run: |
         ln $CONDA_PREFIX/lib/libgsl.so.27 $CONDA_PREFIX/lib/libgsl.so.25
         ls $CONDA_PREFIX/lib/libgsl*
