@@ -36,6 +36,9 @@ jobs:
       run: |
         conda install -y conda-forge::gnuastro=0.23
         conda list gnuastro
+        ls $CONDA_PREFIX/lib/libgsl*
+        ln $CONDA_PREFIX/lib/libgsl.so.27 $CONDA_PREFIX/lib/libgsl.so.25
+        ls $CONDA_PREFIX/lib/libgsl*
     - name: Check conda
       shell: bash -l {0}
       run: |
