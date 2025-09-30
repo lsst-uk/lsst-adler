@@ -37,12 +37,12 @@ jobs:
         conda install -y conda-forge::gnuastro=0.23
     - name: Fix gnuastro for macos
       shell: bash -l {0}
-      if: ${{ matrix.os }} == 'macos-latest'
+      if: ${{ contains(matrix.os, 'macos') }}
       run: |
         ln $CONDA_PREFIX/lib/libgsl.27.dylib $CONDA_PREFIX/lib/libgsl.25.dylib
     - name: Fix gnuastro for ubuntu
       shell: bash -l {0}
-      if: ${{ matrix.os }} == 'ubuntu-latest'
+      if: ${{ contains(matrix.os, 'ubuntu') }}
       run: |
         ln $CONDA_PREFIX/lib/libgsl.so.27 $CONDA_PREFIX/lib/libgsl.so.25
     - name: Run unit tests with pytest
