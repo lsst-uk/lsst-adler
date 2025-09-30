@@ -37,12 +37,10 @@ jobs:
         conda install -y conda-forge::gnuastro=0.23
         conda list gnuastro
         ls $CONDA_PREFIX/lib/libgsl*
-        astfits
     - name: Fix gnuastro
       shell: bash -l {0}
-      if: ${{ matrix.os }} == 'ubuntu-latest'
       run: |
-        ln $CONDA_PREFIX/lib/libgsl.so.27 $CONDA_PREFIX/lib/libgsl.so.25
+        ln $CONDA_PREFIX/lib/libgsl.so.dylib $CONDA_PREFIX/lib/libgsl.so.dylib
         ls $CONDA_PREFIX/lib/libgsl*
     - name: Check conda
       shell: bash -l {0}
