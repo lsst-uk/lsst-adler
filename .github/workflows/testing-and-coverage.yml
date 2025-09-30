@@ -54,8 +54,7 @@ jobs:
         echo $CONDA_DEFAULT_ENV
         echo $CONDA_PREFIX
         which astfits
-        astfits
-        astscript-radial-profile
+        which astscript-radial-profile
     - name: Run unit tests with pytest
       shell: bash -l {0}
       run: |
