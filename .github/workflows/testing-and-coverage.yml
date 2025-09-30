@@ -42,6 +42,7 @@ jobs:
       run: |
         ln $CONDA_PREFIX/lib/libgsl.27.dylib $CONDA_PREFIX/lib/libgsl.25.dylib
         ls $CONDA_PREFIX/lib/libgsl*
+        astfits
     - name: Check conda
       shell: bash -l {0}
       run: |
