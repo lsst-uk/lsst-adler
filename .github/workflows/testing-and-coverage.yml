@@ -40,7 +40,7 @@ jobs:
     - name: Fix gnuastro
       shell: bash -l {0}
       run: |
-        ln $CONDA_PREFIX/lib/libgsl.so.dylib $CONDA_PREFIX/lib/libgsl.so.dylib
+        ln $CONDA_PREFIX/lib/libgsl.27.dylib $CONDA_PREFIX/lib/libgsl.25.dylib
         ls $CONDA_PREFIX/lib/libgsl*
     - name: Check conda
       shell: bash -l {0}
