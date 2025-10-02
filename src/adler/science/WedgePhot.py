@@ -52,8 +52,10 @@ class WedgePhot:
         self.az = np.linspace(0, 360, self.N_wedge + 1)
 
         # gnuastro setup, find the path to astscript-radial-profile executable
-        ENVBIN = sys.exec_prefix
-        self.ast_radial_profile = os.path.join(ENVBIN, "bin", "astscript-radial-profile")
+        # ENVBIN = sys.exec_prefix
+        # self.ast_radial_profile = os.path.join(ENVBIN, "bin", "astscript-radial-profile")
+        self.ast_radial_profile = "astscript-radial-profile"
+
         self.col_fmt = (
             "# Column"  # string to identify column names when astscript-radial-profile is printed out
         )
@@ -63,6 +65,8 @@ class WedgePhot:
         az_min,
         az_max,
         out_file,
+        conda_start=None,
+        conda_env=None,
     ):
         """
         Get a radial profile in a given azimuthal range using gnuastro astscript-radial-profile.
@@ -79,6 +83,11 @@ class WedgePhot:
             Maximum azimuthal bin edge
         out_file: str
             File to store the results of astscript-radial-profile (deleted after results are extracted).
+        conda_start: str
+            Optional, command to launch conda in the subprocess virtual environment.
+            This might be needed when running WedgePhot in a jupyter notebook (e.g. on the RSP conda_start = ". /opt/lsst/software/stack/conda/etc/profile.d/conda.sh")
+        conda_env: str
+            Optional, name of the conda environment to use in the subprocess virtual environment (TODO: this makes WedgePhot slow)
 
         Returns
         ----------
@@ -91,12 +100,24 @@ class WedgePhot:
         # ast_cmd = "echo $0; which /bin/bash; /bin/bash; . ~/.bashrc; echo $0; conda run -n {} {} -q -h{} {} -a {},{} --measure={} -o {}".format(
         #     ENV,self.ast_radial_profile, self.i_hdu, self.fits_file, az_min, az_max, self.measure, out_file
         # )
-        ast_cmd = "{} -q -h{} {} -a {},{} --measure={} -o {}".format(
-            self.ast_radial_profile, self.i_hdu, self.fits_file, az_min, az_max, self.measure, out_file
+        # Explicitly start conda and run in the environment if required
+        if (conda_start is not None) & (conda_env is not None):
+            conda_run = "{}; ".format(conda_start)
+        else:
+            conda_run = ""
+        if conda_env is not None:
+            conda_run += "conda run -n {} ".format(conda_env)
+
+        ast_cmd = "{}{} -q -h{} {} -a {},{} --measure={} -o {}".format(
+            conda_run,
+            self.ast_radial_profile,
+            self.i_hdu,
+            self.fits_file,
+            az_min,
+            az_max,
+            self.measure,
+            out_file,
         )
-        # ast_cmd = "astscript-radial-profile -q -h{} {} -a {},{} --measure={} -o {}".format(
-        #     self.i_hdu, self.fits_file, az_min, az_max, self.measure, out_file
-        # )
         # Set the maximum aperture radius if required
         if self.ap_rad_out is not None:
             ast_cmd += " -R {};".format(self.ap_rad_out)
@@ -109,25 +130,7 @@ class WedgePhot:
                 rm {};".format(
             out_file, out_file
         )
-
         print(ast_cmd)
-
-        # result = subprocess.Popen("pwd", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # print(result.communicate()[0].decode("utf-8"))
-
-        # # run the command
-        # result = subprocess.Popen(ast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # print(result)
-
-        # # decode the results from the terminal
-        # out,err = result.communicate()
-        # out = out.decode("utf8")
-        # err = err.decode("utf8")
-        # print(out)
-        # print(err)
-
-        result = subprocess.run("pwd", shell=True, capture_output=True, text=True)
-        print(result)
 
         # run the command
         result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
@@ -136,16 +139,14 @@ class WedgePhot:
         # return the output and errors from the terminal
         out = result.stdout
         err = result.stderr
-        print(out)
-        print(err)
+        # print(out)
+        # print(err)
 
         # get the results as a dataframe
         if out != "":
-            data = out  # .decode("utf-8")
-            print(data)
-            col_names = [x.split(": ")[-1].split(" ")[0] for x in data.split("\n") if self.col_fmt in x]
-            # print(col_names)
-            df_results = pd.read_csv(StringIO(data), sep="\s+", names=col_names, comment="#")
+            # print(out)
+            col_names = [x.split(": ")[-1].split(" ")[0] for x in out.split("\n") if self.col_fmt in x]
+            df_results = pd.read_csv(StringIO(out), sep="\s+", names=col_names, comment="#")
         else:
             df_results = None
             # TODO: log the error
@@ -155,7 +156,7 @@ class WedgePhot:
 
         return df_results
 
-    def run_wedge_phot(self):
+    def run_wedge_phot(self, conda_start=None, conda_env=None):
         """
         Function to calculate radial profiles across all azimuthal bins and compile results into a dict.
 
@@ -175,7 +176,7 @@ class WedgePhot:
             outfile = "{}/wedge_out_{}.txt".format(self.cwd, i)
 
             # run radial profile for a single bin
-            df = self.astscript_radial_profile(az_min, az_max, outfile)
+            df = self.astscript_radial_profile(az_min, az_max, outfile, conda_start, conda_env)
 
             # store the results in a dict
             wp_results[i] = {}

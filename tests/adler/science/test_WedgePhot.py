@@ -20,7 +20,6 @@ wp = WedgePhot(
     N_wedge=N_wedge,
     measure="sum,mean,median,sigclip-mean,sigclip-std",
 )
-print(wp)
 
 
 def test_WedgePhot_init():
@@ -30,21 +29,6 @@ def test_WedgePhot_init():
     assert_array_equal(
         wp.az, np.array([0.0, 36.0, 72.0, 108.0, 144.0, 180.0, 216.0, 252.0, 288.0, 324.0, 360.0])
     )
-
-
-def test_astscript_radial_profile2():
-    """Test that the gnuastro astscript_radial_profile can be executed"""
-
-    cmd = "which astscript-radial-profile"
-    print(cmd)
-    result = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = result.communicate()
-    stdout = stdout.decode("utf-8")
-    stderr = stderr.decode("utf-8")
-    print(stdout)
-    print(stderr)
-
-    # assert "astscript-radial-profile" in stdout
 
 
 def test_astscript_radial_profile():
@@ -77,5 +61,4 @@ def test_run_wedge_phot():
 
 if __name__ == "__main__":
     print("test")
-    test_astscript_radial_profile2()
     test_astscript_radial_profile()
