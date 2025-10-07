@@ -40,25 +40,15 @@ def test_astscript_radial_profile():
     stdout, stderr = result.communicate()
     stdout = stdout.decode("utf-8")
     stderr = stderr.decode("utf-8")
-    print(stdout)
-    print(stderr)
-
-    # assert "astscript-radial-profile" in stdout
+    assert "astscript-radial-profile" in stdout
 
 
 def test_run_wedge_phot():
     """Test that the radial profile is run for all bins and results are compiled"""
 
     wp_results = wp.run_wedge_phot()  # TODO: the subprocess cat call doesn't seem to work here?
-    print(wp_results)
     df = wp_results[0]["data"]
-    print(df)
     assert len(wp_results) == N_wedge
     assert isinstance(df, pd.DataFrame)
     for x in ["RADIUS", "SUM", "MEAN", "MEDIAN", "SIGCLIP_MEAN", "SIGCLIP_STD"]:
         assert x in list(df)
-
-
-if __name__ == "__main__":
-    print("test")
-    test_astscript_radial_profile()
