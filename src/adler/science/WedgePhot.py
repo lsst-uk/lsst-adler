@@ -130,11 +130,11 @@ class WedgePhot:
                 rm {};".format(
             out_file, out_file
         )
-        print(ast_cmd)
+        # print(ast_cmd)
 
         # run the command
         result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
-        print(result)
+        # print(result) # TODO: log the commands that were run
 
         # return the output and errors from the terminal
         out = result.stdout

@@ -52,3 +52,13 @@ def test_run_wedge_phot():
     assert isinstance(df, pd.DataFrame)
     for x in ["RADIUS", "SUM", "MEAN", "MEDIAN", "SIGCLIP_MEAN", "SIGCLIP_STD"]:
         assert x in list(df)
+
+
+if __name__ == "__main__":
+    import time
+
+    start = time.time()
+    test_run_wedge_phot()
+    end = time.time()
+    length = end - start
+    print("time = ", length, "seconds")
