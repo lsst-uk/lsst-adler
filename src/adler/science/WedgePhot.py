@@ -4,7 +4,8 @@ import sys
 import os
 import subprocess
 from io import StringIO
-
+import multiprocessing
+from multiprocessing import Pool
 
 class WedgePhot:
     """
@@ -185,3 +186,59 @@ class WedgePhot:
             wp_results[i]["data"] = df
 
         return wp_results
+
+    def run_wedge_phot_pool(self,threads = None):
+
+        # initialise the results dict
+        wp_results = {}
+
+        if threads is None:
+            threads=multiprocessing.cpu_count()
+
+        job_list = np.arange(self.N_wedge)
+        az_min = self.az[:-1]
+        az_max = self.az[1:]
+        outfile = ["wedge_out_{}.txt".format(i) for i in range(self.N_wedge)]
+        print(az_min)
+        print(az_max)
+        print(outfile)
+
+        jobs_done=0
+        # multiple_results = []
+        while len(job_list)>0:
+
+            sub_list=job_list[:threads]
+            job_list=job_list[threads:]
+
+            print("run parallel, {} threads".format(threads))
+            print("run jobs {} - {}".format(sub_list[0],sub_list[-1]))
+            pool = Pool(threads)
+            multiple_results = [pool.apply_async(self.astscript_radial_profile, args=(az_min[i],az_max[i],outfile[i])) for i in sub_list]
+            pool.close()
+            pool.join()
+            print()
+            jobs_done+=len(sub_list)
+
+            print("N jobs done = {}".format(jobs_done))
+            # print(multiple_results)
+        
+        # pool = Pool(threads)
+        # multiple_results = [pool.apply_async(self.astscript_radial_profile, args=(az_min[i],az_max[i],outfile[i])) for i in job_list]
+
+        # TODO: get all multiple_results
+
+        # store the results in a dict
+        for i in range(self.N_wedge):
+            wp_results[i] = {}
+            wp_results[i]["az_min"] = az_min[i]
+            wp_results[i]["az_max"] = az_max[i]
+            wp_results[i]["data"] = multiple_results[i].get() # retrieving results is breaking, something to do with subprocess for multiple commands and cat out_file?
+
+        return wp_results
+        # return multiple_results
+
+
+    # TODO: function to analyse the overall wedge photometry
+
+    # TODO: function to plot wedge phot
+    # include vectors
