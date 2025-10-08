@@ -310,7 +310,11 @@ class AdlerPlanetoid:
             sql_schema = ""
         
         # Convenient dict for setting which columns to include in SQL query given schema and desired flux flag
+        #TODO better handling of None case (this is probably bad Python)
         schema_config_dict = {
+            None: {
+                None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec")
+            },
             "dp03_catalogs_10yr": {
                 None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec")
             },
@@ -363,7 +367,7 @@ class AdlerPlanetoid:
                     )
                 )
             else:
-                if schema=="dp03_catalogs_10yr":
+                if schema in [None,"dp03_catalogs_10yr"]: #TODO probably better way to do this
                     observations_by_filter.append(
                         Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
                     )
@@ -415,7 +419,7 @@ class AdlerPlanetoid:
         else:
             sql_schema = ""
 
-        if schema=="dp03_catalogs_10yr":
+        if schema in [None,"dp03_catalogs_10yr"]:
             # Query for DP0.3. Compatible with subsequent adler code
             MPCORB_sql_query = f"""
                 SELECT
@@ -446,7 +450,7 @@ class AdlerPlanetoid:
             logger.error("No MPCORB data for this object could be found for this SSObjectId.")
             raise Exception("No MPCORB data for this object could be found for this SSObjectId.")
         
-        if schema=="dp03_catalogs_10yr":
+        if schema in [None,"dp03_catalogs_10yr"]:
             return MPCORB.construct_from_data_table(ssObjectId, data_table)
         elif schema=="dp1":
             #Convert to astropy Table and add in NaNs/0/empty strings for the columns that do not appear in DP1
@@ -514,7 +518,7 @@ class AdlerPlanetoid:
 
             filter_dependent_columns += filter_string
 
-        if schema == "dp03_catalogs_10yr":
+        if schema in [None,"dp03_catalogs_10yr"]:
             # Query for DP0.3. Compatible with subsequent adler code
             SSObject_sql_query = f"""
                 SELECT
@@ -528,7 +532,6 @@ class AdlerPlanetoid:
             """
         elif schema == "dp1":
             # Query for DP1. Selecting the columns that still exist in the DP1 table
-            # We include an explicit query for ssObjectId here to aid with the column sorting below TODO check if those broke
             SSObject_sql_query = f"""
                 SELECT
                     discoverySubmissionDate, numObs
@@ -547,7 +550,7 @@ class AdlerPlanetoid:
             logger.error("No SSObject data for this object could be found for this SSObjectId.")
             raise Exception("No SSObject data for this object could be found for this SSObjectId.")
 
-        if schema == "dp03_catalogs_10yr":
+        if schema in [None,"dp03_catalogs_10yr"]:
             return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table)
         elif schema == "dp1":
             # Convert to Table
