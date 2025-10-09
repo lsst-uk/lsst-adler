@@ -109,7 +109,10 @@ class WedgePhot:
         if conda_env is not None:
             conda_run += "conda run -n {} ".format(conda_env)
 
-        ast_cmd = "{}{} -q -h{} {} -a {},{} --measure={} -o {}".format(
+        # define a unique temporary directory for the files (required to run in parallel)
+        tmp_dir = out_file.split(".")[0]
+
+        ast_cmd = "{}{} -q -h{} {} -a {},{} --measure={} -o {} -t {}".format(
             conda_run,
             self.ast_radial_profile,
             self.i_hdu,
@@ -118,6 +121,7 @@ class WedgePhot:
             az_max,
             self.measure,
             out_file,
+            tmp_dir,
         )
         # Set the maximum aperture radius if required
         if self.ap_rad_out is not None:
@@ -131,7 +135,7 @@ class WedgePhot:
                 rm {};".format(
             out_file, out_file
         )
-        # print(ast_cmd)
+        print(ast_cmd)
 
         # run the command
         result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
@@ -187,13 +191,15 @@ class WedgePhot:
 
         return wp_results
 
-    def run_wedge_phot_pool(self,threads = None):
+    def run_wedge_phot_pool(self,threads = None, conda_start = None, conda_env = None):
 
         # initialise the results dict
         wp_results = {}
 
+        print("threads: ",threads)
         if threads is None:
             threads=multiprocessing.cpu_count()
+        print("use {} threads".format(threads))
 
         job_list = np.arange(self.N_wedge)
         az_min = self.az[:-1]
@@ -212,12 +218,19 @@ class WedgePhot:
 
             print("run parallel, {} threads".format(threads))
             print("run jobs {} - {}".format(sub_list[0],sub_list[-1]))
+            print(sub_list)
             pool = Pool(threads)
-            multiple_results = [pool.apply_async(self.astscript_radial_profile, args=(az_min[i],az_max[i],outfile[i])) for i in sub_list]
+            multiple_results = [pool.apply_async(self.astscript_radial_profile, args=(az_min[i],az_max[i],outfile[i], conda_start, conda_env)) for i in sub_list]
             pool.close()
             pool.join()
             print()
             jobs_done+=len(sub_list)
+
+            for j,i in enumerate(sub_list):
+                wp_results[i] = {}
+                wp_results[i]["az_min"] = az_min[i]
+                wp_results[i]["az_max"] = az_max[i]
+                wp_results[i]["data"] = multiple_results[j].get() # retrieving results is breaking, something to do with subprocess for multiple commands and cat out_file?
 
             print("N jobs done = {}".format(jobs_done))
             # print(multiple_results)
@@ -227,12 +240,12 @@ class WedgePhot:
 
         # TODO: get all multiple_results
 
-        # store the results in a dict
-        for i in range(self.N_wedge):
-            wp_results[i] = {}
-            wp_results[i]["az_min"] = az_min[i]
-            wp_results[i]["az_max"] = az_max[i]
-            wp_results[i]["data"] = multiple_results[i].get() # retrieving results is breaking, something to do with subprocess for multiple commands and cat out_file?
+        # # store the results in a dict
+        # for i in range(self.N_wedge):
+        #     wp_results[i] = {}
+        #     wp_results[i]["az_min"] = az_min[i]
+        #     wp_results[i]["az_max"] = az_max[i]
+        #     # wp_results[i]["data"] = multiple_results[i].get() # retrieving results is breaking, something to do with subprocess for multiple commands and cat out_file?
 
         return wp_results
         # return multiple_results
