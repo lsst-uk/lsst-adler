@@ -8,6 +8,7 @@ import multiprocessing
 from multiprocessing import Pool
 from line_profiler import profile
 
+
 class WedgePhot:
     """
     Class for performing wedge photometry on a given fits image using gnuastro astscript-radial-profile.
@@ -199,7 +200,7 @@ class WedgePhot:
         return wp_results
 
     @profile
-    def run_wedge_phot_pool(self,threads = None, conda_start = None, conda_env = None):
+    def run_wedge_phot_pool(self, threads=None, conda_start=None, conda_env=None):
 
         # TODO: check that pool results are the same as regular
 
@@ -208,7 +209,7 @@ class WedgePhot:
 
         # print("threads: ",threads)
         if threads is None:
-            threads=multiprocessing.cpu_count()
+            threads = multiprocessing.cpu_count()
         # print("use {} threads".format(threads))
         # TODO: log number of threads (or store as class attribute?)
 
@@ -220,31 +221,39 @@ class WedgePhot:
         # print(az_max)
         # print(outfile)
 
-        jobs_done=0
+        jobs_done = 0
         # multiple_results = []
-        while len(job_list)>0:
+        while len(job_list) > 0:
 
-            sub_list=job_list[:threads]
-            job_list=job_list[threads:]
+            sub_list = job_list[:threads]
+            job_list = job_list[threads:]
 
             # print("run parallel, {} threads".format(threads))
             # print("run jobs {} - {}".format(sub_list[0],sub_list[-1]))
             # print(sub_list)
             pool = Pool(threads)
-            multiple_results = [pool.apply_async(self.astscript_radial_profile, args=(az_min[i],az_max[i],outfile[i], conda_start, conda_env)) for i in sub_list]
+            multiple_results = [
+                pool.apply_async(
+                    self.astscript_radial_profile,
+                    args=(az_min[i], az_max[i], outfile[i], conda_start, conda_env),
+                )
+                for i in sub_list
+            ]
             pool.close()
             pool.join()
             # print()
-            jobs_done+=len(sub_list)
+            jobs_done += len(sub_list)
 
-            for j,i in enumerate(sub_list):
+            for j, i in enumerate(sub_list):
                 wp_results[i] = {}
                 wp_results[i]["az_min"] = az_min[i]
                 wp_results[i]["az_max"] = az_max[i]
-                wp_results[i]["data"] = multiple_results[j].get() # retrieving results is breaking, something to do with subprocess for multiple commands and cat out_file?
+                wp_results[i]["data"] = multiple_results[
+                    j
+                ].get()  # retrieving results is breaking, something to do with subprocess for multiple commands and cat out_file?
 
             # print("N jobs done = {}".format(jobs_done))
-        
+
         # pool = Pool(threads)
         # multiple_results = [pool.apply_async(self.astscript_radial_profile, args=(az_min[i],az_max[i],outfile[i])) for i in job_list]
 
@@ -260,11 +269,11 @@ class WedgePhot:
         return wp_results
         # return multiple_results
 
-
     # TODO: function to analyse the overall wedge photometry
 
     # TODO: function to plot wedge phot
     # include vectors
+
 
 if __name__ == "__main__":
     infits = "../../../tests/data/ztf_Didymos-system-barycenter20065803_20221201402616_000567_zr_c10_o_q1_scimrefdiffimg.fits.fz"  # faint tail by eye
@@ -280,4 +289,3 @@ if __name__ == "__main__":
     wp_results = wp.run_wedge_phot()
     wp_results = wp.run_wedge_phot_pool()
     # print(wp_results)
-    
