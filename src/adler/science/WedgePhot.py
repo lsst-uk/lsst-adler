@@ -6,6 +6,7 @@ import subprocess
 from io import StringIO
 import multiprocessing
 from multiprocessing import Pool
+from line_profiler import profile
 
 class WedgePhot:
     """
@@ -28,6 +29,7 @@ class WedgePhot:
         (Optional) Maximum radius (pixels) to calculate radial profile over.
     """
 
+    @profile
     def __init__(
         self,
         fits_file,
@@ -61,6 +63,7 @@ class WedgePhot:
             "# Column"  # string to identify column names when astscript-radial-profile is printed out
         )
 
+    @profile
     def astscript_radial_profile(
         self,
         az_min,
@@ -73,7 +76,7 @@ class WedgePhot:
         Get a radial profile in a given azimuthal range using gnuastro astscript-radial-profile.
         https://www.gnu.org/software/gnuastro/manual/html_node/Generate-radial-profile.html
 
-        By default gnuastro assumes the centre of the image.
+        By default gnuastro assumes the centre of the image. # TODO: recentre the aperture on the photocentre? NB for ztf_Didymos-system-barycenter20065803_20221201402616_000567_zr_c10_o_q1_scimrefdiffimg.fits.fz there is an issue with centering and the tail spans multiple wedges (fits/py pixel coordinate issue or photocentre issue)?
         This function use subprocess to launch and run a radial profile for a single azimuthal bin.
 
         Parameters
@@ -135,15 +138,18 @@ class WedgePhot:
                 rm {};".format(
             out_file, out_file
         )
-        print(ast_cmd)
+        # print(ast_cmd)
 
         # run the command
-        result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
+        # result = subprocess.run(ast_cmd, shell=True)#, capture_output=True, text=True)
+        result = subprocess.Popen(ast_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         # print(result) # TODO: log the commands that were run
 
         # return the output and errors from the terminal
-        out = result.stdout
-        err = result.stderr
+        # out = result.stdout
+        # err = result.stderr
+        out = result.communicate()[0].decode("utf-8")
+        err = result.communicate()[1].decode("utf-8")
         # print(out)
         # print(err)
 
@@ -161,6 +167,7 @@ class WedgePhot:
 
         return df_results
 
+    @profile
     def run_wedge_phot(self, conda_start=None, conda_env=None):
         """
         Function to calculate radial profiles across all azimuthal bins and compile results into a dict.
@@ -191,23 +198,27 @@ class WedgePhot:
 
         return wp_results
 
+    @profile
     def run_wedge_phot_pool(self,threads = None, conda_start = None, conda_env = None):
+
+        # TODO: check that pool results are the same as regular
 
         # initialise the results dict
         wp_results = {}
 
-        print("threads: ",threads)
+        # print("threads: ",threads)
         if threads is None:
             threads=multiprocessing.cpu_count()
-        print("use {} threads".format(threads))
+        # print("use {} threads".format(threads))
+        # TODO: log number of threads (or store as class attribute?)
 
         job_list = np.arange(self.N_wedge)
         az_min = self.az[:-1]
         az_max = self.az[1:]
         outfile = ["wedge_out_{}.txt".format(i) for i in range(self.N_wedge)]
-        print(az_min)
-        print(az_max)
-        print(outfile)
+        # print(az_min)
+        # print(az_max)
+        # print(outfile)
 
         jobs_done=0
         # multiple_results = []
@@ -216,14 +227,14 @@ class WedgePhot:
             sub_list=job_list[:threads]
             job_list=job_list[threads:]
 
-            print("run parallel, {} threads".format(threads))
-            print("run jobs {} - {}".format(sub_list[0],sub_list[-1]))
-            print(sub_list)
+            # print("run parallel, {} threads".format(threads))
+            # print("run jobs {} - {}".format(sub_list[0],sub_list[-1]))
+            # print(sub_list)
             pool = Pool(threads)
             multiple_results = [pool.apply_async(self.astscript_radial_profile, args=(az_min[i],az_max[i],outfile[i], conda_start, conda_env)) for i in sub_list]
             pool.close()
             pool.join()
-            print()
+            # print()
             jobs_done+=len(sub_list)
 
             for j,i in enumerate(sub_list):
@@ -232,8 +243,7 @@ class WedgePhot:
                 wp_results[i]["az_max"] = az_max[i]
                 wp_results[i]["data"] = multiple_results[j].get() # retrieving results is breaking, something to do with subprocess for multiple commands and cat out_file?
 
-            print("N jobs done = {}".format(jobs_done))
-            # print(multiple_results)
+            # print("N jobs done = {}".format(jobs_done))
         
         # pool = Pool(threads)
         # multiple_results = [pool.apply_async(self.astscript_radial_profile, args=(az_min[i],az_max[i],outfile[i])) for i in job_list]
@@ -255,3 +265,19 @@ class WedgePhot:
 
     # TODO: function to plot wedge phot
     # include vectors
+
+if __name__ == "__main__":
+    infits = "../../../tests/data/ztf_Didymos-system-barycenter20065803_20221201402616_000567_zr_c10_o_q1_scimrefdiffimg.fits.fz"  # faint tail by eye
+    inhdu = 1
+
+    # Set up the adler wedge photometry class
+    wp = WedgePhot(
+        fits_file=infits,  # image to analyse
+        i_hdu=inhdu,  # hdu index of image
+        measure="sum,mean,median,sigclip-mean,sigclip-std",  # statistics to calculate
+    )
+
+    wp_results = wp.run_wedge_phot()
+    wp_results = wp.run_wedge_phot_pool()
+    # print(wp_results)
+    
