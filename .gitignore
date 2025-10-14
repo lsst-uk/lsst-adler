@@ -172,6 +172,3 @@ cython_debug/
 
 # Ignore image files created by notebooks
 *.png
-
-# Ignore .npy files created by notebooks
-*.npy
