@@ -46,7 +46,7 @@ class NoiseChisel:
         # file_list_print = "\n".join([self.file_nc, self.file_check,self.file_seg,self.file_cat])
         # print("expected files:\n{}".format(file_list_print))
 
-    def noise_chisel(self, nc_flags = "--checkdetection --continueaftercheck"):
+    def noise_chisel(self, nc_flags="--checkdetection --continueaftercheck"):
         """
         Function to invoke the gnuastro noisechisel command. The results are stored in the file that is created (file_nc). This file contains a pixel map of detections, i.e. is a pixel signal or background?
 
@@ -71,7 +71,7 @@ class NoiseChisel:
         print(err)
 
         return self.file_nc
-    
+
     def segment_image(self):
         """
         Function to invoke the gnuastro image segmentation routine command. This step is required to separate the noisechisel chisel detections into individual objects/clumps. The results are stored in the file that is created (file_seg).
@@ -91,7 +91,7 @@ class NoiseChisel:
         print(err)
 
         return self.file_seg
-    
+
     def make_catalogue(self):
         """
         Function to invoke the gnuastro make catalogue command. The results are stored in the file that is created (file_cat)
@@ -103,8 +103,10 @@ class NoiseChisel:
         """
         # TODO: use a gnuastro conf file to determine which columns are calculated?
 
-        ast_cmd = "astmkcatalog {} --clumpscat --ids -x -y --ra --dec --magnitude --sn --axis-ratio --geo-axis-ratio --geo-position-angle --geo-semi-major --geo-semi-minor --position-angle --semi-major --semi-minor".format(self.file_seg)
-        
+        ast_cmd = "astmkcatalog {} --clumpscat --ids -x -y --ra --dec --magnitude --sn --axis-ratio --geo-axis-ratio --geo-position-angle --geo-semi-major --geo-semi-minor --position-angle --semi-major --semi-minor".format(
+            self.file_seg
+        )
+
         result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
 
         out = result.stdout
@@ -114,13 +116,13 @@ class NoiseChisel:
 
         hdu_cat = fits.open(self.file_cat)
         print(hdu_cat.info())
-        i_cat = 1 # objects
+        i_cat = 1  # objects
         # i_cat = 2 # clumps
         dat = hdu_cat[i_cat].data
         df_cat = Table(dat).to_pandas()
 
         return df_cat
-    
+
     def clean_up(self):
         """
         Function to remove all .fits created as part of the noisechisel, segmentation and catalogue process.
@@ -137,8 +139,8 @@ class NoiseChisel:
         print(err)
 
         return
-    
-    def run_noise_chisel(self, keep_files = False):
+
+    def run_noise_chisel(self, keep_files=False):
         """
         Wrapper function that calls each step to go from an input image to measurements of detections made by noisechisel.
 
