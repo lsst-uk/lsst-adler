@@ -46,6 +46,9 @@ class NoiseChisel:
         # file_list_print = "\n".join([self.file_nc, self.file_check,self.file_seg,self.file_cat])
         # print("expected files:\n{}".format(file_list_print))
 
+        # Define the noisechisel command
+        self.astnoisechisel = "astnoisechisel"
+
     def noise_chisel(self, nc_flags="--checkdetection --continueaftercheck"):
         """
         Function to invoke the gnuastro noisechisel command. The results are stored in the file that is created (file_nc). This file contains a pixel map of detections, i.e. is a pixel signal or background?
@@ -57,7 +60,8 @@ class NoiseChisel:
         """
 
         # TODO: make a subprocess utility function that includes logging. Use for WedgePhotometry too
-        ast_cmd = """astnoisechisel {} --hdu={} {}""".format(
+        ast_cmd = """{} {} --hdu={} {}""".format(
+            self.astnoisechisel,
             self.fits_file,
             self.i_hdu,
             nc_flags,
