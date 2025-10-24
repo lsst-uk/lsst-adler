@@ -1,9 +1,8 @@
 import numpy as np
 import pandas as pd
-import sys
-import os
-import subprocess
 from io import StringIO
+
+import adler.utilities.science_utilities as sci_utils
 
 
 class WedgePhot:
@@ -128,12 +127,14 @@ class WedgePhot:
             ast_cmd += " rm {};".format(out_file)
 
         # run the command
-        result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
-        # TODO: log the commands that were run
+        # result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
+        # # TODO: log the commands that were run
 
-        # return the output and errors from the terminal
-        out = result.stdout
-        err = result.stderr
+        # # return the output and errors from the terminal
+        # out = result.stdout
+        # err = result.stderr
+
+        out, err = sci_utils.execute_subprocess(ast_cmd)
 
         # get the results as a dataframe
         if out != "":

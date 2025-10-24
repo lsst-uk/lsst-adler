@@ -30,7 +30,8 @@ def test_astnoisechisel():
 
 
 def test_run_noise_chisel():
+    """Test that the noisechisel routine runs and that a catalogue of detections is produced"""
     df_cat = nc.run_noise_chisel()
 
-    assert isinstance(df_cat, pd.DataFrame)
-    assert len(df_cat) > 0
+    assert isinstance(df_cat, pd.DataFrame)  # check that a dataframe is returned
+    assert len(df_cat) > 0  # check that the dataframe has at least one row

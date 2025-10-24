@@ -1,10 +1,8 @@
-import numpy as np
-import pandas as pd
-import sys
 import os
-import subprocess
 from astropy.table import Table
 from astropy.io import fits
+
+import adler.utilities.science_utilities as sci_utils
 
 
 class NoiseChisel:
@@ -67,12 +65,13 @@ class NoiseChisel:
             nc_flags,
         )
 
-        result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
+        # result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
 
-        out = result.stdout
-        err = result.stderr
-        print(out)
-        print(err)
+        # out = result.stdout
+        # err = result.stderr
+        # print(out)
+        # print(err)
+        out, err = sci_utils.execute_subprocess(ast_cmd)
 
         return self.file_nc
 
@@ -87,12 +86,13 @@ class NoiseChisel:
         """
         ast_cmd = "astsegment {} --clumpsnthresh=5".format(self.file_nc)
 
-        result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
+        # result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
 
-        out = result.stdout
-        err = result.stderr
-        print(out)
-        print(err)
+        # out = result.stdout
+        # err = result.stderr
+        # print(out)
+        # print(err)
+        out, err = sci_utils.execute_subprocess(ast_cmd)
 
         return self.file_seg
 
@@ -111,12 +111,13 @@ class NoiseChisel:
             self.file_seg
         )
 
-        result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
+        # result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
 
-        out = result.stdout
-        err = result.stderr
-        print(out)
-        print(err)
+        # out = result.stdout
+        # err = result.stderr
+        # print(out)
+        # print(err)
+        out, err = sci_utils.execute_subprocess(ast_cmd)
 
         hdu_cat = fits.open(self.file_cat)
         print(hdu_cat.info())
@@ -135,12 +136,13 @@ class NoiseChisel:
         ast_cmd = "rm {}_detected_*_.fits".format(self.file_root)
         print(ast_cmd)
 
-        result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
+        # result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
 
-        out = result.stdout
-        err = result.stderr
-        print(out)
-        print(err)
+        # out = result.stdout
+        # err = result.stderr
+        # print(out)
+        # print(err)
+        out, err = sci_utils.execute_subprocess(ast_cmd)
 
         return
 
