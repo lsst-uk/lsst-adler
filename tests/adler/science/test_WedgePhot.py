@@ -7,13 +7,16 @@ from numpy.testing import assert_array_equal
 
 # test image of the DART mission impact on Didymos system, from ZTF
 dir_path = os.path.dirname(os.path.realpath(__file__))  # dir path of this file
-test_dir_path = "/".join(dir_path.split("/")[:-2])
+test_dir_path = "/".join(dir_path.split("/")[:-2])  # get the test data dir
+
+# wedge phot input and settings
 infits = "{}/data/ztf_Didymos-system-barycenter20065803_20221201402616_000567_zr_c10_o_q1_scimrefdiffimg.fits.fz".format(
     test_dir_path
 )
 inhdu = 1
 N_wedge = 10
 
+# create wedge phot object
 wp = WedgePhot(
     fits_file=infits,
     i_hdu=inhdu,
@@ -46,15 +49,20 @@ def test_astscript_radial_profile():
 def test_run_wedge_phot():
     """Test that the radial profile is run for all bins and results are compiled"""
 
-    wp_results = wp.run_wedge_phot()  # TODO: the subprocess cat call doesn't seem to work here?
+    wp_results = wp.run_wedge_phot()
     df = wp_results[0]["data"]
+
     assert len(wp_results) == N_wedge
     assert isinstance(df, pd.DataFrame)
+
+    # check that all requested values have been calculated
     for x in ["RADIUS", "SUM", "MEAN", "MEDIAN", "SIGCLIP_MEAN", "SIGCLIP_STD"]:
         assert x in list(df)
 
 
 if __name__ == "__main__":
+
+    # test the timing of the wedge photometry routine during testing when this script is executed
     import time
 
     start = time.time()
