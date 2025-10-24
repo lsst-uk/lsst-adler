@@ -45,7 +45,7 @@ class NoiseChisel:
         # Define the noisechisel command
         self.astnoisechisel = "astnoisechisel"
 
-    def noise_chisel(self, nc_flags="--checkdetection --continueaftercheck"):
+    def noise_chisel(self, nc_flags="--checkdetection --continueaftercheck", pre_cmd=None):
         """
         Function to invoke the gnuastro noisechisel command. The results are stored in the file that is created (file_nc). This file contains a pixel map of detections, i.e. is a pixel signal or background?
 
@@ -62,11 +62,18 @@ class NoiseChisel:
             nc_flags,
         )
 
+        # add prerequisite commands if necessary
+        if pre_cmd is not None:
+            ast_cmd = pre_cmd + ast_cmd
+
+        print(ast_cmd)
         out, err = sci_utils.execute_subprocess(ast_cmd)
+        print(out)
+        print(err)
 
         return self.file_nc
 
-    def segment_image(self):
+    def segment_image(self, pre_cmd=None):
         """
         Function to invoke the gnuastro image segmentation routine command. This step is required to separate the noisechisel chisel detections into individual objects/clumps. The results are stored in the file that is created (file_seg).
 
@@ -77,11 +84,18 @@ class NoiseChisel:
         """
         ast_cmd = "astsegment {} --clumpsnthresh=5".format(self.file_nc)
 
+        # add prerequisite commands if necessary
+        if pre_cmd is not None:
+            ast_cmd = pre_cmd + ast_cmd
+
+        print(ast_cmd)
         out, err = sci_utils.execute_subprocess(ast_cmd)
+        print(out)
+        print(err)
 
         return self.file_seg
 
-    def make_catalogue(self, i_cat=1):
+    def make_catalogue(self, i_cat=1, pre_cmd=None):
         """
         Function to invoke the gnuastro make catalogue command. The results are stored in the file that is created (file_cat)
 
@@ -102,7 +116,14 @@ class NoiseChisel:
             self.file_seg
         )
 
+        # add prerequisite commands if necessary
+        if pre_cmd is not None:
+            ast_cmd = pre_cmd + ast_cmd
+
+        print(ast_cmd)
         out, err = sci_utils.execute_subprocess(ast_cmd)
+        print(out)
+        print(err)
 
         hdu_cat = fits.open(self.file_cat)
         # print(hdu_cat.info())
@@ -117,13 +138,15 @@ class NoiseChisel:
         """
 
         ast_cmd = "rm {}_detected_*_.fits".format(self.file_root)
-        print(ast_cmd)
 
+        print(ast_cmd)
         out, err = sci_utils.execute_subprocess(ast_cmd)
+        print(out)
+        print(err)
 
         return
 
-    def run_noise_chisel(self, keep_files=False):
+    def run_noise_chisel(self, conda_start=None, conda_env=None, keep_files=False):
         """
         Wrapper function that calls each step to go from an input image to measurements of detections made by noisechisel.
 
@@ -138,9 +161,17 @@ class NoiseChisel:
             Dataframe containing the measured properties of the clumps
         """
 
-        self.noise_chisel()
-        self.segment_image()
-        df_cat = self.make_catalogue()
+        # Explicitly start conda and run in the environment if required
+        if (conda_start is not None) & (conda_env is not None):
+            conda_run = "{}; ".format(conda_start)
+        else:
+            conda_run = None
+        if conda_env is not None:
+            conda_run += "conda run -n {} ".format(conda_env)
+
+        self.noise_chisel(pre_cmd=conda_run)
+        self.segment_image(pre_cmd=conda_run)
+        df_cat = self.make_catalogue(pre_cmd=conda_run)
 
         if not keep_files:
             self.clean_up()
