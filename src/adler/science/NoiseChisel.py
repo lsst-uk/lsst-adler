@@ -41,8 +41,6 @@ class NoiseChisel:
         self.file_check = self.file_root + self.file_suffix_check
         self.file_seg = self.file_nc.split(".fits")[0] + "_segmented.fits"
         self.file_cat = self.file_seg.split(".fits")[0] + "_cat.fits"
-        # file_list_print = "\n".join([self.file_nc, self.file_check,self.file_seg,self.file_cat])
-        # print("expected files:\n{}".format(file_list_print))
 
         # Define the noisechisel command
         self.astnoisechisel = "astnoisechisel"
@@ -57,7 +55,6 @@ class NoiseChisel:
             Name of the noisechisel results file
         """
 
-        # TODO: make a subprocess utility function that includes logging. Use for WedgePhotometry too
         ast_cmd = """{} {} --hdu={} {}""".format(
             self.astnoisechisel,
             self.fits_file,
@@ -65,12 +62,6 @@ class NoiseChisel:
             nc_flags,
         )
 
-        # result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
-
-        # out = result.stdout
-        # err = result.stderr
-        # print(out)
-        # print(err)
         out, err = sci_utils.execute_subprocess(ast_cmd)
 
         return self.file_nc
@@ -86,19 +77,19 @@ class NoiseChisel:
         """
         ast_cmd = "astsegment {} --clumpsnthresh=5".format(self.file_nc)
 
-        # result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
-
-        # out = result.stdout
-        # err = result.stderr
-        # print(out)
-        # print(err)
         out, err = sci_utils.execute_subprocess(ast_cmd)
 
         return self.file_seg
 
-    def make_catalogue(self):
+    def make_catalogue(self, i_cat=1):
         """
         Function to invoke the gnuastro make catalogue command. The results are stored in the file that is created (file_cat)
+
+
+        Parameters
+        -----------
+        i_cat : int
+            Use either the object (i_cat=1) or the clump (i_cat=2) detections to make the catalogue
 
         Returns
         ----------
@@ -111,18 +102,10 @@ class NoiseChisel:
             self.file_seg
         )
 
-        # result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
-
-        # out = result.stdout
-        # err = result.stderr
-        # print(out)
-        # print(err)
         out, err = sci_utils.execute_subprocess(ast_cmd)
 
         hdu_cat = fits.open(self.file_cat)
-        print(hdu_cat.info())
-        i_cat = 1  # objects
-        # i_cat = 2 # clumps
+        # print(hdu_cat.info())
         dat = hdu_cat[i_cat].data
         df_cat = Table(dat).to_pandas()
 
@@ -136,12 +119,6 @@ class NoiseChisel:
         ast_cmd = "rm {}_detected_*_.fits".format(self.file_root)
         print(ast_cmd)
 
-        # result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
-
-        # out = result.stdout
-        # err = result.stderr
-        # print(out)
-        # print(err)
         out, err = sci_utils.execute_subprocess(ast_cmd)
 
         return

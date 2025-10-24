@@ -127,13 +127,6 @@ class WedgePhot:
             ast_cmd += " rm {};".format(out_file)
 
         # run the command
-        # result = subprocess.run(ast_cmd, shell=True, capture_output=True, text=True)
-        # # TODO: log the commands that were run
-
-        # # return the output and errors from the terminal
-        # out = result.stdout
-        # err = result.stderr
-
         out, err = sci_utils.execute_subprocess(ast_cmd)
 
         # get the results as a dataframe
@@ -142,10 +135,9 @@ class WedgePhot:
             df_results = pd.read_csv(StringIO(out), sep="\s+", names=col_names, comment="#")
         else:
             df_results = None
-            # TODO: log the error
             print(err)
 
-        # TODO: properly log the output from astscript-radial-profile!
+        # TODO: properly log the output and error from astscript-radial-profile!
 
         return df_results
 
