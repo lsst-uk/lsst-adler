@@ -37,7 +37,7 @@ pre-commit install
 **WARNING:** If you're installing on the RSP, then use the following pip command instead:
 
 ```
->> pip install --user -e .'[dev]'
+pip install --user -e .'[dev]'
 ```
 Furthermore, to get the pre-commit hooks working on RSP, you will probably have to update git within your environment:
 
