@@ -22,22 +22,22 @@ virtual environment. If you have conda installed locally, you can run the follow
 create and activate a new environment.
 
 ```
->> conda create --name <env_name> python=3.10
->> conda activate <env_name>
+conda create --name <env_name> python=3.10
+conda activate <env_name>
 ```
 
 Once you have created a new environment, you can install this project for local
 development. Git clone the repo and from the top directory run the following commands from within the adler folder:
 
 ```
->> pip install -e .'[dev]'
->> pre-commit install
+pip install -e .'[dev]'
+pre-commit install
 ```
 
 **WARNING:** If you're installing on the RSP, then use the following pip command instead:
 
 ```
->> pip install --user -e .'[dev]'
+pip install --user -e .'[dev]'
 ```
 Furthermore, to get the pre-commit hooks working on RSP, you will probably have to update git within your environment:
 
@@ -48,7 +48,7 @@ conda install git
 If you're also working on the docs:
 
 ```
->> conda install pandoc
+conda install pandoc
 ```
 
 You can then test that everything works by running:
