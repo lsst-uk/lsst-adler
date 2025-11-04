@@ -453,6 +453,7 @@ class AdlerPlanetoid:
         if schema in [None,"dp03_catalogs_10yr"]:
             return MPCORB.construct_from_data_table(ssObjectId, data_table)
         elif schema=="dp1":
+            #TODO get_data_table (above) NaN fills if we, e.g., SELECT NULL AS mpcNumber, which may be fine and remove the need for this
             #Convert to astropy Table and add in NaNs/0/empty strings for the columns that do not appear in DP1
             data_table_astropy = data_table.to_table()
             data_table_astropy.add_columns(
