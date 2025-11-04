@@ -8,7 +8,7 @@ from adler.objectdata.Observations import Observations
 from adler.objectdata.MPCORB import MPCORB
 from adler.objectdata.SSObject import SSObject
 from adler.objectdata.AdlerData import AdlerData
-from adler.objectdata.objectdata_utilities import get_data_table
+from adler.objectdata.objectdata_utilities import get_data_table, mjd_to_utc, utc_to_mjd
 
 logger = logging.getLogger(__name__)
 
@@ -418,6 +418,171 @@ class AdlerPlanetoid:
 
         data_table = get_data_table(SSObject_sql_query, service=service, sql_filename=sql_filename)
 
+        if len(data_table) == 0:
+            logger.error("No SSObject data for this object could be found for this SSObjectId.")
+            raise Exception("No SSObject data for this object could be found for this SSObjectId.")
+
+        return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table)
+    
+    @classmethod
+    def construct_from_mpc_obs_sbn(
+        cls,
+        ssObjectId,
+        sql_filename,
+        filter_list=["u", "g", "r", "i", "z", "y"],
+        date_range=[60000.0, 67300.0],
+        schema=None, #TODO figure out what this should be
+        flux_flag=None #TODO figure out what this should be
+        ): # pragma: no cover
+        """
+        #TODO docstring
+        """
+
+        if len(date_range) != 2:
+            raise Exception("date_range argument must be of length 2.")
+
+        observations_by_filter = cls.populate_observations_from_mpc_obs_sbn(
+                cls, ssObjectId, filter_list, date_range, sql_filename=sql_filename
+        )
+
+        if len(observations_by_filter) == 0:
+            logger.error(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
+            raise Exception(
+                "No observations found for this object in the given filter(s). Check SSOID and try again."
+            )
+
+        if len(filter_list) > len(observations_by_filter):
+            logger.info(
+                "Not all specified filters have observations. Recalculating filter list based on past observations."
+            )
+            filter_list = [obs_object.filter_name for obs_object in observations_by_filter]
+            logger.info("New filter list is: {}".format(filter_list))
+
+        mpcorb = cls.populate_MPCORB_from_mpc_obs_sbn(cls, ssObjectId, sql_filename=sql_filename)
+        ssobject = cls.populate_SSObject_from_mpc_obs_sbn(cls, ssObjectId, filter_list, sql_filename=sql_filename)
+        # mpcorb = None
+        # ssobject = None
+
+        adler_data = AdlerData(ssObjectId, filter_list)
+
+        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
+
+    def populate_observations_from_mpc_obs_sbn(
+            self,
+            ssObjectId,
+            filter_list,
+            date_range,
+            sql_filename,
+            service=None
+        ):
+        """
+        #TODO docstring
+        """
+        # Convert MJD time to UTC for querying the MPC obs_sbn file
+        date_range_utc = mjd_to_utc(date_range)
+
+        observations_by_filter = []
+
+        #TODO potential issue using provisional designation as SSObjectId (also obsid as diaSourceId)
+        #TODO probably add some warnings as this is a temporary fix to the evolving situation anyway
+        for filter_name in filter_list:
+            observations_sql_query = f"""
+                SELECT
+                    provid AS SSObjectId, obsid as diaSourceId, mag, rmsmag AS magErr, band, obstime, ra, dec,
+                    NULL AS phaseAngle, NULL AS topocentricDist, NULL AS heliocentricDist,
+                    NULL AS heliocentricX, NULL AS heliocentricY, NULL AS heliocentricZ,
+                    NULL AS topocentricX, NULL AS topocentricY, NULL AS topocentricZ,
+                    NULL AS eclipticLambda, NULL AS eclipticBeta
+                FROM
+                    obs_sbn
+                WHERE
+                    provid='{ssObjectId}' AND band = '{filter_name}' AND obstime BETWEEN '{date_range_utc[0]}' AND '{date_range_utc[1]}'
+                """
+
+            #This function submits the query and gets the results (or pulls from the SQL database)
+            data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
+            
+
+            if len(data_table) == 0:
+                logger.warning(
+                    "No observations found in {} filter for this object. Skipping this filter.".format(
+                        filter_name
+                    )
+                )
+            else:
+                # Convert the UTC obstime column to MJD for consistency
+                # TODO check if this is same as midPointMjdTai, i.e.:
+                # Mid-exposure time for the Visit for this DiaSource, expressed as Modified Julian Date, International Atomic Time.
+                # TODO is this the best/most efficient/most accurate way to convert these values
+                data_table['obstime'] = utc_to_mjd(data_table['obstime'].to_numpy(dtype='str'))
+                data_table.rename(columns={"obstime":"midPointMjdTai"}, inplace=True)
+                # DP1 discoveries have no magErr values so fill with NaNs
+                # for some reason (TODO: check why) this means that this column has dtype object so we force it to be float64 here
+                data_table['magErr'] = data_table.magErr.astype(np.float64)
+                
+                observations_by_filter.append(
+                    Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
+                )
+
+        return observations_by_filter
+
+    def populate_MPCORB_from_mpc_obs_sbn(self, ssObjectId, sql_filename, service=None):
+        """
+        #TODO docstring
+        """
+
+        #TODO Possible issue: Currently selecting fullDesignation AS ssObjectId for consistency with populate_observations_from_mpc_obs_sbn
+        # We select t_p (MJD of pericentric passage) as tperi for consistency with DP0.3
+        # mean_motion in mpc-orbits is n (mean daily motion) in DP0.3. Not include in this file at all so selecting NULL
+        MPCORB_sql_query = f"""
+            SELECT
+                fullDesignation AS ssObjectId, NULL AS mpcDesignation, fullDesignation AS fullDesignation, 0 AS mpcNumber,
+                mpcH, NULL AS mpcG, epoch, t_p AS tperi, peri, node, incl, e, NULL AS n, q, NULL AS uncertaintyParameter, NULL AS flags
+            FROM
+                MPCORB
+            WHERE
+                fullDesignation = '{ssObjectId}'
+        """
+
+        data_table = get_data_table(MPCORB_sql_query, service=service, sql_filename=sql_filename)
+
+        if len(data_table) == 0:
+            logger.error("No MPCORB data for this object could be found for this SSObjectId.")
+            raise Exception("No MPCORB data for this object could be found for this SSObjectId.")
+
+        return MPCORB.construct_from_data_table(ssObjectId, data_table)
+
+    def populate_SSObject_from_mpc_obs_sbn(self, ssObjectId, filter_list, sql_filename, service=None):
+        """
+        #TODO docstring
+        """
+
+        filter_dependent_columns = ""
+
+        for filter_name in filter_list:
+            filter_string = "NULL AS {}_H, NULL AS {}_G12, NULL AS {}_HErr, NULL AS {}_G12Err, NULL AS {}_Ndata, ".format(
+                filter_name, filter_name, filter_name, filter_name, filter_name
+            )
+
+            filter_dependent_columns += filter_string
+
+        #TODO can likely fill some of these values but leaving as NULLs for now
+        SSObject_sql_query = f"""
+            SELECT
+                NULL AS discoverySubmissionDate, NULL AS firstObservationDate, NULL AS arc, count(*) AS numObs, 
+                {filter_dependent_columns}
+                NULL AS maxExtendedness, NULL AS minExtendedness, NULL AS medianExtendedness
+            FROM
+                obs_sbn
+            WHERE
+                provid = '{ssObjectId}'
+        """
+
+        data_table = get_data_table(SSObject_sql_query, service=service, sql_filename=sql_filename)
+
+        #TODO probably add some warnings for these as there isn't actually any SSObject data for these things in MPC file
         if len(data_table) == 0:
             logger.error("No SSObject data for this object could be found for this SSObjectId.")
             raise Exception("No SSObject data for this object could be found for this SSObjectId.")
