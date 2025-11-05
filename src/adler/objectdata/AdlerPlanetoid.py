@@ -562,8 +562,9 @@ class AdlerPlanetoid:
         filter_dependent_columns = ""
 
         for filter_name in filter_list:
-            filter_string = "NULL AS {}_H, NULL AS {}_G12, NULL AS {}_HErr, NULL AS {}_G12Err, NULL AS {}_Ndata, ".format(
-                filter_name, filter_name, filter_name, filter_name, filter_name
+            # Counting number of observations in given filter in the query here
+            filter_string = "NULL AS {}_H, NULL AS {}_G12, NULL AS {}_HErr, NULL AS {}_G12Err, (SELECT COUNT(*) FROM obs_sbn WHERE band='{}' and provid='{}') AS {}_Ndata, ".format(
+                filter_name, filter_name, filter_name, filter_name, filter_name, ssObjectId, filter_name
             )
 
             filter_dependent_columns += filter_string
