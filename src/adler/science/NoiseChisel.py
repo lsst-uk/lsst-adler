@@ -137,7 +137,7 @@ class NoiseChisel:
         Function to remove all .fits created as part of the noisechisel, segmentation and catalogue process.
         """
 
-        ast_cmd = "rm {}_detected_*_.fits".format(self.file_root)
+        ast_cmd = "rm {}_det*.fits".format(self.file_root)
 
         print(ast_cmd)
         out, err = sci_utils.execute_subprocess(ast_cmd)
