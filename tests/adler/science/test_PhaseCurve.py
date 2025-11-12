@@ -251,12 +251,12 @@ def test_PhaseCurve_FitModel_resample():
     # do a single fit
     pc_fit = pc.FitModel(alpha, red_mag, mag_err)
     pc_fit = PhaseCurve().InitModelSbpy(pc_fit)
-    print(pc_fit.__dict__)
+    # print(pc_fit.__dict__)
 
     # use the resample function within FitModel
     pc_fit_resamp = pc.FitModel(alpha, red_mag, mag_err, resample=resample)
     pc_fit_resamp = PhaseCurve().InitModelSbpy(pc_fit_resamp)
-    print(pc_fit_resamp.__dict__)
+    # print(pc_fit_resamp.__dict__)
 
     # check that the fits are different
     tolerance = 0.001
@@ -269,7 +269,7 @@ def test_PhaseCurve_FitModel_resample():
         if hasattr(x2, "unit") and (x2.unit is not None):
             x2 = x2.value
 
-        print(x, np.abs(x1 - x2))
+        # print(x, np.abs(x1 - x2))
         assert np.abs(x1 - x2) > tolerance
 
         # the resampled fit should have larger uncertainties
@@ -284,7 +284,7 @@ def test_PhaseCurve_FitModel_resample():
         if hasattr(x1, "unit") and (x1.unit is not None):
             x1 = x1.value
 
-        print(x, x1, x2)
+        # print(x, x1, x2)
         assert_almost_equal(x1, x2)
 
 
@@ -308,14 +308,14 @@ def test_ReturnInit():
 
     # convert the PhaseCurve object to dict
     pc_dict = pc.ReturnModelDict()
-    print(pc_dict)
+    # print(pc_dict)
 
     assert pc_dict["H"] == 18.0
     assert pc_dict["phase_parameter_1"] == 0.15
     assert pc_dict["model_name"] == "HG"
 
     # create PhaseCurve from dict
-    print(type(pc_dict))
+    # print(type(pc_dict))
     pc2 = PhaseCurve().InitModelDict(pc_dict)
 
     assert pc2.H == 18.0
@@ -324,7 +324,7 @@ def test_ReturnInit():
 
     # create sbpy model from PhaseCurve
     pc_sbpy = pc.model_function
-    print(pc_sbpy)
+    # print(pc_sbpy)
 
     assert pc_sbpy.H == 18.0
     assert pc_sbpy.G == 0.15

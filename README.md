@@ -64,6 +64,12 @@ One can also read from a local database, for example:
 adler -s 8268570668335894776 -i tests/data/testing_database.db
 ```
 
+To make your environment available as a jupyter notebook kernel run:
+
+```
+python -m ipykernel install --user --name=<env_name>
+```
+
 Notes:
 1) The single quotes around `'[dev]'` may not be required for your operating system.
 2) `pre-commit install` will initialize pre-commit for this local repository, so
@@ -74,6 +80,13 @@ Notes:
    into documentation for ReadTheDocs works as expected. For more information, see
    the Python Project Template documentation on
    [Sphinx and Python Notebooks](https://lincc-ppt.readthedocs.io/en/latest/practices/sphinx.html#python-notebooks)
+
+## Additional Dependencies:
+In order to run the cutout analysis tools (WedgePhot, NoiseChisel) a working version of [gnuastro](https://www.gnu.org/savannah-checkouts/gnu/gnuastro/gnuastro.html) is required. gnuastro can be installed from source directly, please follow their documentation. Alternatively it is possible to conda install gnuastro on most systems:
+```
+conda install conda-forge::gnuastro
+```
+(currently adler works with gnuastro==0.23)
 
 ## Dev Guide - Adding notebooks to Read The Docs
 
