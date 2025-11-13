@@ -231,6 +231,12 @@ def test_running_stats():
     assert running_std_y == np.std(y_res)
 
 
+def test_execute_subprocess():
+    cmd = "which adler"
+    out, err = sci_utils.execute_subprocess(cmd)
+    assert "adler" in out
+
+
 # TODO: test apparition_gap_finder, correct number of groups identified? correct boundaries?
 # check boundaires are in ascending order
 

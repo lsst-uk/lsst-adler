@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
+import subprocess
 from astropy.stats import sigma_clip as astropy_sigma_clip
-import astropy.units as u
 
 
 def outlier_diff(new_res, diff_cut=1.0):
@@ -254,3 +254,31 @@ def running_stats(N, sum_x, sum_x2):
     mean_x = sum_x / N
     std_x = np.sqrt((N * sum_x2) - (sum_x**2.0)) / N
     return mean_x, std_x
+
+
+def execute_subprocess(cmd):
+    """
+    Wrapper function to execute a terminal command using the python subprocess module
+
+    Parameters
+    -----------
+
+    cmd: str
+        Command to be executed
+
+    Returns
+    -----------
+    out, err: str, str
+        The output and any error messages returned by subprocess
+
+    """
+
+    # run the command
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    # TODO: log the commands that were run
+
+    # return the output and errors from the terminal
+    out = result.stdout
+    err = result.stderr
+
+    return out, err

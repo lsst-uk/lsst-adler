@@ -119,7 +119,7 @@ def test_col_obs_ref(
         # compare results df to stored df
         # NB: see also pytest.approx for comparing dictionaries
         for x in list(df_col):
-            print(x)
+            # print(x)
             assert_array_almost_equal(np.array(df_col[x]), np.array(df_ref[x]))
             # TODO: diasourceId failing on ubuntu tests, due to float? need to save as str/int?
 
