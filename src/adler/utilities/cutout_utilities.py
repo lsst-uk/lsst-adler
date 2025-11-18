@@ -76,12 +76,11 @@ class diaSource_cutout:
         self.outdir = outdir
         self.outfile = outfile
 
-        # TODO: allow calib_level to be a list to get multiple images in one query?
+        # Enusure calib_level is a list
         if type(self.calib_level) is int:
             self.calib_level = [self.calib_level]
 
         if self.outfile is None:
-            # self.outfile = "cutout-{}_{}.fits".format(self.diaSourceId, self.calib_level)
             self.outfile = "cutout-{}".format(self.diaSourceId)
 
         # set up RSP services
@@ -113,26 +112,30 @@ class diaSource_cutout:
 
         """
 
-        # # clean the input dictionary
-        # del_keys = []
+        # get any previously set values
+        dc_dict = self.__dict__
 
-        # # remove keys that aren't diaSource_cutout attributes
-        # for key, value in alert_dict.items():
-        #     if not hasattr(self, key):
-        #         del_keys.append(key)
-        # alert_dict = alert_dict.copy()  # make a copy to avoid changing the original dict
-        # for key in del_keys:
-        #     alert_dict.pop(key, None)
+        # remove non-arg keys # TODO: repeat for alert_dict?
+        del_keys = []
+        dc_args = self.__init__.__code__.co_varnames
+        for key, value in dc_dict.items():
+            if key not in dc_args:
+                del_keys.append(key)
+        for key in del_keys:
+            dc_dict.pop(key, None)
 
-        # # initialise a new cutout class
-        # dc = diaSource_cutout(**alert_dict)
+        # Force overwrite of outfile, unless it is passed in alert_dict?
+        dc_dict["outfile"] = None
 
-        # set key values that are diaSource_cutout attributes
+        # Overwrite initial diaSource_cutout attributes if they are in alert_dict
         for key, value in alert_dict.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
+            if key in dc_dict:
+                dc_dict[key] = value
 
-        return self
+        # initialise a new cutout class
+        dc = diaSource_cutout(**dc_dict)
+
+        return dc
 
     def query_diaSourceId(self):
 
@@ -216,6 +219,7 @@ class diaSource_cutout:
 
             # find the image on the RSP
             dl_result = DatalinkResults.from_result_url(url, session=get_pyvo_auth())
+            print(f"Datalink status: {dl_result.status}. Datalink service url: {url}")
             sq = SodaQuery.from_resource(
                 dl_result,
                 dl_result.get_adhocservice_by_id("cutout-sync"),
@@ -313,6 +317,8 @@ class diaSource_cutout:
            The matplotlib figure object
         """
 
+        # TODO: merge plot_exp in here
+
         # Get image data and header
         cutout_file = getattr(self, "cutout_file_" + CALIB_DICT[cal_lev])
 
@@ -351,7 +357,7 @@ class diaSource_cutout:
         # plot target coords
         # TODO: check units here
         c = SkyCoord(self.ra, self.dec, unit=(u.deg, u.deg))
-        pos = skycoord_to_pixel(c, wcs)
+        pos = skycoord_to_pixel(c, wcs)  # TODO: update to use exp wcs
 
         # plot the detected sources as apertures with fwhm size
         aperture = CircularAperture(
