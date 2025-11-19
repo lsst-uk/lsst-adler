@@ -6,6 +6,8 @@ import lsst.geom as geom
 from astropy import units as u
 from lsst.afw.image import ExposureF
 from lsst.afw.fits import MemFileManager
+import lsst.afw.display as afwDisplay
+
 import os
 from astropy.io import fits
 from astropy import visualization as aviz
@@ -199,9 +201,20 @@ class diaSource_cutout:
 
         return self.datalink_url
 
-    def sodaCutout(self):
+    def sodaCutout(self, small_fits=True):
         """
         Get the image using soda and save it as a fits file.
+
+        Parameters
+        -----------
+        small_fits : Bool
+           Flag to save only the image component to fits file (set False to save full exposure to fits file)
+
+        Returns
+        ----------
+
+        exposure : ExposureF
+           The new diaSource_cutout class object
         """
 
         # make sure we have a visit and detector id etc, i.e. all unique image data
@@ -211,7 +224,7 @@ class diaSource_cutout:
         # get the image url
         self.query_image_url()
 
-        for i in range(len(self.datalink_url)):
+        for i in range(len(self.datalink_url)):  # TODO: Parallelise here
 
             url = self.datalink_url.iloc[i]["access_url"]
             cal_lev = self.datalink_url.iloc[i]["calib_level"]
@@ -241,55 +254,36 @@ class diaSource_cutout:
             mem = MemFileManager(len(cutout_bytes))
             mem.setData(cutout_bytes, len(cutout_bytes))
             exposure = ExposureF(mem)
+            # TODO: save the minimum information to keep file size down, see afwDisplay.writeFitsImage in https://dp1.lsst.io/tutorials/notebook/103/notebook-103-4.html
 
             if self.outdir is not None:
 
-                # save the cutout data to file
-                # self.cutout_file = os.path.join(self.outdir, self.outfile)
+                # save the cutout data to file - add the calib_level to the filename
                 cutout_file = os.path.join(self.outdir, self.outfile) + "_" + str(cal_lev) + ".fits"
-                setattr(self, "cutout_file_" + CALIB_DICT[cal_lev], cutout_file)
-                with open(cutout_file, "bw") as f:
-                    f.write(sq.execute_stream().read())
-                    print("save {}".format(cutout_file))
+                setattr(
+                    self, "cutout_file_" + CALIB_DICT[cal_lev], cutout_file
+                )  # store the filename as an attribute
+
+                if small_fits:
+                    afwDisplay.writeFitsImage(
+                        cutout_file,  # see, https://dp1.lsst.io/tutorials/notebook/103/notebook-103-4.html
+                        # exposure.maskedImage, # slightly smaller than full exposure
+                        exposure.image,  # small as possible, no masks
+                        wcs=exposure.wcs,
+                    )
+                else:
+                    with open(cutout_file, "bw") as f:
+                        f.write(sq.execute_stream().read())
+                        print("save {}".format(cutout_file))
 
             # store exposure as a class attribute?
             setattr(self, "exp_" + CALIB_DICT[cal_lev], exposure)
 
-        return
+        return exposure
 
-    def plot_exp(self, cal_lev):
-        """
-        Plot the lsst exposure object using pyplot.
-
-        Parameters
-        -----------
-        cal_lev: int
-            Calibration level to be plotted
-
-        Returns
-        ----------
-        fig : matplotlib.figure.Figure
-           The matplotlib figure object
-        """
-
-        # Get image data and header
-        # TODO: get WCS working when plotting directly from exp (or use RSP firefly as in tutorials?)
-        # img = exposure.image
-        img = getattr(self, "exp_" + CALIB_DICT[cal_lev]).image.getArray()
-
-        fig = plt.figure()
-        gs = gridspec.GridSpec(1, 1)
-        ax1 = plt.subplot(gs[0, 0])
-
-        norm = aviz.ImageNormalize(img, interval=aviz.ZScaleInterval())
-        s1 = ax1.imshow(img, norm=norm, origin="lower")
-        cbar = plt.colorbar(s1)
-
-        plt.title("{} {}".format(self.visit, CALIB_DICT[cal_lev]))
-
-        return fig
-
-    def plot_img(self, cal_lev, ihdu=1, plot_wcs=False, plot_r=50, wcs_reproj=False, shape_reproj=False):
+    def plot_img(
+        self, cal_lev, plot_fits=True, ihdu=0, plot_wcs=False, plot_r=50, wcs_reproj=False, shape_reproj=False
+    ):
         """
         Open the saved fits image and plot it using pyplot.
         Use the arguments wcs_reproj and shape_reproj to reproject the image to a specific wcs and shape (e.g. get North up and East pointing left). NB beware of flux conservation when reprojecting
@@ -300,8 +294,10 @@ class diaSource_cutout:
         -----------
         cal_lev: int
             Calibration level to be plotted
-        ihdu : int
-           Index of fits image containing the image to be plotted
+        fits: Bool
+            Flag to plot from the cutout fits file
+        ihdu : int or str
+           Index (or hdu label) of fits image containing the image to be plotted
         plot_wcs: Bool
             Flag to use the wcs projection (wcs is read from the fits header, which is only an approximation of the full LSST GBDES WCS model)
         plot_r: float
@@ -319,53 +315,92 @@ class diaSource_cutout:
 
         # TODO: merge plot_exp in here
 
-        # Get image data and header
-        cutout_file = getattr(self, "cutout_file_" + CALIB_DICT[cal_lev])
+        # get the ExposureF object
+        exp = getattr(self, "exp_" + CALIB_DICT[cal_lev])
 
-        hdu = fits.open(cutout_file)
-        img = hdu[ihdu].data
-        hdr = hdu[ihdu].header
-        wcs = WCS(hdr)
+        if plot_fits:
+            # Get image data and header
+            cutout_file = getattr(self, "cutout_file_" + CALIB_DICT[cal_lev])
+            hdu = fits.open(cutout_file)
+            img = hdu[ihdu].data
+            hdr = hdu[ihdu].header
+            wcs = WCS(hdr)
+        else:
+            # get the fits equivalent data
+            img = exp.getImage().getArray()  # image data
+            # hdr = Header(exp.getMetadata().toDict()) # fits (primary) header info (without WCS) - https://community.lsst.org/t/obtain-only-image-metadata-with-butler-get/5922
+            wcs = WCS(
+                exp.getWcs().getFitsMetadata()
+            )  # ExposureF WCS converted to fits WCS # TODO: this WCS is for the full visit image? Requires a shift to be applied to coords, getXY0(), https://community.lsst.org/t/visualizing-images-in-sky-coordinates-using-wcs-in-a-notebook/4210/8
 
-        if wcs_reproj and shape_reproj:  # TODO: also accept list of hdus and run find_optimal_celestial_wcs
-            # reproject the image
-            data_out, footprint = reproject_and_coadd(
-                [hdu[ihdu]],
-                wcs_reproj,
-                shape_out=shape_reproj,
-                reproject_function=reproject_interp,
-                # reproject_function=reproject_exact
-            )
-            # optional, set all zero pixels to nan?
-            data_out[data_out == 0] = np.nan
+        if wcs_reproj and shape_reproj:
+            if not plot_fits:
+                # TODO: log an error here
+                print(
+                    "ERROR: Reprojection requires plotting from the fits file WCS representation (set plot_fits=True)"
+                )
+                # TODO: make this work with exp?
+            else:
+                # reproject the image, using shape and wcs determined from list of hdus and find_optimal_celestial_wcs
+                data_out, footprint = reproject_and_coadd(
+                    [hdu[ihdu]],
+                    wcs_reproj,
+                    shape_out=shape_reproj,
+                    reproject_function=reproject_interp,
+                    # reproject_function=reproject_exact
+                )
+                # TODO make optional? Set all zero pixels to nan to make plot nicer
+                data_out[data_out == 0] = np.nan
 
-            wcs = wcs_reproj
-            img = data_out
+                wcs = wcs_reproj
+                img = data_out
 
+        # create the matplotlib figure
         fig = plt.figure()
         gs = gridspec.GridSpec(1, 1)
-        if plot_wcs:
+        if plot_wcs:  # plot the image using the Fits approximate WCS
             ax1 = plt.subplot(gs[0, 0], projection=wcs)
             ax1.coords.grid(color="white", alpha=0.5, linestyle="solid")
-        else:
+        else:  # just plot in pixel scale
             ax1 = plt.subplot(gs[0, 0])
 
+        # Plot the image with norm and scaling
         norm = aviz.ImageNormalize(img, interval=aviz.ZScaleInterval())
         s1 = ax1.imshow(img, norm=norm, origin="lower")
         cbar = plt.colorbar(s1)
 
-        # plot target coords
-        # TODO: check units here
+        # plot target coords using the INEXACT fits approximation WCS
         c = SkyCoord(self.ra, self.dec, unit=(u.deg, u.deg))
-        pos = skycoord_to_pixel(c, wcs)  # TODO: update to use exp wcs
-
-        # plot the detected sources as apertures with fwhm size
+        pos = skycoord_to_pixel(c, wcs)
+        if not plot_fits:
+            print("correct pixel pos for ExposureF WCS to fits")
+            pos = pos - np.array(exp.image.getXY0())
+        print("Fits WCS pos = {}".format(pos))
+        # plot the detected sources as apertures (scale with fwhm/trail size?)
         aperture = CircularAperture(
             positions=np.array(pos),
             # r = df.iloc[i]["trailLength"] / pixscale,
             r=plot_r,
         )
         aperture.plot(color="r")
+
+        # Plot the exact position with the ExposureF WCS
+        if wcs_reproj and shape_reproj:
+            # TODO: log a warning here
+            print(
+                "WARNING: Reprojection requires the fits file WCS representation and does not work with ExposureF WCS"
+            )
+        coord = geom.SpherePoint(self.ra * geom.degrees, self.dec * geom.degrees)
+        pos = exp.wcs.skyToPixel(coord)  # pos.x, pos.y
+        pos = (
+            pos - exp.image.getXY0()
+        )  # Get the shifted position to correct for the WCS - https://community.lsst.org/t/how-to-use-wcss-in-dp1-and-commissioning-processing/10769
+        print("ExposureF WCS pos = {}".format(pos))
+        aperture = CircularAperture(
+            positions=np.array(pos),
+            r=plot_r,
+        )
+        aperture.plot(color="w")
 
         plt.title("{} {}".format(self.visit, CALIB_DICT[cal_lev]))
 
