@@ -170,3 +170,10 @@ class WedgePhot:
             wp_results[i]["data"] = df
 
         return wp_results
+
+    # TODO: correct the angles for telescope rotation
+    # TODO: set the exact target position (RA, Dec): rubin fits wcs not exact and cutout not always centred. Test with cutout-600399336911667204_2.fits
+    # TODO: use astscript-radial-profile --center to ensure aperture is always on target
+    # TODO: astscript-radial-profile crops image if --center is not in the middle of the image, set ap_rad_out accordingly
+    # TODO: VERY IMPORTANT TO CONSIDER PIXEL COUNTING AND AXES CONVENTIONS - make sure gnuastro and matplotlib pixel coords are consistent (shift of +1 pixel, swap axes?)
+    # TODO: add another annulus to measure the local sky background (Ferellec et al. 2022 sec. 3.2) - just use a radial cut for the outer most part of each wedge and add them together
