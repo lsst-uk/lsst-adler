@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from io import StringIO
+from astropy.io import fits
 
 import adler.utilities.science_utilities as sci_utils
 
@@ -17,19 +18,23 @@ class WedgePhot:
         Filename of fits file to be analysed.
     i_hdu: int
         Fits file HDU index containing the image to be analysed.
+    x,y: float,float
+        Pixel coords of the target, i.e. the centre of the radial profile. If not passed the centre of the image is used
     N_wedge: int
         Number of azimuthal bins to calculate radial profiles for.
     measure: str
         Statistic(s) to be calculated on each radial profile, can be individual or a list.
         E.g.: sum,mean,median,sigclip-mean,sigclip-std
     ap_rad_out: float
-        (Optional) Maximum radius (pixels) to calculate radial profile over.
+        (Optional) Maximum radius (pixels) to calculate radial profile over. Will default to the cropped image size.
     """
 
     def __init__(
         self,
         fits_file,
         i_hdu,
+        x=None,
+        y=None,
         N_wedge=10,
         measure="sum",
         out_dir=".",
@@ -40,7 +45,6 @@ class WedgePhot:
         self.i_hdu = i_hdu
         self.measure = measure
         self.N_wedge = N_wedge
-        self.ap_rad_out = ap_rad_out
 
         # define the directory to save any output files
         self.out_dir = out_dir
@@ -57,6 +61,22 @@ class WedgePhot:
             "# Column"  # string to identify column names when astscript-radial-profile is printed out
         )
 
+        # Explicitly set x and y and for the astscript-radial-profile --center argument
+        if (x is None) | (y is None):
+            # use the image centre as default # TODO: check pixel conventions!
+            hdu = fits.open(self.fits_file)
+            self.y, self.x = np.array(hdu[self.i_hdu].shape) / 2
+        else:
+            self.x = x
+            self.y = y
+        # Set ap_rad_out
+        if ap_rad_out is None:
+            self.ap_rad_out = np.min(
+                [self.x, self.y]
+            )  # use the minimum image size (from target position) by default
+        else:
+            self.ap_rad_out = ap_rad_out  # set the radius passed to WedgePhot class
+
     def astscript_radial_profile(
         self,
         az_min,
@@ -65,6 +85,7 @@ class WedgePhot:
         conda_start=None,
         conda_env=None,
         keep_files=False,
+        extra_options=None,
     ):
         """
         Get a radial profile in a given azimuthal range using gnuastro astscript-radial-profile.
@@ -78,16 +99,18 @@ class WedgePhot:
         az_min : float
             Minimum azimuthal bin edge.
         az_max : float
-            Maximum azimuthal bin edge
+            Maximum azimuthal bin edge.
         out_file: str
             File to store the results of astscript-radial-profile (deleted after results are extracted).
         conda_start: str
             Optional, command to launch conda in the subprocess virtual environment.
             This might be needed when running WedgePhot in a jupyter notebook (e.g. on the RSP conda_start = ". /opt/lsst/software/stack/conda/etc/profile.d/conda.sh")
         conda_env: str
-            Optional, name of the conda environment to use in the subprocess virtual environment (TODO: this makes WedgePhot slow)
+            Optional, name of the conda environment to use in the subprocess virtual environment (TODO: this makes WedgePhot slow).
         keep_files: Boolean
-            Optional, flag that can be set to true in order to keep the output file(s)
+            Optional, flag that can be set to true in order to keep the output file(s).
+        extra_options: str
+            Optional, pass any additional astscript-radial-profile command line options here (e.g. --keeptmp).
         Returns
         ----------
         df_results: DataFrame
@@ -103,7 +126,7 @@ class WedgePhot:
             conda_run += "conda run -n {} ".format(conda_env)
 
         # Construct the gnuastro command
-        ast_cmd = "{}{} -q -h{} {} -a {},{} --measure={} -o {}".format(
+        ast_cmd = "{}{} -q -h{} {} -a {},{} --measure={} --center={},{} -o {}".format(
             conda_run,
             self.ast_radial_profile,
             self.i_hdu,
@@ -111,8 +134,15 @@ class WedgePhot:
             az_min,
             az_max,
             self.measure,
+            self.x,
+            self.y,
             out_file,
         )
+
+        # add any additional options
+        if extra_options:
+            ast_cmd += " " + extra_options
+
         # Set the maximum aperture radius if required
         if self.ap_rad_out is not None:
             ast_cmd += " -R {};".format(self.ap_rad_out)
@@ -127,6 +157,7 @@ class WedgePhot:
             ast_cmd += " rm {};".format(out_file)
 
         # run the command
+        print(ast_cmd)
         out, err = sci_utils.execute_subprocess(ast_cmd)
 
         # get the results as a dataframe
@@ -141,7 +172,7 @@ class WedgePhot:
 
         return df_results
 
-    def run_wedge_phot(self, conda_start=None, conda_env=None, keep_files=False):
+    def run_wedge_phot(self, conda_start=None, conda_env=None, keep_files=False, extra_options=None):
         """
         Function to calculate radial profiles across all azimuthal bins and compile results into a dict.
 
@@ -161,7 +192,9 @@ class WedgePhot:
             outfile = "{}/wedge_out_{}.txt".format(self.out_dir, i)
 
             # run radial profile for a single bin
-            df = self.astscript_radial_profile(az_min, az_max, outfile, conda_start, conda_env, keep_files)
+            df = self.astscript_radial_profile(
+                az_min, az_max, outfile, conda_start, conda_env, keep_files, extra_options
+            )
 
             # store the results in a dict
             wp_results[i] = {}
