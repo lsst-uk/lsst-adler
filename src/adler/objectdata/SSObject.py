@@ -3,8 +3,8 @@ import numpy as np
 
 from adler.objectdata.objectdata_utilities import get_from_table, get_from_dictionary
 
-#TODO SSO_KEYS needs editing for DP1
-#NB Filter keys not here?
+# TODO SSO_KEYS needs editing for DP1
+# NB Filter keys not here?
 SSO_KEYS = {
     "discoverySubmissionDate": float,
     "firstObservationDate": float,
@@ -90,7 +90,7 @@ class SSObject:
         """
         sso_dict = {"ssObjectId": ssObjectId, "filter_list": filter_list, "filter_dependent_values": []}
 
-        #TODO fitler stuff needs to be populated for this to work
+        # TODO fitler stuff needs to be populated for this to work
 
         for sso_key, sso_type in SSO_KEYS.items():
             sso_dict[sso_key] = get_from_table(data_table, sso_key, sso_type, "SSObject")

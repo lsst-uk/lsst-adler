@@ -191,9 +191,10 @@ def check_value_populated(data_val, data_type, column_name, table_name):
 
     return data_val
 
+
 def flux_to_magnitude(flux, flux_err=np.nan):
-    """Converts a flux measurement (with units of nanoJanskys) and its associated error 
-    into AB magnitudes. If no flux error is provided, the returned magnitude error 
+    """Converts a flux measurement (with units of nanoJanskys) and its associated error
+    into AB magnitudes. If no flux error is provided, the returned magnitude error
     will be NaN.
 
     Parameters
@@ -202,7 +203,7 @@ def flux_to_magnitude(flux, flux_err=np.nan):
         Flux value with units of nanoJanskys (u.nJy).
 
     flux_err : astropy.units.Quantity, optional
-        Flux error with units of nanoJanskys (u.nJy). Default is np.nan (dimensionless), 
+        Flux error with units of nanoJanskys (u.nJy). Default is np.nan (dimensionless),
         in which case the magnitude error will be returned as NaN.
 
     Returns
@@ -211,15 +212,15 @@ def flux_to_magnitude(flux, flux_err=np.nan):
         The flux converted into AB magnitude (unitless scalar).
 
     magnitude_err : float
-        The propagated uncertainty in AB magnitude (unitless scalar). 
+        The propagated uncertainty in AB magnitude (unitless scalar).
         Returns NaN if flux_err is not provided.
 
     Notes
     -----------
-    - This function assumes that `flux` and `flux_err` are `astropy.units.Quantity` 
+    - This function assumes that `flux` and `flux_err` are `astropy.units.Quantity`
       objects in units of `u.nJy`.
     """
-    #TODO Handle the masked arrays better here
+    # TODO Handle the masked arrays better here
     # (ideally I think we want to keep magnitude as a masked array rather than making magErr non-masked)
     magnitude = flux.to(u.ABmag).value
     magnitude_err = ((2.5 / np.log(10)) * (flux_err / flux)).value

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from adler.objectdata.objectdata_utilities import get_from_table, get_from_dictionary
 
-#TODO MPCORB_KEYS needs changing for DP1
+# TODO MPCORB_KEYS needs changing for DP1
 MPCORB_KEYS = {
     "mpcDesignation": str,
     "fullDesignation": str,
