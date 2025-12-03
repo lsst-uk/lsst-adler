@@ -490,9 +490,7 @@ class AdlerPlanetoid:
                     np.full(len(data_table_astropy), np.nan),  # mpcG (float)
                     np.full(len(data_table_astropy), np.nan),  # n (float)
                     np.full(len(data_table_astropy), ""),  # uncertaintyParameter (str)
-                    np.full(
-                        len(data_table_astropy), ""
-                    ),  # flags (str)
+                    np.full(len(data_table_astropy), ""),  # flags (str)
                 ],
                 names=["fullDesignation", "mpcNumber", "mpcG", "n", "uncertaintyParameter", "flags"],
             )
