@@ -74,10 +74,10 @@ class Cutout:
         self.IdTable = IdTable
         self.ra = ra
         self.dec = dec
-        self.radius = radius
-        self.calib_level = calib_level
         self.visit = visit
         self.detector = detector
+        self.radius = radius
+        self.calib_level = calib_level
         self.dataset = dataset
         self.outdir = outdir
         self.outfile = outfile
