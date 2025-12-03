@@ -108,7 +108,7 @@ class Cutout:
 
     def InitFromDict(self, alert_dict):
         """Set up a new Cutout object from a dictionary, i.e. an alert packet.
-        One could do `Cutout(**dc_dict)` however any additional columns will cause an error.
+        One could do `Cutout(**co_dict)` however any additional columns will cause an error.
         This function removes any dict keys that do not correspond to a Cutout attribute.
 
         Parameters
@@ -119,35 +119,35 @@ class Cutout:
         Returns
         ----------
 
-        dc : object
+        co : object
            The new Cutout class object
 
         """
 
         # get any previously set values
-        dc_dict = self.__dict__
+        co_dict = self.__dict__
 
         # remove non-arg keys # TODO: repeat for alert_dict?
         del_keys = []
-        dc_args = self.__init__.__code__.co_varnames
-        for key, value in dc_dict.items():
-            if key not in dc_args:
+        co_args = self.__init__.__code__.co_varnames
+        for key, value in co_dict.items():
+            if key not in co_args:
                 del_keys.append(key)
         for key in del_keys:
-            dc_dict.pop(key, None)
+            co_dict.pop(key, None)
 
         # Force overwrite of outfile, unless it is passed in alert_dict?
-        dc_dict["outfile"] = None
+        co_dict["outfile"] = None
 
         # Overwrite initial Cutout attributes if they are in alert_dict
         for key, value in alert_dict.items():
-            if key in dc_dict:
-                dc_dict[key] = value
+            if key in co_dict:
+                co_dict[key] = value
 
         # initialise a new cutout class
-        dc = Cutout(**dc_dict)
+        co = Cutout(**co_dict)
 
-        return dc
+        return co
 
     def query_from_Id(self):
 
