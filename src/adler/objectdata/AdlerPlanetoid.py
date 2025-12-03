@@ -423,15 +423,15 @@ class AdlerPlanetoid:
             raise Exception("No SSObject data for this object could be found for this SSObjectId.")
 
         return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table)
-    
+
     @classmethod
     def construct_from_mpc_obs_sbn(
         cls,
         ssObjectId,
         sql_filename,
         filter_list=["u", "g", "r", "i", "z", "y"],
-        date_range=[60000.0, 67300.0]
-        ): # pragma: no cover
+        date_range=[60000.0, 67300.0],
+    ):  # pragma: no cover
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects
         from the MPC obs_sbn database. This is designed specifically for the SSSC Prompt Products Database Bandaid.
 
@@ -455,7 +455,7 @@ class AdlerPlanetoid:
             raise Exception("date_range argument must be of length 2.")
 
         observations_by_filter = cls.populate_observations_from_mpc_obs_sbn(
-                cls, ssObjectId, filter_list, date_range, sql_filename=sql_filename
+            cls, ssObjectId, filter_list, date_range, sql_filename=sql_filename
         )
 
         if len(observations_by_filter) == 0:
@@ -474,19 +474,15 @@ class AdlerPlanetoid:
             logger.info("New filter list is: {}".format(filter_list))
 
         mpcorb = cls.populate_MPCORB_from_mpc_obs_sbn(cls, ssObjectId, sql_filename=sql_filename)
-        ssobject = cls.populate_SSObject_from_mpc_obs_sbn(cls, ssObjectId, filter_list, sql_filename=sql_filename)
+        ssobject = cls.populate_SSObject_from_mpc_obs_sbn(
+            cls, ssObjectId, filter_list, sql_filename=sql_filename
+        )
 
         adler_data = AdlerData(ssObjectId, filter_list)
 
         return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
 
-    def populate_observations_from_mpc_obs_sbn(
-            self,
-            ssObjectId,
-            filter_list,
-            date_range,
-            sql_filename
-        ):
+    def populate_observations_from_mpc_obs_sbn(self, ssObjectId, filter_list, date_range, sql_filename):
         """Populates the observations_by_filter class attribute. This version is specific to the construct_from_mpc_obs_sbn function.
 
         Parameters
@@ -509,8 +505,8 @@ class AdlerPlanetoid:
 
         observations_by_filter = []
 
-        #TODO potential issue using provisional designation as SSObjectId (also obsid as diaSourceId) #Issue 216
-        #TODO probably add some warnings as this is a temporary fix to the evolving situation anyway
+        # TODO potential issue using provisional designation as SSObjectId (also obsid as diaSourceId) #Issue 216
+        # TODO probably add some warnings as this is a temporary fix to the evolving situation anyway
         for filter_name in filter_list:
             observations_sql_query = f"""
                 SELECT
@@ -525,10 +521,9 @@ class AdlerPlanetoid:
                     provid='{ssObjectId}' AND band = '{filter_name}' AND obstime BETWEEN '{date_range_utc[0]}' AND '{date_range_utc[1]}'
                 """
 
-            #This function submits the query and gets the results from the SQL database supplied
-            #Explicitly setting service=None here for clarity as this version does not query from non-local databases
+            # This function submits the query and gets the results from the SQL database supplied
+            # Explicitly setting service=None here for clarity as this version does not query from non-local databases
             data_table = get_data_table(observations_sql_query, service=None, sql_filename=sql_filename)
-            
 
             if len(data_table) == 0:
                 logger.warning(
@@ -541,12 +536,12 @@ class AdlerPlanetoid:
                 # TODO check if this is same as midPointMjdTai, i.e.:
                 # Mid-exposure time for the Visit for this DiaSource, expressed as Modified Julian Date, International Atomic Time.
                 # Issue 217
-                data_table['obstime'] = utc_to_mjd(data_table['obstime'].to_numpy(dtype='str'))
-                data_table.rename(columns={"obstime":"midPointMjdTai"}, inplace=True)
+                data_table["obstime"] = utc_to_mjd(data_table["obstime"].to_numpy(dtype="str"))
+                data_table.rename(columns={"obstime": "midPointMjdTai"}, inplace=True)
                 # DP1 discoveries have no magErr values so fill with NaNs
                 # for some reason (TODO: check why) this means that this column has dtype object so we force it to be float64 here
-                data_table['magErr'] = data_table.magErr.astype(np.float64)
-                
+                data_table["magErr"] = data_table.magErr.astype(np.float64)
+
                 observations_by_filter.append(
                     Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
                 )
@@ -566,8 +561,7 @@ class AdlerPlanetoid:
 
         """
 
-
-        #TODO Possible issue: Currently selecting fullDesignation AS ssObjectId for consistency with populate_observations_from_mpc_obs_sbn
+        # TODO Possible issue: Currently selecting fullDesignation AS ssObjectId for consistency with populate_observations_from_mpc_obs_sbn
         # We select t_p (MJD of pericentric passage) AS tperi for consistency with DP0.3
         # mean_motion in mpc-orbits is n (mean daily motion) in DP0.3. Not include in this file at all so selecting NULL
         MPCORB_sql_query = f"""
@@ -579,8 +573,8 @@ class AdlerPlanetoid:
             WHERE
                 fullDesignation = '{ssObjectId}'
         """
-        
-        #Explicitly setting service=None here for clarity as this version does not query from non-local databases
+
+        # Explicitly setting service=None here for clarity as this version does not query from non-local databases
         data_table = get_data_table(MPCORB_sql_query, service=None, sql_filename=sql_filename)
 
         if len(data_table) == 0:
@@ -615,7 +609,7 @@ class AdlerPlanetoid:
 
             filter_dependent_columns += filter_string
 
-        #TODO can likely fill some of these values but leaving as NULLs for now
+        # TODO can likely fill some of these values but leaving as NULLs for now
         SSObject_sql_query = f"""
             SELECT
                 NULL AS discoverySubmissionDate, NULL AS firstObservationDate, NULL AS arc, count(*) AS numObs, 
@@ -626,11 +620,11 @@ class AdlerPlanetoid:
             WHERE
                 provid = '{ssObjectId}'
         """
-        
-        #Explicitly setting service=None here for clarity as this version does not query from non-local databases
+
+        # Explicitly setting service=None here for clarity as this version does not query from non-local databases
         data_table = get_data_table(SSObject_sql_query, service=None, sql_filename=sql_filename)
 
-        #TODO probably add some warnings for these as there isn't actually any SSObject data for these things in MPC file
+        # TODO probably add some warnings for these as there isn't actually any SSObject data for these things in MPC file
         if len(data_table) == 0:
             logger.error("No SSObject data for this object could be found for this SSObjectId.")
             raise Exception("No SSObject data for this object could be found for this SSObjectId.")

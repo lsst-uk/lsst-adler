@@ -192,24 +192,20 @@ def check_value_populated(data_val, data_type, column_name, table_name):
 
     return data_val
 
+
 def utc_to_mjd(utc_time):
     with warnings.catch_warnings():
         warnings.filterwarnings(
-            "ignore",
-            message='.*dubious year.*',
-            category=erfa.ErfaWarning,
-            module='erfa.core'
-        ) # Converting dates really far in the future throws a warning here that we ignore
+            "ignore", message=".*dubious year.*", category=erfa.ErfaWarning, module="erfa.core"
+        )  # Converting dates really far in the future throws a warning here that we ignore
         # TODO Need to check that the scales are correct (UTC vs TAI)
-        return Time(utc_time, format='isot', scale='utc').mjd
+        return Time(utc_time, format="isot", scale="utc").mjd
+
 
 def mjd_to_utc(mjd_time):
     with warnings.catch_warnings():
         warnings.filterwarnings(
-            "ignore",
-            message='.*dubious year.*',
-            category=erfa.ErfaWarning,
-            module='erfa.core'
-        ) # Converting dates really far in the future throws a warning here that we ignore
+            "ignore", message=".*dubious year.*", category=erfa.ErfaWarning, module="erfa.core"
+        )  # Converting dates really far in the future throws a warning here that we ignore
         # TODO Need to check that the scales are correct (UTC vs TAI)
-        return Time(mjd_time, format='mjd', scale='utc').isot
+        return Time(mjd_time, format="mjd", scale="utc").isot
