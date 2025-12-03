@@ -25,17 +25,19 @@ from reproject import reproject_interp, reproject_exact
 CALIB_DICT = {1: "raw", 2: "visit", 3: "diff"}
 
 
-class diaSource_cutout:
+class Cutout:
     """
-    Class to retrieve the cutout for a given difference image source, defined by diaSourceId.
-    The additional data required to retrieve the unique image containing the diaSourceId (visit, detector, calib_level) can be passed or will be queried on initialisation.
-    Likewise diaSourceId ra and dec required for defining the cutout centre can be passed or will otherwise be queried.
-    NB diaSourceId is not required if all other unique image data is provided
+    Class to retrieve the cutout for a given source, defined by either diaSourceId or SourceId.
+    The additional data required to retrieve the unique image containing the source (visit, detector, calib_level) can be passed or will be queried on initialisation.
+    Likewise the source's ra and dec required for defining the cutout centre can be passed or will otherwise be queried.
+    NB a source Id is not required if all other unique image data is provided.
 
     Attributes
     ----------
-    radius: Quantity
-        Circular radius of requested cutout image (a square image containing the radius is retrieved). Must include astropy angular units, e.g. u.deg
+    Id: int
+        Identifier value for the source
+    IdTable: str
+        The table from which the source is queried, e.g. DiaSource or Source. We assume the Id column name is IdTable+"Id".
     ra: float
     dec: float
     visit: int
@@ -54,7 +56,8 @@ class diaSource_cutout:
 
     def __init__(
         self,
-        diaSourceId=None,
+        Id=None,
+        IdTable="DiaSource",
         ra=None,
         dec=None,
         visit=None,
@@ -67,7 +70,8 @@ class diaSource_cutout:
     ):
 
         # set up attributes
-        self.diaSourceId = diaSourceId
+        self.Id = Id
+        self.IdTable = IdTable
         self.ra = ra
         self.dec = dec
         self.radius = radius
@@ -78,12 +82,18 @@ class diaSource_cutout:
         self.outdir = outdir
         self.outfile = outfile
 
+        # define the Id column name
+        self.IdCol = self.IdTable + "Id"
+
         # Enusure calib_level is a list
         if type(self.calib_level) is int:
             self.calib_level = [self.calib_level]
 
         if self.outfile is None:
-            self.outfile = "cutout-{}".format(self.diaSourceId)
+            if self.Id is None:
+                self.outfile = "cutout-{}-{}_ra{}_dec{}".format(self.visit, self.detector, self.ra, self.dec)
+            else:
+                self.outfile = "cutout-{}".format(self.Id)
 
         # set up RSP services
         self.service_tap = get_tap_service("tap")
@@ -97,20 +107,20 @@ class diaSource_cutout:
         assert self.service_sia is not None
 
     def InitFromDict(self, alert_dict):
-        """Set up a new diaSource_cutout object from a dictionary, i.e. an alert packet.
-        One could do `diaSource_cutout(**dc_dict)` however any additional columns will cause an error.
-        This function removes any dict keys that do not correspond to a diaSource_cutout attribute.
+        """Set up a new Cutout object from a dictionary, i.e. an alert packet.
+        One could do `Cutout(**dc_dict)` however any additional columns will cause an error.
+        This function removes any dict keys that do not correspond to a Cutout attribute.
 
         Parameters
         -----------
         alert_dict : dict
-           Dictionary containing the diaSource_cutout parameters, and possibly others
+           Dictionary containing the Cutout parameters, and possibly others
 
         Returns
         ----------
 
         dc : object
-           The new diaSource_cutout class object
+           The new Cutout class object
 
         """
 
@@ -129,23 +139,23 @@ class diaSource_cutout:
         # Force overwrite of outfile, unless it is passed in alert_dict?
         dc_dict["outfile"] = None
 
-        # Overwrite initial diaSource_cutout attributes if they are in alert_dict
+        # Overwrite initial Cutout attributes if they are in alert_dict
         for key, value in alert_dict.items():
             if key in dc_dict:
                 dc_dict[key] = value
 
         # initialise a new cutout class
-        dc = diaSource_cutout(**dc_dict)
+        dc = Cutout(**dc_dict)
 
         return dc
 
-    def query_diaSourceId(self):
+    def query_from_Id(self):
 
-        # define query to get unique image information for a given diaSourceId
-        query = """SELECT ra,dec,visit,detector FROM {}.DiaSource
-                WHERE diaSourceId={}
+        # define query to get unique image information for a given source Id
+        query = """SELECT ra,dec,visit,detector FROM {}.{}
+                WHERE {}={}
                 """.format(
-            self.dataset, self.diaSourceId
+            self.dataset, self.IdTable, self.IdCol, self.Id
         )
         print(query)
 
@@ -169,7 +179,7 @@ class diaSource_cutout:
 
     def query_image_url(self):
 
-        # Get the datalink url for the unique image containing the diaSourceId
+        # Get the datalink url for the unique image containing the Id
         if len(self.calib_level) == 1:
             query = """SELECT access_url, calib_level FROM ivoa.ObsCore
             WHERE lsst_visit = {} AND lsst_detector = {} AND calib_level = {}
@@ -214,17 +224,17 @@ class diaSource_cutout:
         ----------
 
         exposure : ExposureF
-           The new diaSource_cutout class object
+           The new Cutout class object
         """
 
         # make sure we have a visit and detector id etc, i.e. all unique image data
         if (self.ra is None) or (self.dec is None) or (self.visit is None) or (self.detector is None):
-            self.query_diaSourceId()
+            self.query_from_Id()
 
         # get the image url
         self.query_image_url()
 
-        for i in range(len(self.datalink_url)):  # TODO: Parallelise here
+        for i in range(len(self.datalink_url)):  # TODO: Parallelise here?
 
             url = self.datalink_url.iloc[i]["access_url"]
             cal_lev = self.datalink_url.iloc[i]["calib_level"]
@@ -254,7 +264,6 @@ class diaSource_cutout:
             mem = MemFileManager(len(cutout_bytes))
             mem.setData(cutout_bytes, len(cutout_bytes))
             exposure = ExposureF(mem)
-            # TODO: save the minimum information to keep file size down, see afwDisplay.writeFitsImage in https://dp1.lsst.io/tutorials/notebook/103/notebook-103-4.html
 
             if self.outdir is not None:
 
@@ -265,6 +274,7 @@ class diaSource_cutout:
                 )  # store the filename as an attribute
 
                 if small_fits:
+                    # Save the minimum information to keep file size down, see afwDisplay.writeFitsImage in https://dp1.lsst.io/tutorials/notebook/103/notebook-103-4.html
                     afwDisplay.writeFitsImage(
                         cutout_file,  # see, https://dp1.lsst.io/tutorials/notebook/103/notebook-103-4.html
                         # exposure.maskedImage, # slightly smaller than full exposure
@@ -276,7 +286,7 @@ class diaSource_cutout:
                         f.write(sq.execute_stream().read())
                         print("save {}".format(cutout_file))
 
-            # store exposure as a class attribute?
+            # store exposure as a class attribute
             setattr(self, "exp_" + CALIB_DICT[cal_lev], exposure)
 
         return exposure
@@ -313,8 +323,6 @@ class diaSource_cutout:
            The matplotlib figure object
         """
 
-        # TODO: merge plot_exp in here
-
         # get the ExposureF object
         exp = getattr(self, "exp_" + CALIB_DICT[cal_lev])
 
@@ -331,7 +339,7 @@ class diaSource_cutout:
             # hdr = Header(exp.getMetadata().toDict()) # fits (primary) header info (without WCS) - https://community.lsst.org/t/obtain-only-image-metadata-with-butler-get/5922
             wcs = WCS(
                 exp.getWcs().getFitsMetadata()
-            )  # ExposureF WCS converted to fits WCS # TODO: this WCS is for the full visit image? Requires a shift to be applied to coords, getXY0(), https://community.lsst.org/t/visualizing-images-in-sky-coordinates-using-wcs-in-a-notebook/4210/8
+            )  # ExposureF WCS converted to fits WCS. NB Will require a shift to be applied to calculated pixel coords, getXY0(), https://community.lsst.org/t/visualizing-images-in-sky-coordinates-using-wcs-in-a-notebook/4210/8
 
         if wcs_reproj and shape_reproj:
             if not plot_fits:
@@ -339,7 +347,6 @@ class diaSource_cutout:
                 print(
                     "ERROR: Reprojection requires plotting from the fits file WCS representation (set plot_fits=True)"
                 )
-                # TODO: make this work with exp?
             else:
                 # reproject the image, using shape and wcs determined from list of hdus and find_optimal_celestial_wcs
                 data_out, footprint = reproject_and_coadd(
@@ -349,7 +356,7 @@ class diaSource_cutout:
                     reproject_function=reproject_interp,
                     # reproject_function=reproject_exact
                 )
-                # TODO make optional? Set all zero pixels to nan to make plot nicer
+                # Set all zero pixels to nan to make plot nicer (TODO: make optional?)
                 data_out[data_out == 0] = np.nan
 
                 wcs = wcs_reproj
@@ -402,6 +409,6 @@ class diaSource_cutout:
         )
         aperture.plot(color="w")
 
-        plt.title("{} {}".format(self.visit, CALIB_DICT[cal_lev]))
+        plt.title("{}\n{} {}".format(self.Id, self.visit, CALIB_DICT[cal_lev]))
 
         return fig
