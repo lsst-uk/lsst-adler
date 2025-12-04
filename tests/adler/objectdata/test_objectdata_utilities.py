@@ -13,6 +13,7 @@ from adler.objectdata.objectdata_utilities import sqlite_column_exists
 from adler.objectdata.objectdata_utilities import add_column_if_not_exists
 from adler.utilities.tests_utilities import get_test_data_filepath
 
+
 def test_get_data_table():
     ssoid = 8268570668335894776
     test_db_path = get_test_data_filepath("testing_database.db")
@@ -73,25 +74,28 @@ def test_check_value_populated():
     assert np.isnan(number_is_nan)
     assert np.isnan(str_is_empty)
 
+
 def test_convertTime():
     input_test_timestamp = 60798.5
     output_test_timestamp = convertTime(input_test_timestamp)
-    
+
     # At time of writing this test, the difference between UTC and TAI is 37 seconds
-    assert_approx_equal((output_test_timestamp - input_test_timestamp)*86400, 37.0)
+    assert_approx_equal((output_test_timestamp - input_test_timestamp) * 86400, 37.0)
+
 
 def test_column_exists():
     test_db_path = get_test_data_filepath("mpc_obs_sbn_testing_database.sqlite")
     conn = sqlite3.connect(test_db_path)
 
-    assert sqlite_column_exists(conn, table='obs_sbn', column='provid')
+    assert sqlite_column_exists(conn, table="obs_sbn", column="provid")
+
 
 def test_add_column_if_not_exists():
     test_db_path = get_test_data_filepath("mpc_obs_sbn_testing_database.sqlite")
     conn = sqlite3.connect(test_db_path)
-    
+
     # This should not add a column or raise an error which is expected behaviour
-    add_column_if_not_exists(conn, 'obs_sbn', 'mjd_tai', 'REAL')
+    add_column_if_not_exists(conn, "obs_sbn", "mjd_tai", "REAL")
 
     # Check column still exists
     assert sqlite_column_exists(conn, "obs_sbn", "mjd_tai")
@@ -101,5 +105,3 @@ def test_add_column_if_not_exists():
     cur.execute("PRAGMA table_info(obs_sbn)")
     colnames = [row[1] for row in cur.fetchall()]
     assert colnames.count("mjd_tai") == 1
-
-

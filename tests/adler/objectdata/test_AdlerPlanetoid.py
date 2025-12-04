@@ -227,6 +227,7 @@ def test_construct_from_mpc_obs_sbn():
     # checking the date range to ensure it's the default
     assert test_planetoid.date_range == [60000.0, 67300.0]
 
+
 # TODO these tests
 def test_construct_from_mpc_with_single_filter():
     test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(mpc_ssoid, mpc_test_db_path, filter_list=["g"])
@@ -243,25 +244,23 @@ def test_construct_from_mpc_with_single_filter():
 
 
 def test_construct_from_mpc_with_date_range():
-    test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(mpc_ssoid, mpc_test_db_path, filter_list=["g"], date_range=[60795.0, 60798.0])
+    test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(
+        mpc_ssoid, mpc_test_db_path, filter_list=["g"], date_range=[60795.0, 60798.0]
+    )
 
     expected_dates = np.array(
-        [
-            60797.11380400463,
-            60797.121616296296,
-            60797.12747140046,
-            60797.12846829861,
-            60797.130895902774
-        ]
+        [60797.11380400463, 60797.121616296296, 60797.12747140046, 60797.12846829861, 60797.130895902774]
     )
 
     assert_almost_equal(test_planetoid.observations_by_filter[0].midPointMjdTai, expected_dates)
 
     with pytest.raises(ValueError) as error_info_1:
-        test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(mpc_ssoid, mpc_test_db_path, date_range=[61000.0, 62000.0, 63000.0]
+        test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(
+            mpc_ssoid, mpc_test_db_path, date_range=[61000.0, 62000.0, 63000.0]
         )
 
     assert error_info_1.value.args[0] == "date_range argument must be of length 2."
+
 
 def test_mpc_no_observations():
     with pytest.raises(Exception) as error_info:
@@ -281,10 +280,14 @@ def test_mpc_failed_SQL_queries():
     with pytest.raises(Exception) as error_info_1:
         test_planetoid.populate_MPCORB_from_mpc_obs_sbn("2025 FakeId", sql_filename=mpc_test_db_path)
 
-    assert error_info_1.value.args[0] == "No mpc_orbits data for this object could be found for this SSObjectId."
+    assert (
+        error_info_1.value.args[0] == "No mpc_orbits data for this object could be found for this SSObjectId."
+    )
 
     with pytest.raises(Exception) as error_info_2:
-        test_planetoid.populate_SSObject_from_mpc_obs_sbn("2025 FakeId", filter_list=["u"], sql_filename=mpc_test_db_path)
+        test_planetoid.populate_SSObject_from_mpc_obs_sbn(
+            "2025 FakeId", filter_list=["u"], sql_filename=mpc_test_db_path
+        )
 
     assert (
         error_info_2.value.args[0] == "No SSObject data for this object could be found for this SSObjectId."

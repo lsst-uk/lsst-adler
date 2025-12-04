@@ -617,7 +617,7 @@ class AdlerPlanetoid:
         data_table = get_data_table(SSObject_sql_query, service=None, sql_filename=sql_filename)
 
         # TODO probably add some warnings for these as there isn't actually any SSObject data for these things in MPC file
-        if len(data_table) == 0 or data_table['numObs'].values==0:
+        if len(data_table) == 0 or data_table["numObs"].values == 0:
             logger.error("No SSObject data for this object could be found for this SSObjectId.")
             raise Exception("No SSObject data for this object could be found for this SSObjectId.")
 
