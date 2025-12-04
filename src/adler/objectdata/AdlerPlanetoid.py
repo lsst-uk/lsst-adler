@@ -8,7 +8,7 @@ from adler.objectdata.Observations import Observations
 from adler.objectdata.MPCORB import MPCORB
 from adler.objectdata.SSObject import SSObject
 from adler.objectdata.AdlerData import AdlerData
-from adler.objectdata.objectdata_utilities import get_data_table, mjd_to_utc, utc_to_mjd
+from adler.objectdata.objectdata_utilities import get_data_table
 
 logger = logging.getLogger(__name__)
 
@@ -500,8 +500,6 @@ class AdlerPlanetoid:
             Filepath to an SQL database.
 
         """
-        # Convert MJD time to UTC for querying the MPC obs_sbn file
-        date_range_utc = mjd_to_utc(date_range)
 
         observations_by_filter = []
 
@@ -510,7 +508,7 @@ class AdlerPlanetoid:
         for filter_name in filter_list:
             observations_sql_query = f"""
                 SELECT
-                    provid AS SSObjectId, obsid as diaSourceId, mag, rmsmag AS magErr, band, obstime, ra, dec,
+                    provid AS SSObjectId, obsid as diaSourceId, mag, rmsmag AS magErr, band, mjd_tai AS midPointMjdTai, ra, dec,
                     phaseAngle, topocentricDist, heliocentricDist,
                     NULL AS heliocentricX, NULL AS heliocentricY, NULL AS heliocentricZ,
                     NULL AS topocentricX, NULL AS topocentricY, NULL AS topocentricZ,
@@ -518,7 +516,7 @@ class AdlerPlanetoid:
                 FROM
                     obs_sbn
                 WHERE
-                    provid='{ssObjectId}' AND band = '{filter_name}' AND obstime BETWEEN '{date_range_utc[0]}' AND '{date_range_utc[1]}'
+                    provid='{ssObjectId}' AND band = '{filter_name}' AND mjd_tai BETWEEN '{date_range[0]}' AND '{date_range[1]}'
                 """
 
             # This function submits the query and gets the results from the SQL database supplied
@@ -532,12 +530,6 @@ class AdlerPlanetoid:
                     )
                 )
             else:
-                # Convert the UTC obstime column to MJD for consistency
-                # TODO check if this is same as midPointMjdTai, i.e.:
-                # Mid-exposure time for the Visit for this DiaSource, expressed as Modified Julian Date, International Atomic Time.
-                # Issue 217
-                data_table["obstime"] = utc_to_mjd(data_table["obstime"].to_numpy(dtype="str"))
-                data_table.rename(columns={"obstime": "midPointMjdTai"}, inplace=True)
                 # DP1 discoveries have no magErr values so fill with NaNs
                 # for some reason (TODO: check why) this means that this column has dtype object so we force it to be float64 here
                 data_table["magErr"] = data_table.magErr.astype(np.float64)
@@ -564,7 +556,7 @@ class AdlerPlanetoid:
         # TODO Possible issue: Currently selecting fullDesignation AS ssObjectId for consistency with populate_observations_from_mpc_obs_sbn
         # We select t_p (MJD of pericentric passage) AS tperi for consistency with DP0.3
         # mean_motion in mpc-orbits is n (mean daily motion) in DP0.3. Not include in this file at all so selecting NULL
-        MPCORB_sql_query = f"""
+        mpc_orbits_sql_query = f"""
             SELECT
                 fullDesignation AS ssObjectId, NULL AS mpcDesignation, fullDesignation AS fullDesignation, 0 AS mpcNumber,
                 mpcH, NULL AS mpcG, epoch, t_p AS tperi, peri, node, incl, e, NULL AS n, q, NULL AS uncertaintyParameter, NULL AS flags
@@ -575,11 +567,11 @@ class AdlerPlanetoid:
         """
 
         # Explicitly setting service=None here for clarity as this version does not query from non-local databases
-        data_table = get_data_table(MPCORB_sql_query, service=None, sql_filename=sql_filename)
+        data_table = get_data_table(mpc_orbits_sql_query, service=None, sql_filename=sql_filename)
 
         if len(data_table) == 0:
-            logger.error("No MPCORB data for this object could be found for this SSObjectId.")
-            raise Exception("No MPCORB data for this object could be found for this SSObjectId.")
+            logger.error("No mpc_orbits data for this object could be found for this SSObjectId.")
+            raise Exception("No mpc_orbits data for this object could be found for this SSObjectId.")
 
         return MPCORB.construct_from_data_table(ssObjectId, data_table)
 

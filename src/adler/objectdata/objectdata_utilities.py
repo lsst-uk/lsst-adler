@@ -193,19 +193,170 @@ def check_value_populated(data_val, data_type, column_name, table_name):
     return data_val
 
 
-def utc_to_mjd(utc_time):
+def convertTime(timestamps, input_fmt="mjd", input_scale="utc", output_fmt="mjd", output_scale="tai"):
+    """
+    Convenience function for converting timestamps between formats and scales.
+
+    Parameters
+    -----------
+    timestamps : float, int or nd.array
+        Timestamp(s) to be converted.
+
+    input_fmt: str
+        Input format of timestamps. See https://docs.astropy.org/en/latest/api/astropy.time.Time.html for allowable formats. Default 'mjd'.
+
+    input_scale: str
+        Input scale of timestamps. See https://docs.astropy.org/en/latest/api/astropy.time.Time.html for allowable scales. Default 'utc'.
+
+    output_fmt: str
+        Desired format of output values. See https://docs.astropy.org/en/latest/api/astropy.time.Time.html for allowable formats. Default 'mjd'.
+
+    output_scale: str
+        Desired scale of output values. See https://docs.astropy.org/en/latest/api/astropy.time.Time.html for allowable scales. Default 'tai'.
+
+    Returns
+    -----------
+    output_timestamps : astropy.time.Time object
+        The output timestamps in the desired format and scale as an astropy.time.Time object.
+    """
     with warnings.catch_warnings():
         warnings.filterwarnings(
             "ignore", message=".*dubious year.*", category=erfa.ErfaWarning, module="erfa.core"
         )  # Converting dates really far in the future throws a warning here that we ignore
-        # TODO Need to check that the scales are correct (UTC vs TAI)
-        return Time(utc_time, format="isot", scale="utc").mjd
+        output_timestamps = getattr(
+            getattr(Time(timestamps, format=input_fmt, scale=input_scale), output_scale), output_fmt
+        )
+        return output_timestamps
 
 
-def mjd_to_utc(mjd_time):
-    with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore", message=".*dubious year.*", category=erfa.ErfaWarning, module="erfa.core"
-        )  # Converting dates really far in the future throws a warning here that we ignore
-        # TODO Need to check that the scales are correct (UTC vs TAI)
-        return Time(mjd_time, format="mjd", scale="utc").isot
+def sqlite_column_exists(conn, table, column):
+    """
+    Function for checking if column exists in a given table in a given database connection.
+
+    Parameters
+    -----------
+    conn : sqlite3.Connection object
+        The connection to the database that we wish to check for a given column.
+
+    table : str
+        The name of the table we wish to check for the given column in.
+
+    column : str
+        The name of the column we wish to check for.
+
+    Returns
+    -----------
+    result : bool
+        Boolean flag for whether the collect exists or not.
+    """
+    cur = conn.cursor()
+    cur.execute(f"PRAGMA table_info({table})")
+    result = any(row[1] == column for row in cur.fetchall())
+    return result
+
+
+def add_column_if_not_exists(conn, table, column, coltype):
+    """
+    Function for adding a column to a given table in a given database if it does not exist.
+
+    Parameters
+    -----------
+    conn : sqlite3.Connection object
+        The connection to the database that we wish to add the column to in the given table.
+
+    table : str
+        The name of the table we wish add the column to.
+
+    column : str
+        The name of the column we wish to add.
+
+    coltype : str
+        SQlite datatype for the column we wish to add. See https://sqlite.org/datatype3.html
+
+    Returns
+    -----------
+    None
+    """
+    if not sqlite_column_exists(conn, table, column):
+        cur = conn.cursor()
+        cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype};")
+        logger.info(f"{column} added to {table}")
+    else:
+        logger.info(f"{column} already exists in {table}")
+
+
+def mpc_file_preprocessing(sql_filename, jplhorizons_filename):
+    """
+    Function for performing pre-processing steps on the obs_sbn table in the MPC file format.
+    The function strips the leading 'L' from the band in the obs_sbn file;
+    adds a mjd_tai column with the observation time in MJD in the TAI scale;
+    and adds the topocentricDist, heliocentricDist and phaseAngle from JPL Horizons.
+
+    Parameters
+    -----------
+    sql_filename : str
+        Filepath to the local SQL database.
+
+    jplhorizons_filename : str
+        Filepath to the local csv file containing the topocentricDist, heliocentricDist and phaseAngle from JPL Horizons.
+
+    Returns
+    -----------
+    None
+    """
+    conn = sqlite3.connect(sql_filename)
+    cursor = conn.cursor()
+
+    # Strip the leading L that is used for some of the observations in the MPC file to ensure compatbility with adler
+    # TODO In future we may change this but this is an easy fix for now
+    cursor.execute("UPDATE obs_sbn SET band=substr(band, 2) WHERE band LIKE 'L%';")
+    conn.commit()
+
+    logger.info(f"Leading 'L' stripped from band names")
+
+    # Add MJD TAI column
+    add_column_if_not_exists(conn, "obs_sbn", "mjd_tai", "REAL")
+    cursor.execute(f"SELECT rowid, mjd_utc FROM obs_sbn;")
+    rows = cursor.fetchall()
+    rowids = np.array([r[0] for r in rows])
+    mjd_utc_vals = np.array([r[1] for r in rows], dtype=float)
+    mjd_tai_vals = convertTime(
+        mjd_utc_vals, input_fmt="mjd", input_scale="utc", output_fmt="mjd", output_scale="tai"
+    )
+    data_to_update = list(zip(mjd_tai_vals.tolist(), rowids.tolist()))
+    cursor.executemany(f"UPDATE obs_sbn SET mjd_tai = ? WHERE rowid = ?;", data_to_update)
+    conn.commit()
+
+    logger.info(f"Added mjd_tai column to obs_sbn")
+
+    # Load in JPL horizons data
+    # TODO in future this will be integrated into the MPC file already by Meg
+    add_column_if_not_exists(conn, "obs_sbn", "heliocentricDist", "REAL")
+    add_column_if_not_exists(conn, "obs_sbn", "topocentricDist", "REAL")
+    add_column_if_not_exists(conn, "obs_sbn", "phaseAngle", "REAL")
+
+    jplhorizons_df = pd.read_csv(jplhorizons_filename)
+    jplhorizons_df.to_sql("temp_updates", conn, if_exists="replace", index=False)  # Create a temporary table
+
+    cursor.execute(
+        """
+        UPDATE obs_sbn
+        SET
+        heliocentricDist = temp_updates.r,
+        topocentricDist = temp_updates.delta,
+        phaseAngle = temp_updates.alpha
+        FROM temp_updates
+        WHERE obs_sbn.obsid = temp_updates.obsid;
+    """
+    )
+    conn.commit()
+
+    # TODO implement a check/warning/error if not all information available in the JPL file
+
+    cursor.execute("DROP TABLE temp_updates;")
+    conn.commit()
+    conn.close()
+
+    logger.info(
+        f"heliocentricDist, topocentricDist and phaseAngle information from JPL Horizons file added to obs_sbn"
+    )
