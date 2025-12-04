@@ -220,7 +220,7 @@ class AdlerPlanetoid:
         """
 
         if len(date_range) != 2:
-            raise Exception("date_range argument must be of length 2.")
+            raise ValueError("date_range argument must be of length 2.")
 
         service = get_tap_service("ssotap")
         logger.info("Getting past observations from DIASource/SSSource...")
@@ -431,7 +431,7 @@ class AdlerPlanetoid:
         sql_filename,
         filter_list=["u", "g", "r", "i", "z", "y"],
         date_range=[60000.0, 67300.0],
-    ):  # pragma: no cover
+    ):
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects
         from the MPC obs_sbn database. This is designed specifically for the SSSC Prompt Products Database Bandaid.
 
@@ -452,7 +452,7 @@ class AdlerPlanetoid:
         """
 
         if len(date_range) != 2:
-            raise Exception("date_range argument must be of length 2.")
+            raise ValueError("date_range argument must be of length 2.")
 
         observations_by_filter = cls.populate_observations_from_mpc_obs_sbn(
             cls, ssObjectId, filter_list, date_range, sql_filename=sql_filename
@@ -617,7 +617,7 @@ class AdlerPlanetoid:
         data_table = get_data_table(SSObject_sql_query, service=None, sql_filename=sql_filename)
 
         # TODO probably add some warnings for these as there isn't actually any SSObject data for these things in MPC file
-        if len(data_table) == 0:
+        if len(data_table) == 0 or data_table['numObs'].values==0:
             logger.error("No SSObject data for this object could be found for this SSObjectId.")
             raise Exception("No SSObject data for this object could be found for this SSObjectId.")
 

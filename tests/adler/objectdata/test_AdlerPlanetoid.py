@@ -200,3 +200,92 @@ def test_attach_previous_adlerdata():
             assert test_val == expect_val
         else:
             assert_almost_equal(test_val, expect_val)
+
+
+mpc_ssoid = "2025 MS22"
+mpc_test_db_path = get_test_data_filepath("mpc_obs_sbn_testing_database.sqlite")
+
+
+def test_construct_from_mpc_obs_sbn():
+    test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(
+        mpc_ssoid, mpc_test_db_path, filter_list=["u", "g", "r", "i", "z", "y"]
+    )
+
+    # testing just a few values here to ensure correct setup: these objects have their own unit tests
+    assert test_planetoid.MPCORB.mpcH == 18.54
+    assert test_planetoid.SSObject.numObs == 73
+    assert_almost_equal(
+        test_planetoid.observations_by_filter[0].mag,
+        [24.366, 24.173, 24.529, 24.48, 24.205, 24.058],
+    )
+
+    # did we pick up all the filters? note we ask for ugrizy but this object was not observed in uzy, so the code should eliminate them
+    assert len(test_planetoid.observations_by_filter) == 3
+    assert len(test_planetoid.SSObject.filter_dependent_values) == 3
+    assert test_planetoid.filter_list == ["g", "r", "i"]
+
+    # checking the date range to ensure it's the default
+    assert test_planetoid.date_range == [60000.0, 67300.0]
+
+# TODO these tests
+def test_construct_from_mpc_with_single_filter():
+    test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(mpc_ssoid, mpc_test_db_path, filter_list=["g"])
+
+    # should only be one filter in here now
+    assert len(test_planetoid.observations_by_filter) == 1
+    assert len(test_planetoid.SSObject.filter_dependent_values) == 1
+    assert test_planetoid.filter_list == ["g"]
+
+    assert_almost_equal(
+        test_planetoid.observations_by_filter[0].mag,
+        [24.366, 24.173, 24.529, 24.48, 24.205, 24.058],
+    )
+
+
+def test_construct_from_mpc_with_date_range():
+    test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(mpc_ssoid, mpc_test_db_path, filter_list=["g"], date_range=[60795.0, 60798.0])
+
+    expected_dates = np.array(
+        [
+            60797.11380400463,
+            60797.121616296296,
+            60797.12747140046,
+            60797.12846829861,
+            60797.130895902774
+        ]
+    )
+
+    assert_almost_equal(test_planetoid.observations_by_filter[0].midPointMjdTai, expected_dates)
+
+    with pytest.raises(ValueError) as error_info_1:
+        test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(mpc_ssoid, mpc_test_db_path, date_range=[61000.0, 62000.0, 63000.0]
+        )
+
+    assert error_info_1.value.args[0] == "date_range argument must be of length 2."
+
+def test_mpc_no_observations():
+    with pytest.raises(Exception) as error_info:
+        test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn("2025 FakeId", mpc_test_db_path)
+
+    assert (
+        error_info.value.args[0]
+        == "No observations found for this object in the given filter(s). Check SSOID and try again."
+    )
+
+
+def test_mpc_failed_SQL_queries():
+    test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(
+        mpc_ssoid, mpc_test_db_path, filter_list=["u", "g", "r", "i", "z", "y"]
+    )
+
+    with pytest.raises(Exception) as error_info_1:
+        test_planetoid.populate_MPCORB_from_mpc_obs_sbn("2025 FakeId", sql_filename=mpc_test_db_path)
+
+    assert error_info_1.value.args[0] == "No mpc_orbits data for this object could be found for this SSObjectId."
+
+    with pytest.raises(Exception) as error_info_2:
+        test_planetoid.populate_SSObject_from_mpc_obs_sbn("2025 FakeId", filter_list=["u"], sql_filename=mpc_test_db_path)
+
+    assert (
+        error_info_2.value.args[0] == "No SSObject data for this object could be found for this SSObjectId."
+    )

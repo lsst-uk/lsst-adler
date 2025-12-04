@@ -285,7 +285,7 @@ def add_column_if_not_exists(conn, table, column, coltype):
         logger.info(f"{column} already exists in {table}")
 
 
-def mpc_file_preprocessing(sql_filename, jplhorizons_filename):
+def mpc_file_preprocessing(sql_filename, jplhorizons_filename):  # pragma: no cover
     """
     Function for performing pre-processing steps on the obs_sbn table in the MPC file format.
     The function strips the leading 'L' from the band in the obs_sbn file;
