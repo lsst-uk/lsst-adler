@@ -4,6 +4,7 @@ import numpy as np
 import logging
 import json
 import astropy.units as u
+from astropy.table import Table
 
 from adler.objectdata.Observations import Observations
 from adler.objectdata.MPCORB import MPCORB
@@ -62,6 +63,7 @@ class AdlerPlanetoid:
         filter_list=["u", "g", "r", "i", "z", "y"],
         date_range=[60000.0, 67300.0],
         schema=None,
+        flux_flag=None,
     ):
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects from
         a local SQL database. Mostly used for testing.
@@ -83,6 +85,9 @@ class AdlerPlanetoid:
         schema : str or None
             Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
 
+        flux_flag : str or None
+            Name of the flux column to select from DP1 DiaSource table. Determines FluxErr and ra/dec columns to select also. Default is None (selects mag/magErr/ra/dec for DP0.3)
+
         """
 
         if len(date_range) != 2:
@@ -90,7 +95,13 @@ class AdlerPlanetoid:
             raise ValueError("date_range attribute must be of length 2.")
 
         observations_by_filter = cls.populate_observations(
-            cls, ssObjectId, filter_list, date_range, sql_filename=sql_filename, schema=schema
+            cls,
+            ssObjectId,
+            filter_list,
+            date_range,
+            sql_filename=sql_filename,
+            schema=schema,
+            flux_flag=flux_flag,
         )
 
         if len(observations_by_filter) == 0:
@@ -309,10 +320,15 @@ class AdlerPlanetoid:
             Name of the flux column to select from DP1 DiaSource table. Determines FluxErr and ra/dec columns to select also. Default is None (selects mag/magErr/ra/dec for DP0.3)
         """
 
-        if schema:  # pragma: no cover
-            sql_schema = schema + "."
-        else:
+        if sql_filename:
             sql_schema = ""
+        else:  # pragma: no cover
+            sql_schema = schema + "."
+
+        # if schema:  # pragma: no cover
+        #     sql_schema = schema + "."
+        # else:
+        #     sql_schema = ""
 
         # Convenient dict for setting which columns to include in SQL query given schema and desired flux flag
         # TODO better handling of None case (this is probably bad Python)
@@ -394,7 +410,15 @@ class AdlerPlanetoid:
                     )
                 elif schema == "dp1":
                     # Convert to astropy table so we can operate on it and add mag,magErr columns
-                    data_table_astropy = data_table.to_table()
+                    # TODO temporary fix, get_data_table returns two possible objects (DALResultsTable or Pandas dataframe) that need different handling to convert to astropy tables
+                    if isinstance(data_table, pd.DataFrame):
+                        data_table_astropy = Table.from_pandas(data_table)
+                        data_table_astropy[fluxmag_column] = data_table_astropy[fluxmag_column] * u.nJy
+                        data_table_astropy[fluxmag_err_column] = (
+                            data_table_astropy[fluxmag_err_column] * u.nJy
+                        )
+                    else:
+                        data_table_astropy = data_table.to_table()
 
                     # Compute magnitudes
                     mag, mag_err = flux_to_magnitude(
@@ -441,10 +465,15 @@ class AdlerPlanetoid:
 
         """
 
-        if schema:  # pragma: no cover
-            sql_schema = schema + "."
-        else:
+        if sql_filename:
             sql_schema = ""
+        else:  # pragma: no cover
+            sql_schema = schema + "."
+
+        # if schema:  # pragma: no cover
+        #     sql_schema = schema + "."
+        # else:
+        #     sql_schema = ""
 
         if schema in [None, "dp03_catalogs_10yr"]:
             # Query for DP0.3. Compatible with subsequent adler code
@@ -482,7 +511,11 @@ class AdlerPlanetoid:
         elif schema == "dp1":
             # TODO get_data_table (above) NaN fills if we, e.g., SELECT NULL AS mpcNumber, which may be fine and remove the need for this
             # Convert to astropy Table and add in NaNs/0/empty strings for the columns that do not appear in DP1
-            data_table_astropy = data_table.to_table()
+            if isinstance(data_table, pd.DataFrame):
+                data_table_astropy = Table.from_pandas(data_table)
+            else:
+                data_table_astropy = data_table.to_table()
+
             data_table_astropy.add_columns(
                 cols=[
                     np.full(len(data_table_astropy), ""),  # fullDesignation (str)
@@ -546,10 +579,15 @@ class AdlerPlanetoid:
 
         """
 
-        if schema:  # pragma: no cover
-            sql_schema = schema + "."
-        else:
+        if sql_filename:
             sql_schema = ""
+        else:  # pragma: no cover
+            sql_schema = schema + "."
+
+        # if schema:  # pragma: no cover
+        #     sql_schema = schema + "."
+        # else:
+        #     sql_schema = ""
 
         filter_dependent_columns = ""
 
@@ -596,7 +634,10 @@ class AdlerPlanetoid:
             return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table)
         elif schema == "dp1":
             # Convert to Table
-            data_table_astropy = data_table.to_table()
+            if isinstance(data_table, pd.DataFrame):
+                data_table_astropy = Table.from_pandas(data_table)
+            else:
+                data_table_astropy = data_table.to_table()
 
             # Add non-filter-dependent columns and populate with NaNs
             data_table_astropy.add_columns(

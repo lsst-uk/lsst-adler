@@ -199,10 +199,10 @@ def flux_to_magnitude(flux, flux_err=np.nan):
 
     Parameters
     -----------
-    flux : astropy.units.Quantity
-        Flux value with units of nanoJanskys (u.nJy).
+    flux : float or astropy.units.Quantity
+        Flux value in nanoJanskys (can be specified with Astropy units of nanoJanskys (u.nJy).
 
-    flux_err : astropy.units.Quantity, optional
+    flux_err : float or astropy.units.Quantity, optional
         Flux error with units of nanoJanskys (u.nJy). Default is np.nan (dimensionless),
         in which case the magnitude error will be returned as NaN.
 
@@ -215,10 +215,6 @@ def flux_to_magnitude(flux, flux_err=np.nan):
         The propagated uncertainty in AB magnitude (unitless scalar).
         Returns NaN if flux_err is not provided.
 
-    Notes
-    -----------
-    - This function assumes that `flux` and `flux_err` are `astropy.units.Quantity`
-      objects in units of `u.nJy`.
     """
     # TODO Handle the masked arrays better here
     # (ideally I think we want to keep magnitude as a masked array rather than making magErr non-masked)
