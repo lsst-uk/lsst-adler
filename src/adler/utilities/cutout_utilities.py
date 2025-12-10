@@ -128,6 +128,7 @@ class Cutout:
         co_dict = self.__dict__
 
         # remove non-arg keys # TODO: repeat for alert_dict?
+        # TODO: add an overwrite co_dict with alert_dict flag?
         del_keys = []
         co_args = self.__init__.__code__.co_varnames
         for key, value in co_dict.items():
