@@ -77,6 +77,22 @@ class WedgePhot:
         else:
             self.ap_rad_out = ap_rad_out  # set the radius passed to WedgePhot class
 
+        # TODO: add analysis attributes
+        # self.rin # inner radius for wedge
+        # self.rout # outer radius for wedge
+        # self.skyRotation # rotation angle of the image, use to correct other angles for sky position, otherwise assume a standard orientation?
+        # self.metric # statistic to analyse
+        # self.sigma # sigma value for clipping/outliers
+        # self.az_mid # midpoints of azimuthal wedges (Redundant?)
+        # self.wedge_metric # measured flux statistic for each bin
+
+        # TODO: summary stats
+        # Sky background counts from outer annulus of wedges, used to correct the wedge flux metric (use the median of a median or mean of a mean?)
+        # Number of outlying wedges (relative to assumed sky background of zero and some sigma level)
+        # Index of most outlying wedge - use to retrieve flux and az bins
+        # Mean of flux metric
+        # std of flux metric
+
     def astscript_radial_profile(
         self,
         az_min,
