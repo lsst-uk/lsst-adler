@@ -330,33 +330,52 @@ def mpc_file_preprocessing(sql_filename, jplhorizons_filename):  # pragma: no co
     logger.info(f"Added mjd_tai column to obs_sbn")
 
     # Load in JPL horizons data
-    # TODO in future this will be integrated into the MPC file already by Meg
-    add_column_if_not_exists(conn, "obs_sbn", "heliocentricDist", "REAL")
-    add_column_if_not_exists(conn, "obs_sbn", "topocentricDist", "REAL")
-    add_column_if_not_exists(conn, "obs_sbn", "phaseAngle", "REAL")
+    # Check if columns with alternative names exist:
+    # Once we fix the light travel time considerations this won't be technically wrong
+    if sqlite_column_exists(conn, "obs_sbn", "r"): # heliocentricDist (without ltt corretion) is called r in some versions of this file
+        cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN r TO heliocentricDist")
+        conn.commit()
+        logger.warning("Column r renamed to heliocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet")
+    
+    if sqlite_column_exists(conn, "obs_sbn", "delta"): # topocentricDist (without ltt corretion) is called delta in some versions of this file
+        cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN delta TO topocentricDist")
+        conn.commit()
+        logger.warning("Column delta renamed to topocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet")
 
-    jplhorizons_df = pd.read_csv(jplhorizons_filename)
-    jplhorizons_df.to_sql("temp_updates", conn, if_exists="replace", index=False)  # Create a temporary table
+    if sqlite_column_exists(conn, "obs_sbn", "alpha"): # phaseAngle is called alpha in JPL Horizons and may not have been changed in the file
+        cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN alpha TO phaseAngle")
+        conn.commit()
+        logger.warning("Column alpha renamed to phaseAngle in obs_sbn. Be wary of light travel time as this may not have been accounted for yet")
 
-    cursor.execute(
+    if sqlite_column_exists(conn, "obs_sbn", "heliocentricDist") and sqlite_column_exists(conn, "obs_sbn", "topocentricDist") and sqlite_column_exists(conn, "obs_sbn", "phaseAngle"):
+        logger.info(f"heliocentricDist, topocentricDist and phaseAngle information exist in obs_sbn already.")
+    else:
+        add_column_if_not_exists(conn, "obs_sbn", "heliocentricDist", "REAL")
+        add_column_if_not_exists(conn, "obs_sbn", "topocentricDist", "REAL")
+        add_column_if_not_exists(conn, "obs_sbn", "phaseAngle", "REAL")
+
+        jplhorizons_df = pd.read_csv(jplhorizons_filename)
+        jplhorizons_df.to_sql("temp_updates", conn, if_exists="replace", index=False)  # Create a temporary table
+
+        cursor.execute(
+            """
+            UPDATE obs_sbn
+            SET
+            heliocentricDist = temp_updates.r,
+            topocentricDist = temp_updates.delta,
+            phaseAngle = temp_updates.alpha
+            FROM temp_updates
+            WHERE obs_sbn.obsid = temp_updates.obsid;
         """
-        UPDATE obs_sbn
-        SET
-        heliocentricDist = temp_updates.r,
-        topocentricDist = temp_updates.delta,
-        phaseAngle = temp_updates.alpha
-        FROM temp_updates
-        WHERE obs_sbn.obsid = temp_updates.obsid;
-    """
-    )
-    conn.commit()
+        )
+        conn.commit()
 
-    # TODO implement a check/warning/error if not all information available in the JPL file
+        # TODO implement a check/warning/error if not all information available in the JPL file
 
-    cursor.execute("DROP TABLE temp_updates;")
-    conn.commit()
-    conn.close()
+        cursor.execute("DROP TABLE temp_updates;")
+        conn.commit()
+        conn.close()
 
-    logger.info(
-        f"heliocentricDist, topocentricDist and phaseAngle information from JPL Horizons file added to obs_sbn"
-    )
+        logger.info(
+            f"heliocentricDist, topocentricDist and phaseAngle information from JPL Horizons file added to obs_sbn"
+        )
