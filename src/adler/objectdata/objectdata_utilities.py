@@ -332,22 +332,38 @@ def mpc_file_preprocessing(sql_filename, jplhorizons_filename):  # pragma: no co
     # Load in JPL horizons data
     # Check if columns with alternative names exist:
     # Once we fix the light travel time considerations this won't be technically wrong
-    if sqlite_column_exists(conn, "obs_sbn", "r"): # heliocentricDist (without ltt corretion) is called r in some versions of this file
+    if sqlite_column_exists(
+        conn, "obs_sbn", "r"
+    ):  # heliocentricDist (without ltt corretion) is called r in some versions of this file
         cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN r TO heliocentricDist")
         conn.commit()
-        logger.warning("Column r renamed to heliocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet")
-    
-    if sqlite_column_exists(conn, "obs_sbn", "delta"): # topocentricDist (without ltt corretion) is called delta in some versions of this file
+        logger.warning(
+            "Column r renamed to heliocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
+        )
+
+    if sqlite_column_exists(
+        conn, "obs_sbn", "delta"
+    ):  # topocentricDist (without ltt corretion) is called delta in some versions of this file
         cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN delta TO topocentricDist")
         conn.commit()
-        logger.warning("Column delta renamed to topocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet")
+        logger.warning(
+            "Column delta renamed to topocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
+        )
 
-    if sqlite_column_exists(conn, "obs_sbn", "alpha"): # phaseAngle is called alpha in JPL Horizons and may not have been changed in the file
+    if sqlite_column_exists(
+        conn, "obs_sbn", "alpha"
+    ):  # phaseAngle is called alpha in JPL Horizons and may not have been changed in the file
         cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN alpha TO phaseAngle")
         conn.commit()
-        logger.warning("Column alpha renamed to phaseAngle in obs_sbn. Be wary of light travel time as this may not have been accounted for yet")
+        logger.warning(
+            "Column alpha renamed to phaseAngle in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
+        )
 
-    if sqlite_column_exists(conn, "obs_sbn", "heliocentricDist") and sqlite_column_exists(conn, "obs_sbn", "topocentricDist") and sqlite_column_exists(conn, "obs_sbn", "phaseAngle"):
+    if (
+        sqlite_column_exists(conn, "obs_sbn", "heliocentricDist")
+        and sqlite_column_exists(conn, "obs_sbn", "topocentricDist")
+        and sqlite_column_exists(conn, "obs_sbn", "phaseAngle")
+    ):
         logger.info(f"heliocentricDist, topocentricDist and phaseAngle information exist in obs_sbn already.")
     else:
         add_column_if_not_exists(conn, "obs_sbn", "heliocentricDist", "REAL")
@@ -355,7 +371,9 @@ def mpc_file_preprocessing(sql_filename, jplhorizons_filename):  # pragma: no co
         add_column_if_not_exists(conn, "obs_sbn", "phaseAngle", "REAL")
 
         jplhorizons_df = pd.read_csv(jplhorizons_filename)
-        jplhorizons_df.to_sql("temp_updates", conn, if_exists="replace", index=False)  # Create a temporary table
+        jplhorizons_df.to_sql(
+            "temp_updates", conn, if_exists="replace", index=False
+        )  # Create a temporary table
 
         cursor.execute(
             """
