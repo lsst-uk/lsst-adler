@@ -88,6 +88,11 @@ conda install conda-forge::gnuastro
 ```
 (currently adler works with gnuastro==0.23)
 
+The utility function to retrieve cutouts (`adler.utilities.cutout_utilities.Cutout`) requires the LSST pipeline and therefore can only be easily run on the RSP. Furthermore [reproject](https://reproject.readthedocs.io/en/stable/index.html) is required to allow plotting cutouts in a standard orientation:
+```
+conda install -c conda-forge reproject
+```
+
 ## Dev Guide - Adding notebooks to Read The Docs
 
 - Copy notebook into `docs/notebooks` (N.B. the notebook must have at least one section header* and be using the "Python 3 (ipykernel)" kernel, not some conda env kernel that may only be installed locally)
