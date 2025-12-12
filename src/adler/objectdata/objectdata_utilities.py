@@ -398,6 +398,8 @@ def mpc_file_preprocessing(sql_filename, jplhorizons_filename):  # pragma: no co
         logger.info(
             f"heliocentricDist, topocentricDist and phaseAngle information from JPL Horizons file added to obs_sbn"
         )
+
+
 def flux_to_magnitude(flux, flux_err=np.nan):
     """Converts a flux measurement (with units of nanoJanskys) and its associated error
     into AB magnitudes. If no flux error is provided, the returned magnitude error
