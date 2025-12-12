@@ -147,9 +147,15 @@ class Observations:
             try:
                 obs_dict[obs_key] = get_from_table(data_table, obs_key, obs_type, "SSSource/DIASource")
             except KeyError:  # sometimes we have case issues...
-                obs_dict[obs_key] = get_from_table(
-                    data_table, obs_key.casefold(), obs_type, "SSSource/DIASource"
-                )
+                # Specific handling for this one as the case of the P was changed between DP0.3 and DP1
+                if obs_key == "midPointMjdTai":
+                    obs_dict[obs_key] = get_from_table(
+                        data_table, "midpointMjdTai", obs_type, "SSSource/DIASource"
+                    )
+                else:
+                    obs_dict[obs_key] = get_from_table(
+                        data_table, obs_key.casefold(), obs_type, "SSSource/DIASource"
+                    )
 
         obs_dict["reduced_mag"] = cls.calculate_reduced_mag(
             cls, obs_dict["mag"], obs_dict["topocentricDist"], obs_dict["heliocentricDist"]
