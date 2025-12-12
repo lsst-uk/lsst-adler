@@ -14,6 +14,32 @@ from adler.objectdata.objectdata_utilities import get_data_table, flux_to_magnit
 
 logger = logging.getLogger(__name__)
 
+# Convenient dict for setting which columns to include in SQL query given schema and desired flux flag
+# TODO better handling of None case (this is probably bad Python)
+SCHEMA_CONFIG_DICT = {
+    None: {None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec")},
+    "dp03_catalogs_10yr": {
+        None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec")
+    },
+    "dp1": {
+        "apFlux": dict(
+            fluxmag_column="apFlux", fluxmag_err_column="apFluxErr", ra_column="ra", dec_column="dec"
+        ),
+        "trailFlux": dict(
+            fluxmag_column="trailFlux",
+            fluxmag_err_column="psfFluxErr",
+            ra_column="trailRa",
+            dec_column="trailDec",
+        ),
+        "psfFlux": dict(
+            fluxmag_column="psfFlux",
+            fluxmag_err_column="psfFluxErr",
+            ra_column="ra",
+            dec_column="dec",
+        ),
+    },
+}
+
 
 class AdlerPlanetoid:
     """AdlerPlanetoid class. Contains the Observations, MPCORB and SSObject dataclass objects."""
@@ -330,42 +356,10 @@ class AdlerPlanetoid:
         # else:
         #     sql_schema = ""
 
-        # Convenient dict for setting which columns to include in SQL query given schema and desired flux flag
-        # TODO better handling of None case (this is probably bad Python)
-        schema_config_dict = {
-            None: {
-                None: dict(
-                    fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec"
-                )
-            },
-            "dp03_catalogs_10yr": {
-                None: dict(
-                    fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec"
-                )
-            },
-            "dp1": {
-                "apFlux": dict(
-                    fluxmag_column="apFlux", fluxmag_err_column="apFluxErr", ra_column="ra", dec_column="dec"
-                ),
-                "trailFlux": dict(
-                    fluxmag_column="trailFlux",
-                    fluxmag_err_column="psfFluxErr",
-                    ra_column="trailRa",
-                    dec_column="trailDec",
-                ),
-                "psfFlux": dict(
-                    fluxmag_column="psfFlux",
-                    fluxmag_err_column="psfFluxErr",
-                    ra_column="ra",
-                    dec_column="dec",
-                ),
-            },
-        }
-
         try:
-            selected_config = schema_config_dict[schema][flux_flag]
+            selected_config = SCHEMA_CONFIG_DICT[schema][flux_flag]
         except KeyError:
-            if schema not in schema_config_dict:
+            if schema not in SCHEMA_CONFIG_DICT:
                 logger.error(f"Schema {schema} not recognised.")
                 raise Exception(f"Schema {schema} not recognised.")
             else:
