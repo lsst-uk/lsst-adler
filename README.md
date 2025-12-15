@@ -22,7 +22,7 @@ virtual environment. If you have conda installed locally, you can run the follow
 create and activate a new environment.
 
 ```
-conda create --name <env_name> python=3.10
+conda create --name <env_name> python=3.12
 conda activate <env_name>
 ```
 
@@ -81,17 +81,14 @@ Notes:
    the Python Project Template documentation on
    [Sphinx and Python Notebooks](https://lincc-ppt.readthedocs.io/en/latest/practices/sphinx.html#python-notebooks)
 
-## Additional Dependencies:
-In order to run the cutout analysis tools (WedgePhot, NoiseChisel) a working version of [gnuastro](https://www.gnu.org/savannah-checkouts/gnu/gnuastro/gnuastro.html) is required. gnuastro can be installed from source directly, please follow their documentation. Alternatively it is possible to conda install gnuastro on most systems:
+## Cutout retrieval and analysis environment requirements
+The cutout retrieval tools (`Cutout`) must be run on the Rubin Science Platform and also require packages included in the [LSST Science Pipelines](https://pipelines.lsst.io/) (`lsst.rsp`, `lsst.geom`, `lsst.afw`). Thus, the default `rubin-env` must be extended by using `pip install` to install relevant packages (the default adler installation steps should be sufficient). The particular modules from `lsst-scipipe` required also necessity the use of `python>=3.12`.
+
+However, currently in order to run the cutout analysis tools (WedgePhot, NoiseChisel) a working version of [gnuastro](https://www.gnu.org/savannah-checkouts/gnu/gnuastro/gnuastro.html) is required. gnuastro can be installed from source directly, please follow their documentation. Alternatively it is possible to conda install gnuastro on most systems (currently adler works with gnuastro==0.23):
 ```
 conda install conda-forge::gnuastro
 ```
-(currently adler works with gnuastro==0.23)
-
-The utility function to retrieve cutouts (`adler.utilities.cutout_utilities.Cutout`) requires the LSST pipeline and therefore can only be easily run on the RSP. Furthermore [reproject](https://reproject.readthedocs.io/en/stable/index.html) is required to allow plotting cutouts in a standard orientation:
-```
-conda install -c conda-forge reproject
-```
+The issue (see [#222](https://github.com/lsst-uk/lsst-adler/issues/222)) this presents is that conda installing packages into `rubin-env` is not supported and the current workaround is to clone `rubin-env` however this is not recommended (see [RSP documentation](https://rsp.lsst.io/guides/notebooks/configuration/user-installs.html)). Therefore, we recommend utilising two separate environments, one that is an extension of `rubin-env` that can be used for cutout retrieval and other non-cutout-related analysis, and a new conda environment where gnuastro and other adler dependencies are installed that can be used for cutout analysis.
 
 ## Dev Guide - Adding notebooks to Read The Docs
 
