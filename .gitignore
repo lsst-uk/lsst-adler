@@ -175,3 +175,5 @@ cython_debug/
 
 # Ignore .npy files
 *.npy
+
+notebooks/adler_demo_outliers/outputs*
