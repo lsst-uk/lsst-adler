@@ -286,20 +286,17 @@ def add_column_if_not_exists(conn, table, column, coltype):
         logger.info(f"{column} already exists in {table}")
 
 
-def mpc_file_preprocessing(sql_filename, jplhorizons_filename):  # pragma: no cover
+def mpc_file_preprocessing(sql_filename):  # pragma: no cover
     """
     Function for performing pre-processing steps on the obs_sbn table in the MPC file format.
     The function strips the leading 'L' from the band in the obs_sbn file;
     adds a mjd_tai column with the observation time in MJD in the TAI scale;
-    and adds the topocentricDist, heliocentricDist and phaseAngle from JPL Horizons.
+    and checks the topocentricDist, heliocentricDist and phaseAngle are present (renaming columns if need be).
 
     Parameters
     -----------
     sql_filename : str
         Filepath to the local SQL database.
-
-    jplhorizons_filename : str
-        Filepath to the local csv file containing the topocentricDist, heliocentricDist and phaseAngle from JPL Horizons.
 
     Returns
     -----------
@@ -308,57 +305,29 @@ def mpc_file_preprocessing(sql_filename, jplhorizons_filename):  # pragma: no co
     conn = sqlite3.connect(sql_filename)
     cursor = conn.cursor()
 
-    # Strip the leading L that is used for some of the observations in the MPC file to ensure compatbility with adler
-    # TODO In future we may change this but this is an easy fix for now
+    # Strip the leading L that is used for some of the observations in the MPC file to ensure compatibility with adler
     cursor.execute("UPDATE obs_sbn SET band=substr(band, 2) WHERE band LIKE 'L%';")
     conn.commit()
 
     logger.info(f"Leading 'L' stripped from band names")
 
     # Add MJD TAI column
-    add_column_if_not_exists(conn, "obs_sbn", "mjd_tai", "REAL")
-    cursor.execute(f"SELECT rowid, mjd_utc FROM obs_sbn;")
-    rows = cursor.fetchall()
-    rowids = np.array([r[0] for r in rows])
-    mjd_utc_vals = np.array([r[1] for r in rows], dtype=float)
-    mjd_tai_vals = convertTime(
-        mjd_utc_vals, input_fmt="mjd", input_scale="utc", output_fmt="mjd", output_scale="tai"
-    )
-    data_to_update = list(zip(mjd_tai_vals.tolist(), rowids.tolist()))
-    cursor.executemany(f"UPDATE obs_sbn SET mjd_tai = ? WHERE rowid = ?;", data_to_update)
-    conn.commit()
-
-    logger.info(f"Added mjd_tai column to obs_sbn")
-
-    # Load in JPL horizons data
-    # Check if columns with alternative names exist:
-    # Once we fix the light travel time considerations this won't be technically wrong
-    if sqlite_column_exists(
-        conn, "obs_sbn", "r"
-    ):  # heliocentricDist (without ltt corretion) is called r in some versions of this file
-        cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN r TO heliocentricDist")
-        conn.commit()
-        logger.warning(
-            "Column r renamed to heliocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
+    if sqlite_column_exists(conn, "obs_sbn", "mjd_tai"):
+        logger.info(f"mjd_tai column already in file")
+    else:
+        add_column_if_not_exists(conn, "obs_sbn", "mjd_tai", "REAL")
+        cursor.execute(f"SELECT rowid, mjd_utc FROM obs_sbn;")
+        rows = cursor.fetchall()
+        rowids = np.array([r[0] for r in rows])
+        mjd_utc_vals = np.array([r[1] for r in rows], dtype=float)
+        mjd_tai_vals = convertTime(
+            mjd_utc_vals, input_fmt="mjd", input_scale="utc", output_fmt="mjd", output_scale="tai"
         )
-
-    if sqlite_column_exists(
-        conn, "obs_sbn", "delta"
-    ):  # topocentricDist (without ltt corretion) is called delta in some versions of this file
-        cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN delta TO topocentricDist")
+        data_to_update = list(zip(mjd_tai_vals.tolist(), rowids.tolist()))
+        cursor.executemany(f"UPDATE obs_sbn SET mjd_tai = ? WHERE rowid = ?;", data_to_update)
         conn.commit()
-        logger.warning(
-            "Column delta renamed to topocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
-        )
 
-    if sqlite_column_exists(
-        conn, "obs_sbn", "alpha"
-    ):  # phaseAngle is called alpha in JPL Horizons and may not have been changed in the file
-        cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN alpha TO phaseAngle")
-        conn.commit()
-        logger.warning(
-            "Column alpha renamed to phaseAngle in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
-        )
+        logger.info(f"Added mjd_tai column to obs_sbn")
 
     if (
         sqlite_column_exists(conn, "obs_sbn", "heliocentricDist")
@@ -367,37 +336,34 @@ def mpc_file_preprocessing(sql_filename, jplhorizons_filename):  # pragma: no co
     ):
         logger.info(f"heliocentricDist, topocentricDist and phaseAngle information exist in obs_sbn already.")
     else:
-        add_column_if_not_exists(conn, "obs_sbn", "heliocentricDist", "REAL")
-        add_column_if_not_exists(conn, "obs_sbn", "topocentricDist", "REAL")
-        add_column_if_not_exists(conn, "obs_sbn", "phaseAngle", "REAL")
+        # Check if columns with alternative names exist:
+        # Once we fix the light travel time considerations this won't be technically wrong
+        if sqlite_column_exists(
+            conn, "obs_sbn", "r"
+        ):  # heliocentricDist (without ltt corretion) is called r in some versions of this file
+            cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN r TO heliocentricDist")
+            conn.commit()
+            logger.warning(
+                "Column r renamed to heliocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
+            )
 
-        jplhorizons_df = pd.read_csv(jplhorizons_filename)
-        jplhorizons_df.to_sql(
-            "temp_updates", conn, if_exists="replace", index=False
-        )  # Create a temporary table
+        if sqlite_column_exists(
+            conn, "obs_sbn", "delta"
+        ):  # topocentricDist (without ltt corretion) is called delta in some versions of this file
+            cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN delta TO topocentricDist")
+            conn.commit()
+            logger.warning(
+                "Column delta renamed to topocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
+            )
 
-        cursor.execute(
-            """
-            UPDATE obs_sbn
-            SET
-            heliocentricDist = temp_updates.r,
-            topocentricDist = temp_updates.delta,
-            phaseAngle = temp_updates.alpha
-            FROM temp_updates
-            WHERE obs_sbn.obsid = temp_updates.obsid;
-        """
-        )
-        conn.commit()
-
-        # TODO implement a check/warning/error if not all information available in the JPL file
-
-        cursor.execute("DROP TABLE temp_updates;")
-        conn.commit()
-        conn.close()
-
-        logger.info(
-            f"heliocentricDist, topocentricDist and phaseAngle information from JPL Horizons file added to obs_sbn"
-        )
+        if sqlite_column_exists(
+            conn, "obs_sbn", "alpha"
+        ):  # phaseAngle is called alpha in JPL Horizons and may not have been changed in the file
+            cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN alpha TO phaseAngle")
+            conn.commit()
+            logger.warning(
+                "Column alpha renamed to phaseAngle in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
+            )
 
 
 def flux_to_magnitude(flux, flux_err=np.nan):

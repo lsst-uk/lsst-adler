@@ -768,9 +768,18 @@ class AdlerPlanetoid:
 
         observations_by_filter = []
 
-        # TODO potential issue using provisional designation as SSObjectId (also obsid as diaSourceId) #Issue 216
-        # TODO probably add some warnings as this is a temporary fix to the evolving situation anyway
         for filter_name in filter_list:
+            logger.warning(
+                f"Constructing from the MPC obs_sbn table populates the following LSST schema columns as their best case obs_sbn analogs (LSST column name = obs_sbn column name):"
+            )
+            logger.warning(f"SSObjectId = provid; diaSourceId = obsid; magErr = rmsmag")
+            logger.warning(f"mjd_utc is converted to mjd_tai and presented as midPointMjdTai")
+            logger.warning(
+                f"phaseAngle, topocentricDist and heliocentricDist are not currently corrected for light travel time effects"
+            )
+            logger.warning(
+                f"heliocentricX, heliocentricY, heliocentricZ, topocentricX, topocentricY, topocentricZ, eclipticLambda, eclipticBeta are unpopulated and selected as NULLs."
+            )
             observations_sql_query = f"""
                 SELECT
                     provid AS SSObjectId, obsid as diaSourceId, mag, rmsmag AS magErr, band, mjd_tai AS midPointMjdTai, ra, dec,
@@ -818,9 +827,13 @@ class AdlerPlanetoid:
 
         """
 
-        # TODO Possible issue: Currently selecting fullDesignation AS ssObjectId for consistency with populate_observations_from_mpc_obs_sbn
-        # We select t_p (MJD of pericentric passage) AS tperi for consistency with DP0.3
-        # mean_motion in mpc-orbits is n (mean daily motion) in DP0.3. Not include in this file at all so selecting NULL
+        logger.warning(
+            f"Constructing from the MPC obs_sbn table populates the following LSST schema columns as their best case obs_sbn analogs (LSST column name = obs_sbn column name):"
+        )
+        logger.warning(f"ssObjectId = fullDesignation; fullDesignation = fullDesignation; tperi = t_p")
+        logger.warning(
+            f"mpcDesignation, mpcNumber, mpcG, n, uncertaintyParameter, flags are unpopulated and selected as NULL/0."
+        )
         mpc_orbits_sql_query = f"""
             SELECT
                 fullDesignation AS ssObjectId, NULL AS mpcDesignation, fullDesignation AS fullDesignation, 0 AS mpcNumber,
@@ -866,7 +879,10 @@ class AdlerPlanetoid:
 
             filter_dependent_columns += filter_string
 
-        # TODO can likely fill some of these values but leaving as NULLs for now
+        logger.warning(
+            f"Constructing from the MPC obs_sbn table populates the following LSST schema columns as their best case obs_sbn analogs (LSST column name = obs_sbn column name):"
+        )
+        logger.warning(f"All columns other than numObs/'band'_Ndata are selected as NULL/0.")
         SSObject_sql_query = f"""
             SELECT
                 NULL AS discoverySubmissionDate, NULL AS firstObservationDate, NULL AS arc, count(*) AS numObs, 
