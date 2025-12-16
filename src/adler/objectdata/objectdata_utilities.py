@@ -306,10 +306,14 @@ def mpc_file_preprocessing(sql_filename):  # pragma: no cover
     cursor = conn.cursor()
 
     # Strip the leading L that is used for some of the observations in the MPC file to ensure compatibility with adler
+    cursor.execute("SELECT EXISTS (SELECT 1 FROM obs_sbn WHERE instr(band, 'L') > 0);")
+    res = cursor.fetchall()
+    print(res)
+
     cursor.execute("UPDATE obs_sbn SET band=substr(band, 2) WHERE band LIKE 'L%';")
     conn.commit()
 
-    logger.info(f"Leading 'L' stripped from band names")
+    logger.warning(f"Leading 'L' stripped from band names")
 
     # Add MJD TAI column
     if sqlite_column_exists(conn, "obs_sbn", "mjd_tai"):
