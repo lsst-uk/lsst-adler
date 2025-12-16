@@ -228,6 +228,23 @@ def get_df_obs_filt(planetoid, filt, x_col="midPointMjdTai", x1=None, x2=None, c
 
     return df_obs
 
+def large_magErr_mask(df_obs, magErr_percentile_cut=95):
+    """
+    # TODO docstring
+    """
+    magErr_mask = (df_obs.magErr <= np.nanpercentile(df_obs.magErr, q=magErr_percentile_cut))
+    return magErr_mask
+
+def split_obs(df_obs, process_mjd, n_new_nights=3):
+    """
+    # TODO docstring
+    """
+    mask = (df_obs['midPointMjdTai'] < process_mjd-n_new_nights)
+
+    df_obs_old = df_obs[mask].copy()
+    df_obs_new = df_obs[~mask].copy()
+
+    return df_obs_old, df_obs_new, mask
 
 def running_stats(N, sum_x, sum_x2):
     """
