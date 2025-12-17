@@ -9,7 +9,7 @@ from astropy.time import Time
 # TODO figure out how to re-structure/what functions to add to include more of a metadata angle for adler data that will be written out
 # We can keep many of the current functions but then the plan would be to perhaps create a AdlerData.populate_metadata/.write_metadata_to_database
 
-FILTER_DEPENDENT_KEYS = ["phaseAngle_min", "phaseAngle_range", "nobs", "arc"]
+FILTER_DEPENDENT_KEYS = ["phaseAngle_min", "phaseAngle_range", "observationTime_max", "nobs", "arc"]
 PHASE_MODEL_DEPENDENT_KEYS = [
     "H",
     "H_err",
@@ -264,6 +264,7 @@ class AdlerData:
             print("Filter: {}".format(filter_name))
             print("Phase angle minimum: {}".format(self.filter_dependent_values[f].phaseAngle_min))
             print("Phase angle range: {}".format(self.filter_dependent_values[f].phaseAngle_range))
+            print("Maximum observation time: {}".format(self.filter_dependent_values[f].observationTime_max))
             print("Number of observations: {}".format(self.filter_dependent_values[f].nobs))
             print("Arc: {}".format(self.filter_dependent_values[f].arc))
 
@@ -331,6 +332,7 @@ class AdlerData:
         output_obj.filter_name = filter_name
         output_obj.phaseAngle_min = self.filter_dependent_values[filter_index].phaseAngle_min
         output_obj.phaseAngle_range = self.filter_dependent_values[filter_index].phaseAngle_range
+        output_obj.observationTime_max = self.filter_dependent_values[filter_index].observationTime_max
         output_obj.nobs = self.filter_dependent_values[filter_index].nobs
         output_obj.arc = self.filter_dependent_values[filter_index].arc
 
@@ -411,6 +413,7 @@ class AdlerData:
         output_obj.filter_name = filter_name
         output_obj.phaseAngle_min = self.filter_dependent_values[filter_index].phaseAngle_min
         output_obj.phaseAngle_range = self.filter_dependent_values[filter_index].phaseAngle_range
+        output_obj.observationTime_max = self.filter_dependent_values[filter_index].observationTime_max
         output_obj.nobs = self.filter_dependent_values[filter_index].nobs
         output_obj.arc = self.filter_dependent_values[filter_index].arc
 
@@ -438,7 +441,6 @@ class AdlerData:
 
         return output_obj
     
-    #TODO figure out how this could change to include the AdlerFlags table that includes a variable number of columns (or if AdlerFlags class created then copy this across)
     def _get_database_connection(self, filepath, create_new=False):
         """Returns the connection to the output SQL database, creating it if it does not exist.
 
@@ -464,6 +466,7 @@ class AdlerData:
         if not database_exists and create_new:  # we need to make the table and a couple of starter columns
             con = sqlite3.connect(filepath)
             cur = con.cursor()
+            #Index column needed
             cur.execute("CREATE TABLE AdlerData(ssObjectId PRIMARY KEY, timestamp REAL)")
         elif not database_exists and not create_new:
             logger.error("ValueError: Database cannot be found at given filepath.")
@@ -471,7 +474,7 @@ class AdlerData:
         else:
             con = sqlite3.connect(filepath)
             cur = con.cursor()
-            # Create the table if it doesn't exist (in case database was created through AdlerFlags)
+            # Create the table if it doesn't exist (in case database was created through AdlerSourceFlags)
             # TODO is this the cleanest way to handle this?
             cur.execute("CREATE TABLE IF NOT EXISTS AdlerData(ssObjectId PRIMARY KEY, timestamp REAL)")
 
@@ -500,10 +503,14 @@ class AdlerData:
         cur.execute(f"""SELECT * from {tablename} where 1=0""")
         return [d[0] for d in cur.description]
     
-    #TODO may need changes or new function for AdlerFlags (again may be in new class)
-    def _get_row_data_and_columns(self):
+    def _get_row_data_and_columns(self, write_model_data=False):
         """Collects all of the data present in the AdlerData object as a list with a corresponding list of column names,
         in preparation for a row to be written to a SQL database table.
+
+        Parameters
+        -----------
+        write_model_data : Boolean, optional
+            A flag to set whether to write out specific model data to AdlerData. Default: False.
 
         Returns
         -----------
@@ -525,33 +532,37 @@ class AdlerData:
 
             required_columns.extend(columns_by_filter)
             row_data.extend(data_by_filter)
-            for m, model_name in enumerate(self.filter_dependent_values[f].model_list):
-                if model_name in VALID_PHASE_MODELS:
-                    columns_by_model = [
-                        "_".join([filter_name, model_name, model_key]) for model_key in PHASE_MODEL_DEPENDENT_KEYS
-                    ]
-                    data_by_model = [
-                        getattr(self.filter_dependent_values[f].model_dependent_values[m], model_key)
-                        for model_key in PHASE_MODEL_DEPENDENT_KEYS
-                    ]
+            if write_model_data:
+                logger.info(f"write_model_data={write_model_data}, calculated model-specific parameters will be written to AdlerData")
+                for m, model_name in enumerate(self.filter_dependent_values[f].model_list):
+                    if model_name in VALID_PHASE_MODELS:
+                        columns_by_model = [
+                            "_".join([filter_name, model_name, model_key]) for model_key in PHASE_MODEL_DEPENDENT_KEYS
+                        ]
+                        data_by_model = [
+                            getattr(self.filter_dependent_values[f].model_dependent_values[m], model_key)
+                            for model_key in PHASE_MODEL_DEPENDENT_KEYS
+                        ]
 
-                    required_columns.extend(columns_by_model)
-                    row_data.extend(data_by_model)
-                elif model_name in VALID_AVG_MAG_MODELS:
-                    columns_by_model = [
-                        "_".join([filter_name, model_name, model_key]) for model_key in AVG_MAG_MODEL_DEPENDENT_KEYS
-                    ]
-                    data_by_model = [
-                        getattr(self.filter_dependent_values[f].model_dependent_values[m], model_key)
-                        for model_key in AVG_MAG_MODEL_DEPENDENT_KEYS
-                    ]
+                        required_columns.extend(columns_by_model)
+                        row_data.extend(data_by_model)
+                    elif model_name in VALID_AVG_MAG_MODELS:
+                        columns_by_model = [
+                            "_".join([filter_name, model_name, model_key]) for model_key in AVG_MAG_MODEL_DEPENDENT_KEYS
+                        ]
+                        data_by_model = [
+                            getattr(self.filter_dependent_values[f].model_dependent_values[m], model_key)
+                            for model_key in AVG_MAG_MODEL_DEPENDENT_KEYS
+                        ]
 
-                    required_columns.extend(columns_by_model)
-                    row_data.extend(data_by_model)
-                else:
-                    #TODO improve error message
-                    logger.error(f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}")
-                    raise ValueError(f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}")
+                        required_columns.extend(columns_by_model)
+                        row_data.extend(data_by_model)
+                    else:
+                        #TODO improve error message
+                        logger.error(f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}")
+                        raise ValueError(f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}")
+            else:
+                logger.info(f"write_model_data={write_model_data}, only filter-dependent/model metadata will be written to AdlerData")
 
 
         return row_data, required_columns
@@ -582,7 +593,7 @@ class AdlerData:
             if column_name not in current_columns:
                 cur.execute(f"""ALTER TABLE {table_name} ADD COLUMN {column_name}""")
 
-    def write_row_to_database(self, filepath, table_name="AdlerData"):
+    def write_row_to_database(self, filepath, table_name="AdlerData", write_model_data=False):
         """Writes all of the relevant data contained within the AdlerData object to a timestamped row in a SQLite database.
 
         Parameters
@@ -593,22 +604,31 @@ class AdlerData:
         table_name : str, optiona
             String containing the table name to write the data to. Default is "AdlerData".
 
+        write_model_data : Boolean, optional
+            A flag to set whether to write out specific model data to AdlerData. Default: False.
+
         """
 
         con = self._get_database_connection(filepath, create_new=True)
 
-        row_data, required_columns = self._get_row_data_and_columns()
+        row_data, required_columns = self._get_row_data_and_columns(write_model_data=write_model_data)
         current_columns = self._get_database_columns(con, table_name)
         self._ensure_columns(con, table_name, current_columns, required_columns)
-
+        
+        # TODO edit this (or create new one for metadata, that doesn't overwrite)
         column_names = ",".join(required_columns)
         column_spaces = ",".join(["?"] * len(required_columns))
-        update_clause = ", ".join([f"{col} = excluded.{col}" for col in required_columns[1:]])
+        # update_clause = ", ".join([f"{col} = excluded.{col}" for col in required_columns[1:]])
         sql_command = f"""
                         INSERT INTO {table_name} ({column_names})
-                        VALUES ({column_spaces})
-                        ON CONFLICT(ssObjectId) DO UPDATE SET {update_clause};
+                        VALUES ({column_spaces});
                         """
+        # Old command, keeping for now during changes
+        # sql_command = f"""
+        #                 INSERT INTO {table_name} ({column_names})
+        #                 VALUES ({column_spaces})
+        #                 ON CONFLICT(ssObjectId) DO UPDATE SET {update_clause};
+        #                 """
         cur = con.cursor()
         cur.execute(sql_command, row_data)
         con.commit()
@@ -630,14 +650,17 @@ class FilterDependentAdler:
     phaseAngle_range : float, optional
         Max minus min phase angle range of observations used in fitting model (degrees).
 
+    observationTime_max : float, optional
+        Maximum time of observation used in fitting model (modifided Julian day).
+
+    arc: float, optional
+        Observational arc used to fit model (days).    
+    
     nobs : int, optional
         Number of observations used in fitting model.
 
-    arc: float, optional
-        Observational arc used to fit model (days).
-
     model_list: list of str, optional
-        List of the models for which phase curve parameters have been calculated. Default: empty list
+        List of the models for which phase curve or average magnitude parameters have been calculated. Default: empty list
 
     model_dependent_values: list of PhaseModelDependentAdler or AvgMagModelDependentAdler objects, optional
         List of PhaseModelDependentAdler or AvgMagModelDependentAdler objects storing phase-model or average-magnitude-model parameters for each model, given in order of model_list. Default: empty list.
@@ -647,8 +670,9 @@ class FilterDependentAdler:
     filter_name: str
     phaseAngle_min: float = np.nan
     phaseAngle_range: float = np.nan
-    nobs: int = 0
+    observationTime_max: float = np.nan
     arc: float = np.nan
+    nobs: int = 0
     model_list: list = field(default_factory=list)
     model_dependent_values: list = field(default_factory=list)
 
@@ -738,12 +762,12 @@ class AvgMagParameterOutput:
 
     pass
 
-#TODO perhaps add a dataclass that would be AdlerFlags? Could be standalone or within AdlerData (given it's a separate table, perhaps standalone)
-#Does this structure need a filter dependent values equivalent? AdlerFlags stores things per observation which by implication is per filter so perhaps not.
+#TODO perhaps add a dataclass that would be AdlerSourceFlags? Could be standalone or within AdlerData (given it's a separate table, perhaps standalone)
+#Does this structure need a filter dependent values equivalent? AdlerSourceFlags stores things per observation which by implication is per filter so perhaps not.
 #But then the outliers detected are (currently) specific to their filter
 
 @dataclass
-class AdlerFlags:
+class AdlerSourceFlags:
     """
     Class for storing Adler-determined outlier information.
 
@@ -793,7 +817,7 @@ class AdlerFlags:
         else:
             con = sqlite3.connect(filepath)
             cur = con.cursor()
-            # Create the table if it doesn't exist (in case database was created through AdlerFlags)
+            # Create the table if it doesn't exist (in case database was created through AdlerSourceFlags)
             cur.execute("CREATE TABLE IF NOT EXISTS AdlerData(ssObjectId PRIMARY KEY, timestamp REAL)")
 
         return con

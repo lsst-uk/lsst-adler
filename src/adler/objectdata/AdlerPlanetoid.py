@@ -7,7 +7,7 @@ import json
 from adler.objectdata.Observations import Observations
 from adler.objectdata.MPCORB import MPCORB
 from adler.objectdata.SSObject import SSObject
-from adler.objectdata.AdlerData import AdlerData
+from adler.objectdata.AdlerData import AdlerData, AdlerSourceFlags
 from adler.objectdata.objectdata_utilities import get_data_table
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ class AdlerPlanetoid:
     """AdlerPlanetoid class. Contains the Observations, MPCORB and SSObject dataclass objects."""
 
     def __init__(
-        self, ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data
+        self, ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data, adler_source_flags
     ):
         """Initialises the AdlerPlanetoid object.
 
@@ -43,6 +43,9 @@ class AdlerPlanetoid:
 
         adler_data : AdlerData object
             An empty AdlerData object ready to store Adler-calculated values.
+        
+        adler_source_flags : AdlerSourceFlags object
+            An empty AdlerSourceFlags object ready to store Adler-detected outlier information.
 
         """
         self.ssObjectId = ssObjectId
@@ -52,6 +55,7 @@ class AdlerPlanetoid:
         self.MPCORB = mpcorb
         self.SSObject = ssobject
         self.AdlerData = adler_data
+        self.AdlerSourceFlags = adler_source_flags
 
     @classmethod
     def construct_from_SQL(
@@ -113,8 +117,9 @@ class AdlerPlanetoid:
         )
 
         adler_data = AdlerData(ssObjectId, filter_list)
+        adler_source_flags = AdlerSourceFlags(ssObjectId, filter_list)
 
-        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
+        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data, adler_source_flags)
 
     @classmethod
     def construct_from_cassandra(
@@ -196,8 +201,9 @@ class AdlerPlanetoid:
         ssobject = SSObject.construct_from_dictionary(ssObjectId, filter_list, SSObject_dict)
 
         adler_data = AdlerData(ssObjectId, filter_list)
+        adler_source_flags = AdlerSourceFlags(ssObjectId, filter_list)
 
-        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
+        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data, adler_source_flags)
 
     @classmethod
     def construct_from_RSP(
@@ -249,8 +255,9 @@ class AdlerPlanetoid:
         ssobject = cls.populate_SSObject(cls, ssObjectId, filter_list, service=service)
 
         adler_data = AdlerData(ssObjectId, filter_list)
+        adler_source_flags = AdlerSourceFlags(ssObjectId, filter_list)
 
-        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
+        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data, adler_source_flags)
 
     def populate_observations(
         self,
@@ -479,8 +486,9 @@ class AdlerPlanetoid:
         )
 
         adler_data = AdlerData(ssObjectId, filter_list)
+        adler_source_flags = AdlerSourceFlags(ssObjectId, filter_list)
 
-        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
+        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data, adler_source_flags)
 
     def populate_observations_from_mpc_obs_sbn(self, ssObjectId, filter_list, date_range, sql_filename):
         """Populates the observations_by_filter class attribute. This version is specific to the construct_from_mpc_obs_sbn function.
@@ -683,3 +691,19 @@ class AdlerPlanetoid:
         self.PreviousAdlerData.populate_from_database(filepath)
 
         return self.PreviousAdlerData
+    
+    # TODO make sure this has the correct population function in AdlerData.py
+    def attach_previous_adler_source_flags(self, filepath):
+        """Attaches and returns an AdlerSourceFlags object containing the most recent AdlerSourceFlags data
+        for this ssObjectId.
+
+        Parameters
+        -----------
+        filepath : path-like object
+            Filepath with the location of the output SQL database.
+        """
+
+        self.PreviousAdlerSourceFlags = AdlerSourceFlags(self.ssObjectId, self.filter_list)
+        self.PreviousAdlerSourceFlags.populate_from_database(filepath)
+
+        return self.PreviousAdlerSourceFlags
