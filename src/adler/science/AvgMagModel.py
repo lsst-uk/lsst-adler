@@ -17,12 +17,12 @@ class AvgMagModel:
     def InitModelObs(self, mag, magErr=None, model_name="median"):
         """# TODO docstring"""
         if model_name == "median":
-            model_dict = {"avg_mag":np.nanmedian(mag), "std_mag":np.nanstd(mag), "model_name":model_name}
+            model_dict = {"avg_mag": np.nanmedian(mag), "std_mag": np.nanstd(mag), "model_name": model_name}
         elif model_name == "mean":
-            model_dict = {"avg_mag":np.nanmean(mag), "std_mag":np.nanstd(mag), "model_name":model_name}
+            model_dict = {"avg_mag": np.nanmean(mag), "std_mag": np.nanstd(mag), "model_name": model_name}
         else:
             print("Invalid model selected. Options are median or mean")
-        
+
         model = AvgMagModel(**model_dict)
 
         return model
