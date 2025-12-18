@@ -766,20 +766,21 @@ class AdlerPlanetoid:
 
         """
 
+        logger.warning(
+            f"Constructing from the MPC obs_sbn table populates the following LSST schema columns as their best case obs_sbn analogs (LSST column name = obs_sbn column name):"
+        )
+        logger.warning(f"SSObjectId = provid; diaSourceId = obsid; magErr = rmsmag")
+        logger.warning(f"mjd_utc is converted to mjd_tai and presented as midPointMjdTai")
+        logger.warning(
+            f"phaseAngle, topocentricDist and heliocentricDist are not currently corrected for light travel time effects"
+        )
+        logger.warning(
+            f"heliocentricX, heliocentricY, heliocentricZ, topocentricX, topocentricY, topocentricZ, eclipticLambda, eclipticBeta are unpopulated and selected as NULLs."
+        )
+
         observations_by_filter = []
 
         for filter_name in filter_list:
-            logger.warning(
-                f"Constructing from the MPC obs_sbn table populates the following LSST schema columns as their best case obs_sbn analogs (LSST column name = obs_sbn column name):"
-            )
-            logger.warning(f"SSObjectId = provid; diaSourceId = obsid; magErr = rmsmag")
-            logger.warning(f"mjd_utc is converted to mjd_tai and presented as midPointMjdTai")
-            logger.warning(
-                f"phaseAngle, topocentricDist and heliocentricDist are not currently corrected for light travel time effects"
-            )
-            logger.warning(
-                f"heliocentricX, heliocentricY, heliocentricZ, topocentricX, topocentricY, topocentricZ, eclipticLambda, eclipticBeta are unpopulated and selected as NULLs."
-            )
             observations_sql_query = f"""
                 SELECT
                     provid AS SSObjectId, obsid as diaSourceId, mag, rmsmag AS magErr, band, mjd_tai AS midPointMjdTai, ra, dec,
