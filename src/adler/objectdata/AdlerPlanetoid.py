@@ -25,7 +25,7 @@ class AdlerPlanetoid:
         mpcorb,
         ssobject,
         adler_data,
-        adler_source_flags,
+        # adler_source_flags,
     ):
         """Initialises the AdlerPlanetoid object.
 
@@ -63,7 +63,7 @@ class AdlerPlanetoid:
         self.MPCORB = mpcorb
         self.SSObject = ssobject
         self.AdlerData = adler_data
-        self.AdlerSourceFlags = adler_source_flags
+        # self.AdlerSourceFlags = adler_source_flags
 
     @classmethod
     def construct_from_SQL(
@@ -125,7 +125,7 @@ class AdlerPlanetoid:
         )
 
         adler_data = AdlerData(ssObjectId, filter_list)
-        adler_source_flags = AdlerSourceFlags(ssObjectId, filter_list)
+        # adler_source_flags = AdlerSourceFlags(ssObjectId, filter_list)
 
         return cls(
             ssObjectId,
@@ -135,7 +135,7 @@ class AdlerPlanetoid:
             mpcorb,
             ssobject,
             adler_data,
-            adler_source_flags,
+            # adler_source_flags,
         )
 
     @classmethod
@@ -218,7 +218,7 @@ class AdlerPlanetoid:
         ssobject = SSObject.construct_from_dictionary(ssObjectId, filter_list, SSObject_dict)
 
         adler_data = AdlerData(ssObjectId, filter_list)
-        adler_source_flags = AdlerSourceFlags(ssObjectId, filter_list)
+        # adler_source_flags = AdlerSourceFlags(ssObjectId, filter_list)
 
         return cls(
             ssObjectId,
@@ -228,7 +228,7 @@ class AdlerPlanetoid:
             mpcorb,
             ssobject,
             adler_data,
-            adler_source_flags,
+            # adler_source_flags,
         )
 
     @classmethod
@@ -281,7 +281,7 @@ class AdlerPlanetoid:
         ssobject = cls.populate_SSObject(cls, ssObjectId, filter_list, service=service)
 
         adler_data = AdlerData(ssObjectId, filter_list)
-        adler_source_flags = AdlerSourceFlags(ssObjectId, filter_list)
+        # adler_source_flags = AdlerSourceFlags(ssObjectId, filter_list)
 
         return cls(
             ssObjectId,
@@ -291,7 +291,7 @@ class AdlerPlanetoid:
             mpcorb,
             ssobject,
             adler_data,
-            adler_source_flags,
+            # adler_source_flags,
         )
 
     def populate_observations(
@@ -521,7 +521,7 @@ class AdlerPlanetoid:
         )
 
         adler_data = AdlerData(ssObjectId, filter_list)
-        adler_source_flags = AdlerSourceFlags(ssObjectId, filter_list)
+        # adler_source_flags = AdlerSourceFlags(ssObjectId, filter_list)
 
         return cls(
             ssObjectId,
@@ -531,7 +531,7 @@ class AdlerPlanetoid:
             mpcorb,
             ssobject,
             adler_data,
-            adler_source_flags,
+            # adler_source_flags,
         )
 
     def populate_observations_from_mpc_obs_sbn(self, ssObjectId, filter_list, date_range, sql_filename):
@@ -721,6 +721,7 @@ class AdlerPlanetoid:
 
         return self.SSObject.filter_dependent_values[filter_index]
 
+    # TODO edit this once populate_from_database
     def attach_previous_adler_data(self, filepath):
         """Attaches and returns an AdlerData object containing the most recent AdlerData
         for this ssObjectId.
@@ -735,19 +736,3 @@ class AdlerPlanetoid:
         self.PreviousAdlerData.populate_from_database(filepath)
 
         return self.PreviousAdlerData
-
-    # TODO make sure this has the correct population function in AdlerData.py
-    def attach_previous_adler_source_flags(self, filepath):
-        """Attaches and returns an AdlerSourceFlags object containing the most recent AdlerSourceFlags data
-        for this ssObjectId.
-
-        Parameters
-        -----------
-        filepath : path-like object
-            Filepath with the location of the output SQL database.
-        """
-
-        self.PreviousAdlerSourceFlags = AdlerSourceFlags(self.ssObjectId, self.filter_list)
-        self.PreviousAdlerSourceFlags.populate_from_database(filepath)
-
-        return self.PreviousAdlerSourceFlags

@@ -9,6 +9,8 @@ from astropy.time import Time
 # TODO figure out how to re-structure/what functions to add to include more of a metadata angle for adler data that will be written out
 # We can keep many of the current functions but then the plan would be to perhaps create a AdlerData.populate_metadata/.write_metadata_to_database
 
+# Perhaps model_list becomes a list of the modelIds
+
 FILTER_DEPENDENT_KEYS = [
     "phaseAngle_min",
     "phaseAngle_range",
@@ -68,7 +70,9 @@ class AdlerData:
 
     ssObjectId: str
     filter_list: list
-    modelId: str = ""
+    modelId: str = (
+        ""  # TODO need a decision on whether this should be a list or what, how will this interact, are we still going to have lists of modelDepedentAdlers
+    )
 
     filter_dependent_values: list = field(default_factory=list)
 
@@ -80,6 +84,21 @@ class AdlerData:
         # note that we don't do the same for model-dependent values as we don't know a priori how many models the user wishes
         # to calculate, but we do know how many filters the AdlerPlanetoid object was generated with
         self.filter_dependent_values = [FilterDependentAdler(filter_name) for filter_name in self.filter_list]
+
+    def populate_filter_dependent_parameters(self, filter_name, **kwargs):
+        """#TODO docstring"""
+
+        # make sure the supplied filter is in the filter list
+        try:
+            filter_index = self.filter_list.index(filter_name)
+        except ValueError:
+            logger.error("ValueError: Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
+            raise ValueError("Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
+
+        # update the value if it's in **kwargs
+        for filter_key in FILTER_DEPENDENT_KEYS:
+            if kwargs.get(filter_key):
+                setattr(self.filter_dependent_values[filter_index], filter_key, kwargs.get(filter_key))
 
     def populate_phase_parameters(self, filter_name, **kwargs):
         """Convenience method to correctly populate phase curve parameters for a given filter and (if desired) model.
@@ -106,15 +125,13 @@ class AdlerData:
             logger.error("ValueError: Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
             raise ValueError("Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
 
+        # populate the filter dependent parameters
+        self.populate_filter_dependent_parameters(filter_name, **kwargs)
+
         # if model-dependent parameters exist without a model name, return an error
         if not kwargs.get("model_name") and any(name in kwargs for name in PHASE_MODEL_DEPENDENT_KEYS):
             logger.error("NameError: No model name given. Cannot update model-specific phase parameters.")
             raise NameError("No model name given. Cannot update model-specific phase parameters.")
-
-        # update the value if it's in **kwargs
-        for filter_key in FILTER_DEPENDENT_KEYS:
-            if kwargs.get(filter_key):
-                setattr(self.filter_dependent_values[filter_index], filter_key, kwargs.get(filter_key))
 
         # if no model_name is supplied, just end here
         # else, if the model does not exist for this filter, create it
@@ -148,17 +165,15 @@ class AdlerData:
             logger.error("ValueError: Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
             raise ValueError("Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
 
+        # populate the filter dependent parameters
+        self.populate_filter_dependent_parameters(filter_name, **kwargs)
+
         # if model-dependent parameters exist without a model name, return an error
         if not kwargs.get("model_name") and any(name in kwargs for name in AVG_MAG_MODEL_DEPENDENT_KEYS):
             logger.error(
                 "NameError: No model name given. Cannot update model-specific average magnitude parameters."
             )
             raise NameError("No model name given. Cannot update model-specific average magnitude parameters.")
-
-        # update the value if it's in **kwargs
-        for filter_key in FILTER_DEPENDENT_KEYS:
-            if kwargs.get(filter_key):
-                setattr(self.filter_dependent_values[filter_index], filter_key, kwargs.get(filter_key))
 
         # if no model_name is supplied, just end here
         # else, if the model does not exist for this filter, create it
@@ -182,6 +197,32 @@ class AdlerData:
                     kwargs.get(model_key),
                 )
 
+    # TODO develop this function further
+    def populate_source_flags(self, filter_name, modelId, df, **kwargs):
+        """#TODO docstring"""
+
+        if modelId != self.modelId:
+            logger.error(
+                f"ValueError: modelId {modelId} does not match the modelId in AdlerData.modelId: {self.modelId}"
+            )
+            raise ValueError(
+                f"modelId {modelId} does not match the modelId in AdlerData.modelId: {self.modelId}"
+            )
+
+        # make sure the supplied filter is in the filter list
+        try:
+            filter_index = self.filter_list.index(filter_name)
+        except ValueError:
+            logger.error("ValueError: Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
+            raise ValueError("Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
+
+        # populate the filter dependent parameters
+        self.populate_filter_dependent_parameters(filter_name, **kwargs)
+
+        self.filter_dependent_values[filter_index].source_flags.append(
+            AdlerSourceFlags.construct_from_data_table(self.ssObjectId, filter_name, modelId, df)
+        )
+
     # TODO figure out how to edit this with the new modelId
     def populate_from_database(self, filepath):
         """Populates the AdlerData object with information from the most recent timestamped entry for the ssObjectId in a given database.
@@ -195,6 +236,7 @@ class AdlerData:
         con = self._get_database_connection(filepath)
         cursor = con.cursor()
         # TODO potentially populate on self.modelId? might have to be a try/except or option of whether it's by ssObjectId or modelId
+        # modelId would need to be supplied
         sql_query = f"""SELECT * from AdlerData where ssObjectId='{self.ssObjectId}' ORDER BY timestamp DESC LIMIT 1"""
         query_result = cursor.execute(sql_query)
 
@@ -236,9 +278,7 @@ class AdlerData:
             model_column_list = list(filter(r.match, column_list))
             models_in_filter = [model[2:-12] for model in model_column_list]
 
-            # TODO this works but populating the filter_dependent_info is no longer tied to the phase parameters so perhaps this needs its own function
-            # TODO I expect more changes throughout this function with the new modelId
-            self.populate_phase_parameters(filter_name, **filter_dependent_info)
+            self.populate_filter_dependent_parameters(filter_name, **filter_dependent_info)
 
             for model_name in models_in_filter:
                 if model_name in VALID_PHASE_MODELS:
@@ -276,6 +316,7 @@ class AdlerData:
                         f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
                     )
 
+    # TODO edits here to print all new info
     def print_data(self):
         """Convenience method to clearly print the stored values."""
 
@@ -738,6 +779,7 @@ class FilterDependentAdler:
     sustained_outlier: float = np.nan
     model_list: list = field(default_factory=list)
     model_dependent_values: list = field(default_factory=list)
+    source_flags: list = field(default_factory=list)
 
 
 @dataclass
@@ -843,17 +885,49 @@ class AdlerSourceFlags:
     ssObjectId : str
         ssObjectId of the object of interest.
 
-    filter_list : list of str
-        List of filters under investigation.
+    filter_name : str
+        Filter the observation was taken in.
+
+    modelId : str, optional
+        modelId for the model that the outliers are compared to. Default: Empty str
+
+    n_outliers : int
+        Number of observations identified as outliers
+
+    diaSourceId : array_like of ints or strs
+        Unique identifier of the observation.
+
+    mag_diff : array_like of floats
+        Differences in (reduced) magnitude between the observations and the model. Default: np.nan
+
+    std_diff : array_like of floats
+        Differences in sigma-space between the observations and the model. Default: np.nan
 
     """
 
     ssObjectId: str
-    filter_list: list
+    filter_name: str
+    modelId: str
+    n_outliers: int  # TODO possibly a cleaner interaction between this and the value in AdlerData/FilterDependentAdler
+    diaSourceId: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    mag_diff: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    # std_diff: np.ndarray = field(default_factory=lambda: np.zeros(0))
 
-    # TODO edit function to swap adler data and adler flags, include the dynamic column building (or perhaps those are added later, see the AdlerData equiv above)
+    # TODO probably make this more like the one in Observations.py for consistency
+    @classmethod
+    def construct_from_data_table(cls, ssObjectId, filter_name, modelId, df):
+        """#TODO docstring"""
+        obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "modelId": modelId}
+        obs_dict.update({"n_outliers": len(df)})
+        obs_dict.update(df.loc[:, ["diaSourceId", "mag_diff"]].to_dict(orient="list"))
+
+        # TODO check this will still work if there is difference between what is an outlier for mag_diff vs std_diff
+        # i.e. a different number of rows (need to make sure to NULL or 0 fill)
+
+        return cls(**obs_dict)
+
     def _get_database_connection(self, filepath, create_new=False):
-        """Returns the connection to the output SQL database, creating it if it does not exist.
+        """Returns the connection to the output SQL database, creating it and the AdlerSource Flags table if it does not exist.
 
         Parameters
         -----------
@@ -874,17 +948,67 @@ class AdlerSourceFlags:
             filepath
         )  # check this FIRST as the next statement creates the db if it doesn't exist
 
+        # TODO does this need an explicit PRIMARY KEY? Currently the default columns are non-unique
         if not database_exists and create_new:  # we need to make the table and a couple of starter columns
             con = sqlite3.connect(filepath)
             cur = con.cursor()
-            cur.execute("CREATE TABLE AdlerData(ssObjectId PRIMARY KEY, timestamp REAL)")
+            cur.execute(
+                "CREATE TABLE AdlerSourceFlags(ssObjectId, filter_name, modelId, diaSourceId, mag_diff, std_diff)"
+            )
         elif not database_exists and not create_new:
             logger.error("ValueError: Database cannot be found at given filepath.")
             raise ValueError("Database cannot be found at given filepath.")
         else:
             con = sqlite3.connect(filepath)
             cur = con.cursor()
-            # Create the table if it doesn't exist (in case database was created through AdlerSourceFlags)
-            cur.execute("CREATE TABLE IF NOT EXISTS AdlerData(ssObjectId PRIMARY KEY, timestamp REAL)")
+            # Create the table if it doesn't exist (in case database was created through AdlerData)
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS AdlerSourceFlags(ssObjectId, filter_name, modelId, diaSourceId, mag_diff, std_diff)"
+            )
 
         return con
+
+    def write_flags_to_database(self, filepath, table_name="AdlerSourceFlags"):
+        """#TODO docstring"""
+
+        con = self._get_database_connection(filepath, create_new=True)
+
+        # Don't need to write out n_outliers in this table
+        # TODO implement std_diff
+        required_columns = [
+            "ssObjectId",
+            "filter_name",
+            "modelId",
+            "diaSourceId",
+            "mag_diff",
+        ]  # , "std_diff"]
+
+        column_names = ",".join(required_columns)
+        column_spaces = ",".join(["?"] * len(required_columns))
+        sql_command = f"""
+                        INSERT INTO {table_name} ({column_names})
+                        VALUES ({column_spaces});
+                        """
+
+        # TODO implement check for data in mag_diff, std_diff data
+
+        row_data = list(
+            zip(
+                [self.ssObjectId] * self.n_outliers,
+                [self.filter_name] * self.n_outliers,
+                [self.modelId] * self.n_outliers,
+                self.diaSourceId,
+                self.mag_diff,
+                # self.std_diff,
+            )
+        )
+
+        cur = con.cursor()
+        cur.executemany(sql_command, row_data)
+        con.commit()
+        con.close()
+
+        # TODO sqlite ON CONFLICT on modelId and diaSourceId combined?
+        #  (modelId can appear multiple times with different diaSourceIds)
+        # (diaSourceId can appear multilpe times for different modelIds)
+        # but we shouldn't have two rows with the same modelId and diaSourceId
