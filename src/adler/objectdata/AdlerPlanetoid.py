@@ -3,14 +3,42 @@ import pandas as pd
 import numpy as np
 import logging
 import json
+import astropy.units as u
+from astropy.table import Table
 
 from adler.objectdata.Observations import Observations
 from adler.objectdata.MPCORB import MPCORB
 from adler.objectdata.SSObject import SSObject
 from adler.objectdata.AdlerData import AdlerData
-from adler.objectdata.objectdata_utilities import get_data_table
+from adler.objectdata.objectdata_utilities import get_data_table, flux_to_magnitude
 
 logger = logging.getLogger(__name__)
+
+# Convenient dict for setting which columns to include in SQL query given schema and desired flux flag
+# TODO better handling of None case (this is probably bad Python)
+SCHEMA_CONFIG_DICT = {
+    None: {None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec")},
+    "dp03_catalogs_10yr": {
+        None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec")
+    },
+    "dp1": {
+        "apFlux": dict(
+            fluxmag_column="apFlux", fluxmag_err_column="apFluxErr", ra_column="ra", dec_column="dec"
+        ),
+        "trailFlux": dict(
+            fluxmag_column="trailFlux",
+            fluxmag_err_column="psfFluxErr",
+            ra_column="trailRa",
+            dec_column="trailDec",
+        ),
+        "psfFlux": dict(
+            fluxmag_column="psfFlux",
+            fluxmag_err_column="psfFluxErr",
+            ra_column="ra",
+            dec_column="dec",
+        ),
+    },
+}
 
 
 class AdlerPlanetoid:
@@ -68,6 +96,7 @@ class AdlerPlanetoid:
         filter_list=["u", "g", "r", "i", "z", "y"],
         date_range=[60000.0, 67300.0],
         schema=None,
+        flux_flag=None,
     ):
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects from
         a local SQL database. Mostly used for testing.
@@ -89,6 +118,9 @@ class AdlerPlanetoid:
         schema : str or None
             Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
 
+        flux_flag : str or None
+            Name of the flux column to select from DP1 DiaSource table. Determines FluxErr and ra/dec columns to select also. Default is None (selects mag/magErr/ra/dec for DP0.3)
+
         """
 
         if len(date_range) != 2:
@@ -96,7 +128,13 @@ class AdlerPlanetoid:
             raise ValueError("date_range attribute must be of length 2.")
 
         observations_by_filter = cls.populate_observations(
-            cls, ssObjectId, filter_list, date_range, sql_filename=sql_filename, schema=schema
+            cls,
+            ssObjectId,
+            filter_list,
+            date_range,
+            sql_filename=sql_filename,
+            schema=schema,
+            flux_flag=flux_flag,
         )
 
         if len(observations_by_filter) == 0:
@@ -224,7 +262,12 @@ class AdlerPlanetoid:
 
     @classmethod
     def construct_from_RSP(
-        cls, ssObjectId, filter_list=["u", "g", "r", "i", "z", "y"], date_range=[60000.0, 67300.0]
+        cls,
+        ssObjectId,
+        filter_list=["u", "g", "r", "i", "z", "y"],
+        date_range=[60000.0, 67300.0],
+        schema="dp03_catalogs_10yr",
+        flux_flag=None,
     ):  # pragma: no cover
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects
         from the RSP.
@@ -240,15 +283,29 @@ class AdlerPlanetoid:
         date_range : list of float
             The minimum and maximum dates of the desired observations.
 
+        schema : str or None
+            Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
+
+        flux_flag : str or None
+            Name of the flux column to select from DP1 DiaSource table. Determines FluxErr and ra/dec columns to select also. Default is None (selects mag/magErr/ra/dec for DP0.3)
+
         """
 
         if len(date_range) != 2:
             raise ValueError("date_range argument must be of length 2.")
 
-        service = get_tap_service("ssotap")
+        # Select correct TAP service depending on schema chosen
+        if schema == "dp03_catalogs_10yr":
+            service = get_tap_service("ssotap")
+        elif schema == "dp1":
+            service = get_tap_service("tap")
+        else:
+            logger.error(f"Schema {schema} not recognised.")
+            raise Exception(f"Schema {schema} not recognised.")
         logger.info("Getting past observations from DIASource/SSSource...")
+
         observations_by_filter = cls.populate_observations(
-            cls, ssObjectId, filter_list, date_range, service=service
+            cls, ssObjectId, filter_list, date_range, service=service, schema=schema, flux_flag=flux_flag
         )
 
         if len(observations_by_filter) == 0:
@@ -267,9 +324,9 @@ class AdlerPlanetoid:
             logger.info("New filter list is: {}".format(filter_list))
 
         logger.info("Populating MPCORB metadata...")
-        mpcorb = cls.populate_MPCORB(cls, ssObjectId, service=service)
+        mpcorb = cls.populate_MPCORB(cls, ssObjectId, service=service, schema=schema)
         logger.info("Populating SSObject metadata...")
-        ssobject = cls.populate_SSObject(cls, ssObjectId, filter_list, service=service)
+        ssobject = cls.populate_SSObject(cls, ssObjectId, filter_list, service=service, schema=schema)
 
         adler_data = AdlerData(ssObjectId, filter_list)
 
@@ -291,6 +348,7 @@ class AdlerPlanetoid:
         service=None,
         sql_filename=None,
         schema="dp03_catalogs_10yr",
+        flux_flag=None,
     ):
         """Populates the observations_by_filter class attribute. Can populate from either the RSP for a SQL database:
         this behaviour is controlled by the service and sql_filename parameters, one of which must be supplied.
@@ -315,30 +373,53 @@ class AdlerPlanetoid:
         schema : str or None
             Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
 
+        flux_flag : str or None
+            Name of the flux column to select from DP1 DiaSource table. Determines FluxErr and ra/dec columns to select also. Default is None (selects mag/magErr/ra/dec for DP0.3)
         """
 
-        if schema:  # pragma: no cover
-            schema = schema + "."
-        else:
-            schema = ""
+        if sql_filename:
+            sql_schema = ""
+        else:  # pragma: no cover
+            sql_schema = schema + "."
+
+        # if schema:  # pragma: no cover
+        #     sql_schema = schema + "."
+        # else:
+        #     sql_schema = ""
+
+        try:
+            selected_config = SCHEMA_CONFIG_DICT[schema][flux_flag]
+        except KeyError:
+            if schema not in SCHEMA_CONFIG_DICT:
+                logger.error(f"Schema {schema} not recognised.")
+                raise Exception(f"Schema {schema} not recognised.")
+            else:
+                logger.error(f"Flux column {flux_flag} not recognised for schema {schema}.")
+                raise Exception(f"Flux column {flux_flag} not recognised for schema {schema}.")
+
+        fluxmag_column = selected_config["fluxmag_column"]
+        fluxmag_err_column = selected_config["fluxmag_err_column"]
+        ra_column = selected_config["ra_column"]
+        dec_column = selected_config["dec_column"]
 
         observations_by_filter = []
 
         for filter_name in filter_list:
             observations_sql_query = f"""
                 SELECT
-                    ssObject.ssObjectId, ssSource.diaSourceId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
+                    SSObject.ssObjectId, SSSource.diaSourceId, {fluxmag_column}, {fluxmag_err_column}, band, midPointMjdTai, {ra_column} AS ra, {dec_column} AS dec, phaseAngle,
                     topocentricDist, heliocentricDist, heliocentricX, heliocentricY, heliocentricZ,
                     topocentricX, topocentricY, topocentricZ,
                     eclipticLambda, eclipticBeta
                 FROM
-                    {schema}ssObject
-                    JOIN {schema}diaSource ON {schema}ssObject.ssObjectId   = {schema}diaSource.ssObjectId
-                    JOIN {schema}ssSource  ON {schema}diaSource.diaSourceId = {schema}ssSource.diaSourceId
+                    {sql_schema}SSObject
+                    JOIN {sql_schema}DiaSource ON {sql_schema}SSObject.ssObjectId   = {sql_schema}DiaSource.ssObjectId
+                    JOIN {sql_schema}SSSource  ON {sql_schema}DiaSource.diaSourceId = {sql_schema}SSSource.diaSourceId
                 WHERE
-                    ssObject.ssObjectId = {ssObjectId} AND band = '{filter_name}' AND midPointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
+                    SSObject.ssObjectId = {ssObjectId} AND band = '{filter_name}' AND midPointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
                 """
 
+            # This function submits the query and gets the results (or pulls from the SQL database)
             data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
 
             if len(data_table) == 0:
@@ -348,9 +429,44 @@ class AdlerPlanetoid:
                     )
                 )
             else:
-                observations_by_filter.append(
-                    Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
-                )
+                if schema in [None, "dp03_catalogs_10yr"]:  # TODO probably better way to do this
+                    observations_by_filter.append(
+                        Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
+                    )
+                elif schema == "dp1":
+                    # Convert to astropy table so we can operate on it and add mag,magErr columns
+                    # TODO temporary fix, get_data_table returns two possible objects (DALResultsTable or Pandas dataframe) that need different handling to convert to astropy tables
+                    if isinstance(data_table, pd.DataFrame):
+                        data_table_astropy = Table.from_pandas(data_table)
+                        data_table_astropy[fluxmag_column] = data_table_astropy[fluxmag_column] * u.nJy
+                        data_table_astropy[fluxmag_err_column] = (
+                            data_table_astropy[fluxmag_err_column] * u.nJy
+                        )
+                    else:
+                        data_table_astropy = data_table.to_table()
+
+                    # Compute magnitudes
+                    mag, mag_err = flux_to_magnitude(
+                        data_table_astropy[fluxmag_column], data_table_astropy[fluxmag_err_column]
+                    )
+
+                    # Insert the new columns at the same positions
+                    data_table_astropy.add_column(
+                        mag, name="mag", index=data_table_astropy.colnames.index(fluxmag_column)
+                    )
+                    data_table_astropy.add_column(
+                        mag_err, name="magErr", index=data_table_astropy.colnames.index(fluxmag_err_column)
+                    )
+
+                    # Remove the old flux columns
+                    data_table_astropy.remove_columns([fluxmag_column, fluxmag_err_column])
+
+                    observations_by_filter.append(
+                        Observations.construct_from_data_table(ssObjectId, filter_name, data_table_astropy)
+                    )
+                else:
+                    logger.error(f"Schema {schema} not recognised.")
+                    raise Exception(f"Schema {schema} not recognised.")
 
         return observations_by_filter
 
@@ -374,20 +490,40 @@ class AdlerPlanetoid:
 
         """
 
-        if schema:  # pragma: no cover
-            schema = schema + "."
-        else:
-            schema = ""
+        if sql_filename:
+            sql_schema = ""
+        else:  # pragma: no cover
+            sql_schema = schema + "."
 
-        MPCORB_sql_query = f"""
-            SELECT
-                ssObjectId, mpcDesignation, fullDesignation, mpcNumber, mpcH, mpcG, epoch, tperi, peri, node, incl, e, n, q, 
-                uncertaintyParameter, flags
-            FROM
-                {schema}MPCORB
-            WHERE
-                ssObjectId = {ssObjectId}
-        """
+        # if schema:  # pragma: no cover
+        #     sql_schema = schema + "."
+        # else:
+        #     sql_schema = ""
+
+        if schema in [None, "dp03_catalogs_10yr"]:
+            # Query for DP0.3. Compatible with subsequent adler code
+            MPCORB_sql_query = f"""
+                SELECT
+                    ssObjectId, mpcDesignation, fullDesignation, mpcNumber, mpcH, mpcG, epoch, tperi, peri, node, incl, e, n, q, uncertaintyParameter, flags
+                FROM
+                    {sql_schema}MPCORB
+                WHERE
+                    ssObjectId = {ssObjectId}
+            """
+        elif schema == "dp1":
+            # Query for DP1. Selecting the columns that still exist in the DP1 table
+            # We select t_p (MJD of pericentric passage) as tperi for consistency with DP0.3
+            MPCORB_sql_query = f"""
+                SELECT
+                    ssObjectId, mpcDesignation, mpcH, epoch, t_p AS tperi, peri, node, incl, e, q
+                FROM
+                    {sql_schema}MPCORB
+                WHERE
+                    ssObjectId = {ssObjectId}
+            """
+        else:
+            logger.error(f"Schema {schema} not recognised.")
+            raise Exception(f"Schema {schema} not recognised.")
 
         data_table = get_data_table(MPCORB_sql_query, service=service, sql_filename=sql_filename)
 
@@ -395,7 +531,53 @@ class AdlerPlanetoid:
             logger.error("No MPCORB data for this object could be found for this SSObjectId.")
             raise Exception("No MPCORB data for this object could be found for this SSObjectId.")
 
-        return MPCORB.construct_from_data_table(ssObjectId, data_table)
+        if schema in [None, "dp03_catalogs_10yr"]:
+            return MPCORB.construct_from_data_table(ssObjectId, data_table)
+        elif schema == "dp1":
+            # TODO get_data_table (above) NaN fills if we, e.g., SELECT NULL AS mpcNumber, which may be fine and remove the need for this
+            # Convert to astropy Table and add in NaNs/0/empty strings for the columns that do not appear in DP1
+            if isinstance(data_table, pd.DataFrame):
+                data_table_astropy = Table.from_pandas(data_table)
+            else:
+                data_table_astropy = data_table.to_table()
+
+            data_table_astropy.add_columns(
+                cols=[
+                    np.full(len(data_table_astropy), ""),  # fullDesignation (str)
+                    np.full(len(data_table_astropy), 0),  # mpcNumber (int)
+                    np.full(len(data_table_astropy), np.nan),  # mpcG (float)
+                    np.full(len(data_table_astropy), np.nan),  # n (float)
+                    np.full(len(data_table_astropy), ""),  # uncertaintyParameter (str)
+                    np.full(len(data_table_astropy), ""),  # flags (str)
+                ],
+                names=["fullDesignation", "mpcNumber", "mpcG", "n", "uncertaintyParameter", "flags"],
+            )
+
+            # Reorder columns to match DP0.3 expected order
+            data_table_astropy = data_table_astropy[
+                [
+                    "ssObjectId",
+                    "mpcDesignation",
+                    "fullDesignation",
+                    "mpcNumber",
+                    "mpcH",
+                    "mpcG",
+                    "epoch",
+                    "tperi",
+                    "peri",
+                    "node",
+                    "incl",
+                    "e",
+                    "n",
+                    "q",
+                    "uncertaintyParameter",
+                    "flags",
+                ]
+            ]
+            return MPCORB.construct_from_data_table(ssObjectId, data_table_astropy)
+        else:
+            logger.error(f"Schema {schema} not recognised.")
+            raise Exception(f"Schema {schema} not recognised.")
 
     def populate_SSObject(
         self, ssObjectId, filter_list, service=None, sql_filename=None, schema="dp03_catalogs_10yr"
@@ -422,10 +604,15 @@ class AdlerPlanetoid:
 
         """
 
-        if schema:  # pragma: no cover
-            schema = schema + "."
-        else:
-            schema = ""
+        if sql_filename:
+            sql_schema = ""
+        else:  # pragma: no cover
+            sql_schema = schema + "."
+
+        # if schema:  # pragma: no cover
+        #     sql_schema = schema + "."
+        # else:
+        #     sql_schema = ""
 
         filter_dependent_columns = ""
 
@@ -436,16 +623,31 @@ class AdlerPlanetoid:
 
             filter_dependent_columns += filter_string
 
-        SSObject_sql_query = f"""
-            SELECT
-                discoverySubmissionDate, firstObservationDate, arc, numObs, 
-                {filter_dependent_columns}
-                maxExtendedness, minExtendedness, medianExtendedness
-            FROM
-                {schema}SSObject
-            WHERE
-                ssObjectId = {ssObjectId}
-        """
+        if schema in [None, "dp03_catalogs_10yr"]:
+            # Query for DP0.3. Compatible with subsequent adler code
+            SSObject_sql_query = f"""
+                SELECT
+                    discoverySubmissionDate, firstObservationDate, arc, numObs, 
+                    {filter_dependent_columns}
+                    maxExtendedness, minExtendedness, medianExtendedness
+                FROM
+                    {sql_schema}SSObject
+                WHERE
+                    ssObjectId = {ssObjectId}
+            """
+        elif schema == "dp1":
+            # Query for DP1. Selecting the columns that still exist in the DP1 table
+            SSObject_sql_query = f"""
+                SELECT
+                    discoverySubmissionDate, numObs
+                FROM
+                    {sql_schema}SSObject
+                WHERE
+                    ssObjectId = {ssObjectId}
+            """
+        else:
+            logger.error(f"Schema {schema} not recognised.")
+            raise Exception(f"Schema {schema} not recognised.")
 
         data_table = get_data_table(SSObject_sql_query, service=service, sql_filename=sql_filename)
 
@@ -453,7 +655,70 @@ class AdlerPlanetoid:
             logger.error("No SSObject data for this object could be found for this SSObjectId.")
             raise Exception("No SSObject data for this object could be found for this SSObjectId.")
 
-        return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table)
+        if schema in [None, "dp03_catalogs_10yr"]:
+            return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table)
+        elif schema == "dp1":
+            # Convert to Table
+            if isinstance(data_table, pd.DataFrame):
+                data_table_astropy = Table.from_pandas(data_table)
+            else:
+                data_table_astropy = data_table.to_table()
+
+            # Add non-filter-dependent columns and populate with NaNs
+            data_table_astropy.add_columns(
+                cols=[
+                    np.full(len(data_table_astropy), np.nan),  # firstObservationDate
+                    np.full(len(data_table_astropy), np.nan),  # arc
+                    np.full(len(data_table_astropy), np.nan),  # maxExtendedness
+                    np.full(len(data_table_astropy), np.nan),  # minExtendedness
+                    np.full(len(data_table_astropy), np.nan),  # medianExtendedness
+                ],
+                names=[
+                    "firstObservationDate",
+                    "arc",
+                    "maxExtendedness",
+                    "minExtendedness",
+                    "medianExtendedness",
+                ],
+            )
+
+            # Add all filter-dependent columns and populate with NaNs
+            for filter_name in filter_list:
+                data_table_astropy.add_columns(
+                    cols=[
+                        np.full(len(data_table_astropy), np.nan),  # f"{filter_name}_H"
+                        np.full(len(data_table_astropy), np.nan),  # f"{filter_name}_G12"
+                        np.full(len(data_table_astropy), np.nan),  # f"{filter_name}_HErr"
+                        np.full(len(data_table_astropy), np.nan),  # f"{filter_name}_G12Err"
+                        np.full(len(data_table_astropy), 0),  # Ndata
+                    ],
+                    names=[
+                        f"{filter_name}_H",
+                        f"{filter_name}_G12",
+                        f"{filter_name}_HErr",
+                        f"{filter_name}_G12Err",
+                        f"{filter_name}_Ndata",
+                    ],
+                )
+
+            # Reorder columns to match DP0.3 expected order
+            dp03_cols_order = ["discoverySubmissionDate", "firstObservationDate", "arc", "numObs"]
+            for filter_name in filter_list:
+                dp03_cols_order += [
+                    f"{filter_name}_H",
+                    f"{filter_name}_G12",
+                    f"{filter_name}_HErr",
+                    f"{filter_name}_G12Err",
+                    f"{filter_name}_Ndata",
+                ]
+            dp03_cols_order += ["maxExtendedness", "minExtendedness", "medianExtendedness"]
+
+            data_table_astropy = data_table_astropy[dp03_cols_order]
+
+            return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table_astropy)
+        else:
+            logger.error(f"Schema {schema} not recognised.")
+            raise Exception(f"Schema {schema} not recognised.")
 
     @classmethod
     def construct_from_mpc_obs_sbn(
@@ -540,10 +805,20 @@ class AdlerPlanetoid:
 
         """
 
+        logger.warning(
+            f"Constructing from the MPC obs_sbn table populates the following LSST schema columns as their best case obs_sbn analogs (LSST column name = obs_sbn column name):"
+        )
+        logger.warning(f"SSObjectId = provid; diaSourceId = obsid; magErr = rmsmag")
+        logger.warning(f"mjd_utc is converted to mjd_tai and presented as midPointMjdTai")
+        logger.warning(
+            f"phaseAngle, topocentricDist and heliocentricDist are not currently corrected for light travel time effects"
+        )
+        logger.warning(
+            f"heliocentricX, heliocentricY, heliocentricZ, topocentricX, topocentricY, topocentricZ, eclipticLambda, eclipticBeta are unpopulated and selected as NULLs."
+        )
+
         observations_by_filter = []
 
-        # TODO potential issue using provisional designation as SSObjectId (also obsid as diaSourceId) #Issue 216
-        # TODO probably add some warnings as this is a temporary fix to the evolving situation anyway
         for filter_name in filter_list:
             observations_sql_query = f"""
                 SELECT
@@ -592,9 +867,13 @@ class AdlerPlanetoid:
 
         """
 
-        # TODO Possible issue: Currently selecting fullDesignation AS ssObjectId for consistency with populate_observations_from_mpc_obs_sbn
-        # We select t_p (MJD of pericentric passage) AS tperi for consistency with DP0.3
-        # mean_motion in mpc-orbits is n (mean daily motion) in DP0.3. Not include in this file at all so selecting NULL
+        logger.warning(
+            f"Constructing from the MPC obs_sbn table populates the following LSST schema columns as their best case obs_sbn analogs (LSST column name = obs_sbn column name):"
+        )
+        logger.warning(f"ssObjectId = fullDesignation; fullDesignation = fullDesignation; tperi = t_p")
+        logger.warning(
+            f"mpcDesignation, mpcNumber, mpcG, n, uncertaintyParameter, flags are unpopulated and selected as NULL/0."
+        )
         mpc_orbits_sql_query = f"""
             SELECT
                 fullDesignation AS ssObjectId, NULL AS mpcDesignation, fullDesignation AS fullDesignation, 0 AS mpcNumber,
@@ -640,7 +919,10 @@ class AdlerPlanetoid:
 
             filter_dependent_columns += filter_string
 
-        # TODO can likely fill some of these values but leaving as NULLs for now
+        logger.warning(
+            f"Constructing from the MPC obs_sbn table populates the following LSST schema columns as their best case obs_sbn analogs (LSST column name = obs_sbn column name):"
+        )
+        logger.warning(f"All columns other than numObs/'band'_Ndata are selected as NULL/0.")
         SSObject_sql_query = f"""
             SELECT
                 NULL AS discoverySubmissionDate, NULL AS firstObservationDate, NULL AS arc, count(*) AS numObs, 
