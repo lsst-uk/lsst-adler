@@ -3,6 +3,8 @@ import pandas as pd
 import sqlite3
 import warnings
 import logging
+from astropy.time import Time
+import erfa
 import astropy.units as u
 
 logger = logging.getLogger(__name__)
@@ -190,6 +192,179 @@ def check_value_populated(data_val, data_type, column_name, table_name):
         data_val = np.nan
 
     return data_val
+
+
+def convertTime(timestamps, input_fmt="mjd", input_scale="utc", output_fmt="mjd", output_scale="tai"):
+    """
+    Convenience function for converting timestamps between formats and scales.
+
+    Parameters
+    -----------
+    timestamps : float, int or nd.array
+        Timestamp(s) to be converted.
+
+    input_fmt: str
+        Input format of timestamps. See https://docs.astropy.org/en/latest/api/astropy.time.Time.html for allowable formats. Default 'mjd'.
+
+    input_scale: str
+        Input scale of timestamps. See https://docs.astropy.org/en/latest/api/astropy.time.Time.html for allowable scales. Default 'utc'.
+
+    output_fmt: str
+        Desired format of output values. See https://docs.astropy.org/en/latest/api/astropy.time.Time.html for allowable formats. Default 'mjd'.
+
+    output_scale: str
+        Desired scale of output values. See https://docs.astropy.org/en/latest/api/astropy.time.Time.html for allowable scales. Default 'tai'.
+
+    Returns
+    -----------
+    output_timestamps : astropy.time.Time object
+        The output timestamps in the desired format and scale as an astropy.time.Time object.
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", message=".*dubious year.*", category=erfa.ErfaWarning, module="erfa.core"
+        )  # Converting dates really far in the future throws a warning here that we ignore
+        output_timestamps = getattr(
+            getattr(Time(timestamps, format=input_fmt, scale=input_scale), output_scale), output_fmt
+        )
+        return output_timestamps
+
+
+def sqlite_column_exists(conn, table, column):
+    """
+    Function for checking if column exists in a given table in a given database connection.
+
+    Parameters
+    -----------
+    conn : sqlite3.Connection object
+        The connection to the database that we wish to check for a given column.
+
+    table : str
+        The name of the table we wish to check for the given column in.
+
+    column : str
+        The name of the column we wish to check for.
+
+    Returns
+    -----------
+    result : bool
+        Boolean flag for whether the collect exists or not.
+    """
+    cur = conn.cursor()
+    cur.execute(f"PRAGMA table_info({table})")
+    result = any(row[1] == column for row in cur.fetchall())
+    return result
+
+
+def add_column_if_not_exists(conn, table, column, coltype):
+    """
+    Function for adding a column to a given table in a given database if it does not exist.
+
+    Parameters
+    -----------
+    conn : sqlite3.Connection object
+        The connection to the database that we wish to add the column to in the given table.
+
+    table : str
+        The name of the table we wish add the column to.
+
+    column : str
+        The name of the column we wish to add.
+
+    coltype : str
+        SQlite datatype for the column we wish to add. See https://sqlite.org/datatype3.html
+
+    Returns
+    -----------
+    None
+    """
+    if not sqlite_column_exists(conn, table, column):
+        cur = conn.cursor()
+        cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype};")
+        logger.info(f"{column} added to {table}")
+    else:
+        logger.info(f"{column} already exists in {table}")
+
+
+def mpc_file_preprocessing(sql_filename):  # pragma: no cover
+    """
+    Function for performing pre-processing steps on the obs_sbn table in the MPC file format.
+    The function strips the leading 'L' from the band in the obs_sbn file;
+    adds a mjd_tai column with the observation time in MJD in the TAI scale;
+    and checks the topocentricDist, heliocentricDist and phaseAngle are present (renaming columns if need be).
+
+    Parameters
+    -----------
+    sql_filename : str
+        Filepath to the local SQL database.
+
+    Returns
+    -----------
+    None
+    """
+    conn = sqlite3.connect(sql_filename)
+    cursor = conn.cursor()
+
+    # Strip the leading L that is used for some of the observations in the MPC file to ensure compatibility with adler
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_obs_sbn_band ON obs_sbn(band);")
+    cursor.execute("UPDATE obs_sbn SET band=substr(band, 2) WHERE band LIKE 'L%';")
+    conn.commit()
+
+    logger.warning(f"Leading 'L' stripped from band names")
+
+    # Add MJD TAI column
+    if sqlite_column_exists(conn, "obs_sbn", "mjd_tai"):
+        logger.info(f"mjd_tai column already in file")
+    else:
+        add_column_if_not_exists(conn, "obs_sbn", "mjd_tai", "REAL")
+        cursor.execute(f"SELECT rowid, mjd_utc FROM obs_sbn;")
+        rows = cursor.fetchall()
+        rowids = np.array([r[0] for r in rows])
+        mjd_utc_vals = np.array([r[1] for r in rows], dtype=float)
+        mjd_tai_vals = convertTime(
+            mjd_utc_vals, input_fmt="mjd", input_scale="utc", output_fmt="mjd", output_scale="tai"
+        )
+        data_to_update = list(zip(mjd_tai_vals.tolist(), rowids.tolist()))
+        cursor.executemany(f"UPDATE obs_sbn SET mjd_tai = ? WHERE rowid = ?;", data_to_update)
+        conn.commit()
+
+        logger.info(f"Added mjd_tai column to obs_sbn")
+
+    if (
+        sqlite_column_exists(conn, "obs_sbn", "heliocentricDist")
+        and sqlite_column_exists(conn, "obs_sbn", "topocentricDist")
+        and sqlite_column_exists(conn, "obs_sbn", "phaseAngle")
+    ):
+        logger.info(f"heliocentricDist, topocentricDist and phaseAngle information exist in obs_sbn already.")
+    else:
+        # Check if columns with alternative names exist:
+        # Once we fix the light travel time considerations this won't be technically wrong
+        if sqlite_column_exists(
+            conn, "obs_sbn", "r"
+        ):  # heliocentricDist (without ltt corretion) is called r in some versions of this file
+            cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN r TO heliocentricDist")
+            conn.commit()
+            logger.warning(
+                "Column r renamed to heliocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
+            )
+
+        if sqlite_column_exists(
+            conn, "obs_sbn", "delta"
+        ):  # topocentricDist (without ltt corretion) is called delta in some versions of this file
+            cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN delta TO topocentricDist")
+            conn.commit()
+            logger.warning(
+                "Column delta renamed to topocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
+            )
+
+        if sqlite_column_exists(
+            conn, "obs_sbn", "alpha"
+        ):  # phaseAngle is called alpha in JPL Horizons and may not have been changed in the file
+            cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN alpha TO phaseAngle")
+            conn.commit()
+            logger.warning(
+                "Column alpha renamed to phaseAngle in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
+            )
 
 
 def flux_to_magnitude(flux, flux_err=np.nan):
