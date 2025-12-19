@@ -4,12 +4,8 @@ import logging
 import re
 import numpy as np
 from dataclasses import dataclass, field
+from typing import Optional
 from astropy.time import Time
-
-# TODO figure out how to re-structure/what functions to add to include more of a metadata angle for adler data that will be written out
-# We can keep many of the current functions but then the plan would be to perhaps create a AdlerData.populate_metadata/.write_metadata_to_database
-
-# Perhaps model_list becomes a list of the modelIds
 
 FILTER_DEPENDENT_KEYS = [
     "phaseAngle_min",
@@ -70,10 +66,10 @@ class AdlerData:
 
     ssObjectId: str
     filter_list: list
+
     modelId: str = (
         ""  # TODO need a decision on whether this should be a list or what, how will this interact, are we still going to have lists of modelDepedentAdlers
     )
-
     filter_dependent_values: list = field(default_factory=list)
 
     def __post_init__(self):
@@ -101,6 +97,7 @@ class AdlerData:
                 setattr(self.filter_dependent_values[filter_index], filter_key, kwargs.get(filter_key))
 
     def populate_phase_parameters(self, filter_name, **kwargs):
+        # TODO fix docstring
         """Convenience method to correctly populate phase curve parameters for a given filter and (if desired) model.
         Only the supplied arguments to the method will be updated, allowing for only some values to be populated if desired.
 
@@ -135,22 +132,20 @@ class AdlerData:
 
         # if no model_name is supplied, just end here
         # else, if the model does not exist for this filter, create it
+        # TODO need error handling or clear message of overwriting as this stands
         if not kwargs.get("model_name"):
             return
-        elif kwargs.get("model_name") not in self.filter_dependent_values[filter_index].model_list:
-            self.filter_dependent_values[filter_index].model_list.append(kwargs.get("model_name"))
-            self.filter_dependent_values[filter_index].model_dependent_values.append(
-                PhaseModelDependentAdler(filter_name, kwargs.get("model_name"))
+        elif kwargs.get("model_name") != self.filter_dependent_values[filter_index].model_name:
+            self.filter_dependent_values[filter_index].model_name = kwargs.get("model_name")
+            self.filter_dependent_values[filter_index].model_dependent_values = PhaseModelDependentAdler(
+                filter_name, kwargs.get("model_name")
             )
-
-        # then get the model index
-        model_index = self.filter_dependent_values[filter_index].model_list.index(kwargs.get("model_name"))
 
         # update the value if it's in **kwargs
         for model_key in PHASE_MODEL_DEPENDENT_KEYS:
             if model_key in kwargs:
                 setattr(
-                    self.filter_dependent_values[filter_index].model_dependent_values[model_index],
+                    self.filter_dependent_values[filter_index].model_dependent_values,
                     model_key,
                     kwargs.get(model_key),
                 )
@@ -179,20 +174,17 @@ class AdlerData:
         # else, if the model does not exist for this filter, create it
         if not kwargs.get("model_name"):
             return
-        elif kwargs.get("model_name") not in self.filter_dependent_values[filter_index].model_list:
-            self.filter_dependent_values[filter_index].model_list.append(kwargs.get("model_name"))
-            self.filter_dependent_values[filter_index].model_dependent_values.append(
-                AvgMagModelDependentAdler(filter_name, kwargs.get("model_name"))
+        elif kwargs.get("model_name") != self.filter_dependent_values[filter_index].model_name:
+            self.filter_dependent_values[filter_index].model_name = kwargs.get("model_name")
+            self.filter_dependent_values[filter_index].model_dependent_values = AvgMagModelDependentAdler(
+                filter_name, kwargs.get("model_name")
             )
-
-        # then get the model index
-        model_index = self.filter_dependent_values[filter_index].model_list.index(kwargs.get("model_name"))
 
         # update the value if it's in **kwargs
         for model_key in AVG_MAG_MODEL_DEPENDENT_KEYS:
             if model_key in kwargs:
                 setattr(
-                    self.filter_dependent_values[filter_index].model_dependent_values[model_index],
+                    self.filter_dependent_values[filter_index].model_dependent_values,
                     model_key,
                     kwargs.get(model_key),
                 )
@@ -217,13 +209,16 @@ class AdlerData:
             raise ValueError("Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
 
         # populate the filter dependent parameters
+        kwargs.update(
+            {"n_outliers": len(df)}
+        )  # Add n_outliers to kwargs so it populates FilterDependentAdler
         self.populate_filter_dependent_parameters(filter_name, **kwargs)
 
-        self.filter_dependent_values[filter_index].source_flags.append(
-            AdlerSourceFlags.construct_from_data_table(self.ssObjectId, filter_name, modelId, df)
+        self.filter_dependent_values[filter_index].source_flags = AdlerSourceFlags.construct_from_data_table(
+            self.ssObjectId, filter_name, modelId, df
         )
 
-    # TODO figure out how to edit this with the new modelId
+    # TODO figure out how to edit this with the new modelId and no lists
     def populate_from_database(self, filepath):
         """Populates the AdlerData object with information from the most recent timestamped entry for the ssObjectId in a given database.
 
@@ -280,6 +275,7 @@ class AdlerData:
 
             self.populate_filter_dependent_parameters(filter_name, **filter_dependent_info)
 
+            # TODO remove loop
             for model_name in models_in_filter:
                 if model_name in VALID_PHASE_MODELS:
                     expected_model_columns = [
@@ -378,6 +374,7 @@ class AdlerData:
                     )
             print("\n")
 
+    # TODO edit for modelid and no lists
     def get_phase_parameters_in_filter(self, filter_name, model_name=None):
         """Convenience method to return the phase parameters in a specific filter and model.
 
@@ -460,6 +457,7 @@ class AdlerData:
 
         return output_obj
 
+    # TODO edit for modelid and no lists
     def get_avg_mag_parameters_in_filter(self, filter_name, model_name=None):
         # TODO docstring edits/check
         """Convenience method to return the average magnitude parameters in a specific filter and model.
@@ -622,6 +620,7 @@ class AdlerData:
                 logger.info(
                     f"write_model_data={write_model_data}, calculated model-specific parameters will be written to AdlerData"
                 )
+                # TODO remove loop
                 for m, model_name in enumerate(self.filter_dependent_values[f].model_list):
                     if model_name in VALID_PHASE_MODELS:
                         columns_by_model = [
@@ -732,57 +731,6 @@ class AdlerData:
 
 
 @dataclass
-class FilterDependentAdler:
-    """Dataclass containing filter-dependent values generated by Adler. Note that NaN indicates a value that has not yet been populated.
-
-    Attributes:
-    -----------
-    filter_name : str
-        The filter for which these values are calculated.
-
-    phaseAngle_min : float, optional
-        Minimum phase angle of observations used in fitting model (degrees).
-
-    phaseAngle_range : float, optional
-        Max minus min phase angle range of observations used in fitting model (degrees).
-
-    observationTime_max : float, optional
-        Maximum time of observation used in fitting model (modifided Julian day).
-
-    arc: float, optional
-        Observational arc used to fit model (days).
-
-    nobs : int, optional
-        Number of observations used in fitting model.
-
-    n_outliers : int, optional
-        Number of outliers detected for the given model.
-
-    sustained_outliers : float, optional
-        Magnitude difference between old and new observations
-
-    model_list: list of str, optional
-        List of the models for which phase curve or average magnitude parameters have been calculated. Default: empty list
-
-    model_dependent_values: list of PhaseModelDependentAdler or AvgMagModelDependentAdler objects, optional
-        List of PhaseModelDependentAdler or AvgMagModelDependentAdler objects storing phase-model or average-magnitude-model parameters for each model, given in order of model_list. Default: empty list.
-
-    """
-
-    filter_name: str
-    phaseAngle_min: float = np.nan
-    phaseAngle_range: float = np.nan
-    observationTime_max: float = np.nan
-    arc: float = np.nan
-    nobs: int = 0
-    n_outliers: int = 0
-    sustained_outliers: float = np.nan
-    model_list: list = field(default_factory=list)
-    model_dependent_values: list = field(default_factory=list)
-    source_flags: list = field(default_factory=list)
-
-
-@dataclass
 class PhaseModelDependentAdler:
     """Dataclass containing phase-model-dependent values generated by Adler. Note that NaN indicates a value that has not yet been populated.
 
@@ -868,11 +816,6 @@ class AvgMagParameterOutput:
     """Empty convenience class so that the output of AdlerData.get_avg_mag_parameters_in_filter is an object."""
 
     pass
-
-
-# TODO perhaps add a dataclass that would be AdlerSourceFlags? Could be standalone or within AdlerData (given it's a separate table, perhaps standalone)
-# Does this structure need a filter dependent values equivalent? AdlerSourceFlags stores things per observation which by implication is per filter so perhaps not.
-# But then the outliers detected are (currently) specific to their filter
 
 
 @dataclass
@@ -1012,3 +955,54 @@ class AdlerSourceFlags:
         #  (modelId can appear multiple times with different diaSourceIds)
         # (diaSourceId can appear multilpe times for different modelIds)
         # but we shouldn't have two rows with the same modelId and diaSourceId
+
+
+@dataclass
+class FilterDependentAdler:
+    """Dataclass containing filter-dependent values generated by Adler. Note that NaN indicates a value that has not yet been populated.
+
+    Attributes:
+    -----------
+    filter_name : str
+        The filter for which these values are calculated.
+
+    phaseAngle_min : float, optional
+        Minimum phase angle of observations used in fitting model (degrees).
+
+    phaseAngle_range : float, optional
+        Max minus min phase angle range of observations used in fitting model (degrees).
+
+    observationTime_max : float, optional
+        Maximum time of observation used in fitting model (modifided Julian day).
+
+    arc: float, optional
+        Observational arc used to fit model (days).
+
+    nobs : int, optional
+        Number of observations used in fitting model.
+
+    n_outliers : int, optional
+        Number of outliers detected for the given model.
+
+    sustained_outliers : float, optional
+        Magnitude difference between old and new observations
+
+    model_list: list of str, optional
+        List of the models for which phase curve or average magnitude parameters have been calculated. Default: empty list
+
+    model_dependent_values: list of PhaseModelDependentAdler or AvgMagModelDependentAdler objects, optional
+        List of PhaseModelDependentAdler or AvgMagModelDependentAdler objects storing phase-model or average-magnitude-model parameters for each model, given in order of model_list. Default: empty list.
+
+    """
+
+    filter_name: str
+    phaseAngle_min: float = np.nan
+    phaseAngle_range: float = np.nan
+    observationTime_max: float = np.nan
+    arc: float = np.nan
+    nobs: int = 0
+    n_outliers: int = 0
+    sustained_outliers: float = np.nan
+    model_name: str = ""
+    model_dependent_values: Optional[PhaseModelDependentAdler | AvgMagModelDependentAdler] = None
+    source_flags: Optional[AdlerSourceFlags] = None
