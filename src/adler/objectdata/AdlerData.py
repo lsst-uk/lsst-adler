@@ -17,8 +17,8 @@ FILTER_DEPENDENT_KEYS = [
     "observationTime_max",
     "nobs",
     "arc",
-    "n_outlier",
-    "sustained_outlier",
+    "n_outliers",
+    "sustained_outliers",
 ]
 PHASE_MODEL_DEPENDENT_KEYS = [
     "H",
@@ -758,7 +758,7 @@ class FilterDependentAdler:
     n_outliers : int, optional
         Number of outliers detected for the given model.
 
-    sustained_outlier : float, optional
+    sustained_outliers : float, optional
         Magnitude difference between old and new observations
 
     model_list: list of str, optional
@@ -775,8 +775,8 @@ class FilterDependentAdler:
     observationTime_max: float = np.nan
     arc: float = np.nan
     nobs: int = 0
-    n_outlier: int = 0
-    sustained_outlier: float = np.nan
+    n_outliers: int = 0
+    sustained_outliers: float = np.nan
     model_list: list = field(default_factory=list)
     model_dependent_values: list = field(default_factory=list)
     source_flags: list = field(default_factory=list)
