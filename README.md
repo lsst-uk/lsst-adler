@@ -84,9 +84,9 @@ Notes:
 ## Additional Dependencies:
 In order to run the cutout analysis tools (WedgePhot, NoiseChisel) a working version of [gnuastro](https://www.gnu.org/savannah-checkouts/gnu/gnuastro/gnuastro.html) is required. gnuastro can be installed from source directly, please follow their documentation. Alternatively it is possible to conda install gnuastro on most systems:
 ```
-conda install conda-forge::gnuastro
+conda install conda-forge::gnuastro=0.23
 ```
-(currently adler works with gnuastro==0.23)
+(currently adler works with gnuastro=0.23)
 
 The utility function to retrieve cutouts (`adler.utilities.cutout_utilities.Cutout`) requires the LSST pipeline and therefore can only be easily run on the RSP. Furthermore [reproject](https://reproject.readthedocs.io/en/stable/index.html) is required to allow plotting cutouts in a standard orientation:
 ```
