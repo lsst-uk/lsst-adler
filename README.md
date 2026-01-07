@@ -166,3 +166,7 @@ attr2: np.array
 
 """
 ```
+
+## Acknowledgements
+
+The tutorials and documentation developed by the Rubin Community Science team have been used in the development of Adler.
