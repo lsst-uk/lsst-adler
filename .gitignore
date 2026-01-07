@@ -172,6 +172,12 @@ cython_debug/
 
 # Ignore image files created by notebooks
 *.png
+*.pdf
 
 # Ignore .npy files
 *.npy
+
+# Ignore various output files
+*.fits
+*.csv
+*.db
