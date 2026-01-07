@@ -86,8 +86,9 @@ The cutout retrieval tools (`Cutout`) must be run on the Rubin Science Platform 
 
 However, currently in order to run the cutout analysis tools (WedgePhot, NoiseChisel) a working version of [gnuastro](https://www.gnu.org/savannah-checkouts/gnu/gnuastro/gnuastro.html) is required. gnuastro can be installed from source directly, please follow their documentation. Alternatively it is possible to conda install gnuastro on most systems (currently adler works with gnuastro==0.23):
 ```
-conda install conda-forge::gnuastro
+conda install conda-forge::gnuastro=0.23
 ```
+
 The issue (see [#222](https://github.com/lsst-uk/lsst-adler/issues/222)) this presents is that conda installing packages into `rubin-env` is not supported and the current workaround is to clone `rubin-env` however this is not recommended (see [RSP documentation](https://rsp.lsst.io/guides/notebooks/configuration/user-installs.html)). Therefore, we recommend utilising two separate environments, one that is an extension of `rubin-env` that can be used for cutout retrieval and other non-cutout-related analysis, and a new conda environment where gnuastro and other adler dependencies are installed that can be used for cutout analysis.
 
 ## Dev Guide - Adding notebooks to Read The Docs
@@ -165,3 +166,7 @@ attr2: np.array
 
 """
 ```
+
+## Acknowledgements
+
+The tutorials and documentation developed by the Rubin Community Science team have been used in the development of Adler.

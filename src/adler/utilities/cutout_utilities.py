@@ -21,6 +21,7 @@ import matplotlib.gridspec as gridspec
 import numpy as np
 from reproject.mosaicking import reproject_and_coadd
 from reproject import reproject_interp, reproject_exact
+import io
 
 CALIB_DICT = {1: "raw", 2: "visit", 3: "diff"}
 
@@ -52,6 +53,8 @@ class Cutout:
         Where to save the cutout images, will be created if it does not exist. Set to None to save no images
     outfile: str
         Specify a specific filename for the output, otherwise a default will be used
+    cutout_servcie: str
+        Define the pyvo cutout service to be used. Default is "cutout-sync-exposure" which returns the full ExposureF object. Use "cutout-sync"/"cutout-sync-maskedimage" to return a smaller FITS file
     """
 
     def __init__(
@@ -67,6 +70,7 @@ class Cutout:
         dataset="dp1",
         outdir=".",  # set to None to not save files
         outfile=None,
+        cutout_service="cutout-sync-exposure",
     ):
 
         # set up attributes
@@ -74,13 +78,14 @@ class Cutout:
         self.IdTable = IdTable
         self.ra = ra
         self.dec = dec
-        self.radius = radius
-        self.calib_level = calib_level
         self.visit = visit
         self.detector = detector
+        self.radius = radius
+        self.calib_level = calib_level
         self.dataset = dataset
         self.outdir = outdir
         self.outfile = outfile
+        self.cutout_service = cutout_service
 
         # define the Id column name
         self.IdCol = self.IdTable + "Id"
@@ -108,7 +113,7 @@ class Cutout:
 
     def InitFromDict(self, alert_dict):
         """Set up a new Cutout object from a dictionary, i.e. an alert packet.
-        One could do `Cutout(**dc_dict)` however any additional columns will cause an error.
+        One could do `Cutout(**co_dict)` however any additional columns will cause an error.
         This function removes any dict keys that do not correspond to a Cutout attribute.
 
         Parameters
@@ -119,37 +124,47 @@ class Cutout:
         Returns
         ----------
 
-        dc : object
+        co : object
            The new Cutout class object
 
         """
 
         # get any previously set values
-        dc_dict = self.__dict__
+        co_dict = self.__dict__
 
         # remove non-arg keys # TODO: repeat for alert_dict?
+        # TODO: add an overwrite co_dict with alert_dict flag?
         del_keys = []
-        dc_args = self.__init__.__code__.co_varnames
-        for key, value in dc_dict.items():
-            if key not in dc_args:
+        co_args = self.__init__.__code__.co_varnames
+        for key, value in co_dict.items():
+            if key not in co_args:
                 del_keys.append(key)
         for key in del_keys:
-            dc_dict.pop(key, None)
+            co_dict.pop(key, None)
 
         # Force overwrite of outfile, unless it is passed in alert_dict?
-        dc_dict["outfile"] = None
+        co_dict["outfile"] = None
 
         # Overwrite initial Cutout attributes if they are in alert_dict
         for key, value in alert_dict.items():
-            if key in dc_dict:
-                dc_dict[key] = value
+            if key in co_dict:
+                co_dict[key] = value
 
         # initialise a new cutout class
-        dc = Cutout(**dc_dict)
+        co = Cutout(**co_dict)
 
-        return dc
+        return co
 
     def query_from_Id(self):
+        """
+        Get all the unique image metadata required to identify which image contains a given source.
+
+        Returns
+        ----------
+
+        df_img : pd.DataFrame
+           DataFrame of the unique image metadata, this should only be 1 row in length
+        """
 
         # define query to get unique image information for a given source Id
         query = """SELECT ra,dec,visit,detector FROM {}.{}
@@ -169,15 +184,25 @@ class Cutout:
         assert job.phase == "COMPLETED"
 
         # get results
-        _df = job.fetch_result().to_table().to_pandas()
-        self.ra = _df.iloc[0]["ra"]
-        self.dec = _df.iloc[0]["dec"]
-        self.visit = int(_df.iloc[0]["visit"])
-        self.detector = int(_df.iloc[0]["detector"])
+        df_img = job.fetch_result().to_table().to_pandas()
+        assert len(df_img) == 1
+        self.ra = df_img.iloc[0]["ra"]
+        self.dec = df_img.iloc[0]["dec"]
+        self.visit = int(df_img.iloc[0]["visit"])
+        self.detector = int(df_img.iloc[0]["detector"])
 
-        return _df
+        return df_img
 
     def query_image_url(self):
+        """
+        Query the image URL location
+
+        Returns
+        ----------
+
+        df_visit : pd.DataFrame
+           DataFrame with URL links to the image locations on RSP, one row for each calibration level
+        """
 
         # Get the datalink url for the unique image containing the Id
         if len(self.calib_level) == 1:
@@ -203,28 +228,76 @@ class Cutout:
         assert job.phase == "COMPLETED"
         results = job.fetch_result().to_table()
         print(results, len(results))
-        # assert len(results) == 1
         assert len(results) == len(self.calib_level)
 
         df_visit = results.to_pandas()
         self.datalink_url = df_visit
 
-        return self.datalink_url
+        return df_visit
 
-    def sodaCutout(self, small_fits=True):
+    def getSodaCutoutMem(self, url, cal_lev, cutout_service="cutout-sync-exposure"):
         """
-        Get the image using soda and save it as a fits file.
+        Retrieve a given image using soda and return it as an lsst.afw.fits MemFileManager object.
+        The MemFileManager object can subsequently be converted into lsst.afw.image ExposureF or FITS.
+        Credit: Rubin Community Science Team tutorial notebook https://dp1.lsst.io/tutorials/notebook/103/notebook-103-4.html
 
         Parameters
         -----------
-        small_fits : Bool
-           Flag to save only the image component to fits file (set False to save full exposure to fits file)
+        url: str
+            URL location of image to be retrieved
+        cal_lev : int
+            Calibration level of image to retrieve: 1,2,3 - raw, visit, diff
+        cutout_service : str
+           Define the cutout service to be used:
+           cutout-sync-exposure: return the full cutout (all planes and metadata). Can be converted to ExposureF.
+           cutout-sync: return only the image pixels and header. Cannot be converted to ExposureF (save as FITS).
+           cutout-sync-maskedimage: return image pixels, header, and masks. Cannot be converted to ExposureF (save as FITS).
 
         Returns
         ----------
 
-        exposure : ExposureF
-           The new Cutout class object
+        sq : SodaQuery
+            SodaQuery result for the cutout query
+        mem : MemFileManager
+           The cutout data
+        """
+
+        # find the image on the RSP
+        dl_result = DatalinkResults.from_result_url(url, session=get_pyvo_auth())
+        print(f"Datalink status: {dl_result.status}. Datalink service url: {url}")
+        sq = SodaQuery.from_resource(
+            dl_result,
+            dl_result.get_adhocservice_by_id("cutout-sync-exposure"),
+            session=get_pyvo_auth(),  # TODO: query fails for cal_lev = 1, raw images?
+        )
+
+        # define the cutout geometry
+        # TODO: allow different shapes to be passed to main class?
+        spherePoint = geom.SpherePoint(self.ra * geom.degrees, self.dec * geom.degrees)
+        sq.circle = (
+            spherePoint.getRa().asDegrees() * u.deg,
+            spherePoint.getDec().asDegrees() * u.deg,
+            self.radius,
+        )
+
+        # retrieve the image data for only the area covered by the cutout
+        cutout_bytes = sq.execute_stream().read()
+        sq.raise_if_error()
+        mem = MemFileManager(len(cutout_bytes))
+        mem.setData(cutout_bytes, len(cutout_bytes))
+
+        return sq, mem
+
+    def sodaCutout(self, small_fits=True):
+        """
+        Get the image using soda and save it as a fits file.
+        Credit: Rubin Community Science Team tutorial notebook https://dp1.lsst.io/tutorials/notebook/103/notebook-103-4.html
+
+        Parameters
+        -----------
+        small_fits : Bool
+           Flag to save only the image component of the ExposureF object to FITS file (set False to save full ExposureF to FITS file)
+
         """
 
         # make sure we have a visit and detector id etc, i.e. all unique image data
@@ -240,30 +313,19 @@ class Cutout:
             cal_lev = self.datalink_url.iloc[i]["calib_level"]
             print(url, cal_lev)
 
-            # find the image on the RSP
-            dl_result = DatalinkResults.from_result_url(url, session=get_pyvo_auth())
-            print(f"Datalink status: {dl_result.status}. Datalink service url: {url}")
-            sq = SodaQuery.from_resource(
-                dl_result,
-                dl_result.get_adhocservice_by_id("cutout-sync"),
-                session=get_pyvo_auth(),  # TODO: query fails for cal_lev = 1, raw images?
-            )
+            sq, mem = self.getSodaCutoutMem(url, cal_lev, self.cutout_service)
 
-            # define the cutout geometry
-            # TODO: allow different shapes to be passed to main class?
-            spherePoint = geom.SpherePoint(self.ra * geom.degrees, self.dec * geom.degrees)
-            sq.circle = (
-                spherePoint.getRa().asDegrees() * u.deg,
-                spherePoint.getDec().asDegrees() * u.deg,
-                self.radius,
-            )
-
-            # retrieve the image data for only the area covered by the cutout
-            cutout_bytes = sq.execute_stream().read()
-            sq.raise_if_error()
-            mem = MemFileManager(len(cutout_bytes))
-            mem.setData(cutout_bytes, len(cutout_bytes))
-            exposure = ExposureF(mem)
+            if self.cutout_service == "cutout-sync-exposure":
+                # convert mem to ExposureF
+                exposure = ExposureF(mem)
+                # store exposure as a class attribute
+                setattr(self, "exp_" + CALIB_DICT[cal_lev], exposure)
+            else:
+                # convert mem to hdu list
+                data = mem.getData()
+                hdul = fits.open(io.BytesIO(data))
+                # # Optional: store hdu list as a class attribute?
+                # setattr(self, "hdul_" + CALIB_DICT[cal_lev], hdul)
 
             if self.outdir is not None:
 
@@ -273,29 +335,33 @@ class Cutout:
                     self, "cutout_file_" + CALIB_DICT[cal_lev], cutout_file
                 )  # store the filename as an attribute
 
-                if small_fits:
-                    # Save the minimum information to keep file size down, see afwDisplay.writeFitsImage in https://dp1.lsst.io/tutorials/notebook/103/notebook-103-4.html
-                    afwDisplay.writeFitsImage(
-                        cutout_file,  # see, https://dp1.lsst.io/tutorials/notebook/103/notebook-103-4.html
-                        # exposure.maskedImage, # slightly smaller than full exposure
-                        exposure.image,  # small as possible, no masks
-                        wcs=exposure.wcs,
-                    )
+                if self.cutout_service == "cutout-sync-exposure":
+                    # Save ExposureF as a FITS file
+                    if small_fits:
+                        # Save the minimum information to keep file size down, see afwDisplay.writeFitsImage in https://dp1.lsst.io/tutorials/notebook/103/notebook-103-4.html
+                        afwDisplay.writeFitsImage(
+                            cutout_file,  # see, https://dp1.lsst.io/tutorials/notebook/103/notebook-103-4.html
+                            # exposure.maskedImage, # slightly smaller than full exposure
+                            exposure.image,  # small as possible, no masks
+                            wcs=exposure.wcs,
+                        )
+                    else:
+                        with open(cutout_file, "bw") as f:
+                            f.write(sq.execute_stream().read())
+                            print("save {}".format(cutout_file))
                 else:
-                    with open(cutout_file, "bw") as f:
-                        f.write(sq.execute_stream().read())
-                        print("save {}".format(cutout_file))
+                    # save the hdu list as a FITS file
+                    hdul.writeto(cutout_file)
 
-            # store exposure as a class attribute
-            setattr(self, "exp_" + CALIB_DICT[cal_lev], exposure)
-
-        return exposure
+        return
 
     def plot_img(
         self, cal_lev, plot_fits=True, ihdu=0, plot_wcs=False, plot_r=50, wcs_reproj=False, shape_reproj=False
     ):
         """
-        Open the saved fits image and plot it using pyplot.
+
+        Plot the cutout image using pyplot.
+        This plot will compare the lsst ExposureF WCS to the FITS approximation if plot_fits=False.
         Use the arguments wcs_reproj and shape_reproj to reproject the image to a specific wcs and shape (e.g. get North up and East pointing left). NB beware of flux conservation when reprojecting
         Find the best wcs and shape from a list of hdus using something like:
         `wcs_reproj, shape_reproj = find_optimal_celestial_wcs(hdu_list, hdu_in = "IMAGE")`
@@ -304,8 +370,8 @@ class Cutout:
         -----------
         cal_lev: int
             Calibration level to be plotted
-        fits: Bool
-            Flag to plot from the cutout fits file
+        plot_fits: Bool
+            Flag to plot from the cutout fits file, otherwise the ExposureF object stored in Cutout is required
         ihdu : int or str
            Index (or hdu label) of fits image containing the image to be plotted
         plot_wcs: Bool
@@ -323,18 +389,22 @@ class Cutout:
            The matplotlib figure object
         """
 
-        # get the ExposureF object
-        exp = getattr(self, "exp_" + CALIB_DICT[cal_lev])
+        if hasattr(self, "exp_" + CALIB_DICT[cal_lev]):
+            # get the ExposureF object if available
+            exp = getattr(self, "exp_" + CALIB_DICT[cal_lev])
+        else:
+            exp = None
 
         if plot_fits:
             # Get image data and header
             cutout_file = getattr(self, "cutout_file_" + CALIB_DICT[cal_lev])
+            # TODO: plot directly from the stored hdu list instead of loading from file?
             hdu = fits.open(cutout_file)
             img = hdu[ihdu].data
             hdr = hdu[ihdu].header
             wcs = WCS(hdr)
         else:
-            # get the fits equivalent data
+            # get the fits equivalent data from ExposureF
             img = exp.getImage().getArray()  # image data
             # hdr = Header(exp.getMetadata().toDict()) # fits (primary) header info (without WCS) - https://community.lsst.org/t/obtain-only-image-metadata-with-butler-get/5922
             wcs = WCS(
@@ -391,23 +461,24 @@ class Cutout:
         )
         aperture.plot(color="r")
 
-        # Plot the exact position with the ExposureF WCS
-        if wcs_reproj and shape_reproj:
-            # TODO: log a warning here
-            print(
-                "WARNING: Reprojection requires the fits file WCS representation and does not work with ExposureF WCS"
+        if hasattr(self, "exp_" + CALIB_DICT[cal_lev]):
+            # Plot the exact position with the ExposureF WCS
+            if wcs_reproj and shape_reproj:
+                # TODO: log a warning here
+                print(
+                    "WARNING: Reprojection requires the fits file WCS representation and does not work with ExposureF WCS"
+                )
+            coord = geom.SpherePoint(self.ra * geom.degrees, self.dec * geom.degrees)
+            pos = exp.wcs.skyToPixel(coord)  # pos.x, pos.y
+            pos = (
+                pos - exp.image.getXY0()
+            )  # Get the shifted position to correct for the WCS - https://community.lsst.org/t/how-to-use-wcss-in-dp1-and-commissioning-processing/10769
+            print("ExposureF WCS pos = {}".format(pos))
+            aperture = CircularAperture(
+                positions=np.array(pos),
+                r=plot_r,
             )
-        coord = geom.SpherePoint(self.ra * geom.degrees, self.dec * geom.degrees)
-        pos = exp.wcs.skyToPixel(coord)  # pos.x, pos.y
-        pos = (
-            pos - exp.image.getXY0()
-        )  # Get the shifted position to correct for the WCS - https://community.lsst.org/t/how-to-use-wcss-in-dp1-and-commissioning-processing/10769
-        print("ExposureF WCS pos = {}".format(pos))
-        aperture = CircularAperture(
-            positions=np.array(pos),
-            r=plot_r,
-        )
-        aperture.plot(color="w")
+            aperture.plot(color="w")
 
         plt.title("{}\n{} {}".format(self.Id, self.visit, CALIB_DICT[cal_lev]))
 
