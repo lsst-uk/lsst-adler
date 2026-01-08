@@ -34,6 +34,7 @@ class NoiseChisel:
 
         # define the expected file names to be created during the noisechisel process
         # TODO: use os path join or similar to make sure paths work
+        # TODO: use these filenames as the output for each function call
         self.file_suffix_nc = "_detected.fits"  # output file suffix if noisechisel is successful
         self.file_suffix_check = "_detcheck.fits"  # output diagnostic file suffix
         self.file_root = self.out_dir + "/" + fits_file.split("/")[-1].split(".fit")[0]
@@ -55,11 +56,12 @@ class NoiseChisel:
             Name of the noisechisel results file
         """
 
-        ast_cmd = """{} {} --hdu={} {}""".format(
+        ast_cmd = """{} {} --hdu={} {} -o {}""".format(
             self.astnoisechisel,
             self.fits_file,
             self.i_hdu,
             nc_flags,
+            self.file_nc,
         )
 
         # add prerequisite commands if necessary
@@ -82,7 +84,7 @@ class NoiseChisel:
         file_seg: str
             Name of the image segmentation results file
         """
-        ast_cmd = "astsegment {} --clumpsnthresh=5".format(self.file_nc)
+        ast_cmd = "astsegment {} --clumpsnthresh=5 -o {}".format(self.file_nc, self.file_seg)
 
         # add prerequisite commands if necessary
         if pre_cmd is not None:
@@ -112,8 +114,9 @@ class NoiseChisel:
         """
         # TODO: use a gnuastro conf file to determine which columns are calculated?
 
-        ast_cmd = "astmkcatalog {} --clumpscat --ids -x -y --ra --dec --magnitude --sn --axis-ratio --geo-axis-ratio --geo-position-angle --geo-semi-major --geo-semi-minor --position-angle --semi-major --semi-minor".format(
-            self.file_seg
+        ast_cmd = "astmkcatalog {} -o {} --clumpscat --ids -x -y --ra --dec --magnitude --sn --axis-ratio --geo-axis-ratio --geo-position-angle --geo-semi-major --geo-semi-minor --position-angle --semi-major --semi-minor".format(
+            self.file_seg,
+            self.file_cat,
         )
 
         # add prerequisite commands if necessary
