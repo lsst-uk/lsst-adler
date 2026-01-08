@@ -5,6 +5,8 @@ from astropy.io import fits
 
 import adler.utilities.science_utilities as sci_utils
 
+# do some proper profiling - https://kernprof.readthedocs.io/en/latest/
+from line_profiler import profile
 
 class WedgePhot:
     """
@@ -77,6 +79,7 @@ class WedgePhot:
         else:
             self.ap_rad_out = ap_rad_out  # set the radius passed to WedgePhot class
 
+    @profile
     def astscript_radial_profile(
         self,
         az_min,
@@ -172,6 +175,7 @@ class WedgePhot:
 
         return df_results
 
+    @profile
     def run_wedge_phot(self, conda_start=None, conda_env=None, keep_files=False, extra_options=None):
         """
         Function to calculate radial profiles across all azimuthal bins and compile results into a dict.

@@ -5,6 +5,9 @@ import os
 from adler.science.WedgePhot import WedgePhot
 from numpy.testing import assert_array_equal
 
+# do some proper profiling - https://kernprof.readthedocs.io/en/latest/
+from line_profiler import profile
+
 # test image of the DART mission impact on Didymos system, from ZTF
 dir_path = os.path.dirname(os.path.realpath(__file__))  # dir path of this file
 test_dir_path = "/".join(dir_path.split("/")[:-2])  # get the test data dir
@@ -24,7 +27,7 @@ wp = WedgePhot(
     measure="sum,mean,median,sigclip-mean,sigclip-std",
 )
 
-
+@profile
 def test_WedgePhot_init():
     """Test intialising the wedge photometry class."""
 
@@ -33,7 +36,7 @@ def test_WedgePhot_init():
         wp.az, np.array([0.0, 36.0, 72.0, 108.0, 144.0, 180.0, 216.0, 252.0, 288.0, 324.0, 360.0])
     )
 
-
+@profile
 def test_astscript_radial_profile():
     """Test that the gnuastro astscript_radial_profile can be executed"""
 
@@ -45,7 +48,7 @@ def test_astscript_radial_profile():
     stderr = stderr.decode("utf-8")
     assert "astscript-radial-profile" in stdout
 
-
+@profile
 def test_run_wedge_phot():
     """Test that the radial profile is run for all bins and results are compiled"""
 

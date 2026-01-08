@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-
+from line_profiler import profile
 from numpy.testing import assert_array_equal
 
 import adler.utilities.science_utilities as sci_utils
@@ -230,10 +230,10 @@ def test_running_stats():
     assert running_mean_y == np.mean(y_res)
     assert running_std_y == np.std(y_res)
 
-
-def test_execute_subprocess():
-    cmd = "which adler"
+@profile
+def test_execute_subprocess(cmd = "which adler"):
     out, err = sci_utils.execute_subprocess(cmd)
+    print(out,err)
     assert "adler" in out
 
 
@@ -243,3 +243,8 @@ def test_execute_subprocess():
 # TODO: test get_df_obs_filt, check filter and sorting/time range constraints,
 # check the column list behaviour
 # check AbsMag calculation
+
+if __name__ == "__main__":
+
+    # test the efficiency of execute_subprocess on local machine and RSP
+    test_execute_subprocess()
