@@ -39,7 +39,8 @@ class NoiseChisel:
         self.file_suffix_check = "_detcheck.fits"  # output diagnostic file suffix
         self.file_root = self.out_dir + "/" + fits_file.split("/")[-1].split(".fit")[0]
         self.file_nc = self.file_root + self.file_suffix_nc
-        self.file_check = self.file_root + self.file_suffix_check
+        # self.file_check = self.file_root + self.file_suffix_check
+        self.file_check = self.file_nc.split(".fits")[0] + self.file_suffix_check
         self.file_seg = self.file_nc.split(".fits")[0] + "_segmented.fits"
         self.file_cat = self.file_seg.split(".fits")[0] + "_cat.fits"
 
