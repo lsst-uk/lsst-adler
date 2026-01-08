@@ -248,3 +248,4 @@ if __name__ == "__main__":
 
     # test the efficiency of execute_subprocess on local machine and RSP
     test_execute_subprocess()
+    test_execute_subprocess("astscript-radial-profile")
