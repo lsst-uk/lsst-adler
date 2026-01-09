@@ -51,6 +51,12 @@ class NoiseChisel:
         """
         Function to invoke the gnuastro noisechisel command. The results are stored in the file that is created (file_nc). This file contains a pixel map of detections, i.e. is a pixel signal or background?
 
+        Parameters
+        -----------
+        pre_cmd : str
+            Use this variable to pass any additional code to be run before the gnuastro command (e.g. set up conda env)
+
+
         Returns
         ----------
         file_nc: str
@@ -65,9 +71,9 @@ class NoiseChisel:
             self.file_nc,
         )
 
-        # add prerequisite commands if necessary
+        # add prerequisite commands if necessary, ensuring separation between pre_cmd and ast_cmd
         if pre_cmd is not None:
-            ast_cmd = pre_cmd + ast_cmd
+            ast_cmd = pre_cmd + " " + ast_cmd
 
         print(ast_cmd)
         out, err = sci_utils.execute_subprocess(ast_cmd)
@@ -80,6 +86,12 @@ class NoiseChisel:
         """
         Function to invoke the gnuastro image segmentation routine command. This step is required to separate the noisechisel chisel detections into individual objects/clumps. The results are stored in the file that is created (file_seg).
 
+        Parameters
+        -----------
+        pre_cmd : str
+            Use this variable to pass any additional code to be run before the gnuastro command (e.g. set up conda env)
+
+
         Returns
         ----------
         file_seg: str
@@ -87,9 +99,9 @@ class NoiseChisel:
         """
         ast_cmd = "astsegment {} --clumpsnthresh=5 -o {}".format(self.file_nc, self.file_seg)
 
-        # add prerequisite commands if necessary
+        # add prerequisite commands if necessary, ensuring separation between pre_cmd and ast_cmd
         if pre_cmd is not None:
-            ast_cmd = pre_cmd + ast_cmd
+            ast_cmd = pre_cmd + " " + ast_cmd
 
         print(ast_cmd)
         out, err = sci_utils.execute_subprocess(ast_cmd)
@@ -107,6 +119,8 @@ class NoiseChisel:
         -----------
         i_cat : int
             Use either the object (i_cat=1) or the clump (i_cat=2) detections to make the catalogue
+        pre_cmd : str
+            Use this variable to pass any additional code to be run before the gnuastro command (e.g. set up conda env)
 
         Returns
         ----------
@@ -120,9 +134,9 @@ class NoiseChisel:
             self.file_cat,
         )
 
-        # add prerequisite commands if necessary
+        # add prerequisite commands if necessary, ensuring separation between pre_cmd and ast_cmd
         if pre_cmd is not None:
-            ast_cmd = pre_cmd + ast_cmd
+            ast_cmd = pre_cmd + " " + ast_cmd
 
         print(ast_cmd)
         out, err = sci_utils.execute_subprocess(ast_cmd)
@@ -153,11 +167,19 @@ class NoiseChisel:
     def run_noise_chisel(self, conda_start=None, conda_env=None, keep_files=False):
         """
         Wrapper function that calls each step to go from an input image to measurements of detections made by noisechisel.
+        If required, conda_start and conda_env are used to set up the conda environment for subprocess to run gnuastro.
+        These parameters are passed to the various noisechisel gnuastro commands using the `pre_cmd` parameter.
 
         Parameters
         -----------
+        conda_start: str
+            Optional, command to launch conda in the subprocess virtual environment.
+            This might be needed when running WedgePhot in a jupyter notebook (e.g. on the RSP conda_start = ". /opt/lsst/software/stack/conda/etc/profile.d/conda.sh")
+        conda_env: str
+            Optional, name of the conda environment to use in the subprocess virtual environment.
         keep_files : float
             Optional, flag to either remove all noisechisel associated files (by default) or keep them.
+
 
         Returns
         ----------
@@ -171,7 +193,7 @@ class NoiseChisel:
         else:
             conda_run = None
         if conda_env is not None:
-            conda_run += "conda run -n {} ".format(conda_env)
+            conda_run += "conda run -n {}".format(conda_env)
 
         self.noise_chisel(pre_cmd=conda_run)
         self.segment_image(pre_cmd=conda_run)
