@@ -177,6 +177,8 @@ cython_debug/
 # Ignore .npy files
 *.npy
 
+# Ignoring output directories from MPC tests
+notebooks/adler_demo_outliers/outputs*
 # Ignore various output files
 *.fits
 *.csv

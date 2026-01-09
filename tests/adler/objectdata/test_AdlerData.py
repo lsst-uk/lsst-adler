@@ -356,7 +356,7 @@ def test_read_row_from_database():
 def test_write_db_dtypes():
     # Tests creating and reading an AdlerData SQL database
     # Importantly, this checks that different python dtypes (np.float32, np.float64) do not cause problems with SQL types (See: https://github.com/lsst-uk/lsst-adler/issues/188)
-    db_location = "test_write_AdlerData_database.db"
+    db_location = get_test_data_filepath("test_write_AdlerData_database.db")
 
     # make a test AdlerData object
     filt = "r"
