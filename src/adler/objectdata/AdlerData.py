@@ -6,7 +6,6 @@ import numpy as np
 from dataclasses import dataclass, field
 from astropy.time import Time
 
-
 FILTER_DEPENDENT_KEYS = ["phaseAngle_min", "phaseAngle_range", "nobs", "arc"]
 MODEL_DEPENDENT_KEYS = [
     "H",
