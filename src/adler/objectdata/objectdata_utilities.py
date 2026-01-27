@@ -400,7 +400,7 @@ def flux_to_magnitude(flux, flux_err=np.nan):
     return magnitude, magnitude_err
 
 
-def get_tap_service_api(rsp_tap_path, api_token_path):
+def get_tap_service_api(rsp_tap_path, api_token_path):  # pragma: no cover
     """Returns a pyvo.dal.TAPService object linked to the RSP if provided with the desired API path and valid API token. For use with querying the RSP remotely.
 
     Parameters
