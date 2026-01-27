@@ -6,6 +6,8 @@ import logging
 from astropy.time import Time
 import erfa
 import astropy.units as u
+import os
+import pyvo
 
 logger = logging.getLogger(__name__)
 
@@ -396,3 +398,36 @@ def flux_to_magnitude(flux, flux_err=np.nan):
     magnitude = flux.to(u.ABmag).value
     magnitude_err = ((2.5 / np.log(10)) * (flux_err / flux)).value
     return magnitude, magnitude_err
+
+
+def get_tap_service_api(rsp_tap_path, api_token_path):
+    """Returns a pyvo.dal.TAPService object linked to the RSP if provided with the desired API path and valid API token. For use with querying the RSP remotely.
+
+    Parameters
+    -----------
+    rsp_tap_path : str
+        End of the API url, 'ssotap' for DP0.3, 'tap' for DP1. Set by schema choice in AdlerPlanetoid.
+
+    api_token_path : str
+        User-provided path to their RSP TAP API token. If specified as, e.g., '~/.rsp_tap.token' this will be expanded by the code.
+
+    Returns
+    -----------
+    rsp_tap_service : pyvo.dal.TAPService
+        TAPService object linked to the RSP.
+
+    """
+    RSP_TAP_SERVICE = f"https://data.lsst.cloud/api/{rsp_tap_path}"
+
+    expanded_path = os.path.expanduser(
+        api_token_path
+    )  # Expands '~' to full path if included in user-provided path
+    with open(expanded_path, "r") as f:
+        token_str = f.readline()
+
+    cred = pyvo.auth.CredentialStore()
+    cred.set_password("x-oauth-basic", token_str)
+    credential = cred.get("ivo://ivoa.net/sso#BasicAA")
+    rsp_tap_service = pyvo.dal.TAPService(RSP_TAP_SERVICE, session=credential)
+
+    return rsp_tap_service
