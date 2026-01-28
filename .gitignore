@@ -183,3 +183,6 @@ notebooks/adler_demo_outliers/outputs*
 *.fits
 *.csv
 *.db
+
+# Allow full content of specific output_files directory
+!notebooks/adler_demo_outliers/demo_output_files/*

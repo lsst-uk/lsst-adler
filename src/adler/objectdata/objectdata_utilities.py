@@ -396,3 +396,69 @@ def flux_to_magnitude(flux, flux_err=np.nan):
     magnitude = flux.to(u.ABmag).value
     magnitude_err = ((2.5 / np.log(10)) * (flux_err / flux)).value
     return magnitude, magnitude_err
+
+
+def generate_summary_csvs(
+    sql_filepath, output_file_root, output_cols=["ssObjectId"], filter_list=["u", "g", "r", "i", "z", "y"]
+):
+    """
+    Function for generating the CSV files that summarise the contents of the outlier detection SQLite database.
+
+    Parameters
+    -----------
+    sql_filepath : str
+        Filepath to the SQLite database
+
+    output_file_root : str
+        Desired path for the output file. Default in example notebook is f"{output_dir}/{planetoid.AdlerData.modelId}".
+
+    output_cols : list of str, optional
+        List of columns desired for output file. Default: ["ssObjectId"]. If default chosen, only DISTINCT ssObjectIds will be written out.
+
+    filter_list : list of str, optional
+        A comma-separated list of the filters of interest.
+    """
+
+    logger.info("Generating lists of objects of interest")
+    con = sqlite3.connect(sql_filepath)
+
+    if output_cols == ["ssObjectId"]:
+        logger.info(
+            f"Only ssObjectId selected for summary output, Adler will use 'SELECT DISTINCT ssObjectId' to return the unique ssObjectIds in AdlerSourceFlags."
+        )
+        output_cols_sql = "DISTINCT ssObjectId"
+    else:
+        output_cols_sql = ", ".join(output_cols)
+
+    # Simple magnitude difference
+    mag_diff_sql_query = f"""
+    SELECT {output_cols_sql} FROM AdlerSourceFlags
+    WHERE mag_diff!=0
+    """
+
+    mag_diff_output = f"{output_file_root}_outliers.csv"
+    mag_diff_df = pd.read_sql_query(mag_diff_sql_query, con)
+    mag_diff_df.to_csv(mag_diff_output, index=False)
+    logger.info(f"Output written to {mag_diff_output}")
+
+    # Outliers in sigma-space
+    std_diff_sql_query = f"""
+    SELECT {output_cols_sql} FROM AdlerSourceFlags
+    WHERE std_diff!=0
+    """
+
+    std_diff_output = f"{output_file_root}_std_outliers.csv"
+    std_diff_df = pd.read_sql_query(std_diff_sql_query, con)
+    std_diff_df.to_csv(std_diff_output, index=False)
+    logger.info(f"Output written to {std_diff_output}")
+
+    # Sustained outliers
+    sus_outlier_sql_condition = " OR ".join(f"{filt}_sustained_outliers IS NOT NULL" for filt in filter_list)
+    sus_outlier_sql_query = f"SELECT ssObjectId FROM AdlerData WHERE {sus_outlier_sql_condition}"
+
+    sus_outlier_output = f"{output_file_root}_sustained_outliers.csv"
+    sus_outlier_df = pd.read_sql_query(sus_outlier_sql_query, con)
+    sus_outlier_df.to_csv(sus_outlier_output, index=False)
+    logger.info(f"Output written to {sus_outlier_output}")
+
+    con.close()

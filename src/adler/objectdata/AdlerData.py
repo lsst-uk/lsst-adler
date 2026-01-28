@@ -3,11 +3,11 @@ import sqlite3
 import logging
 import re
 import numpy as np
+import pandas as pd
 from dataclasses import dataclass, field
 from typing import Optional
 from astropy.time import Time
 
-# TODO potentially edit this to the bare minimum default columns and then figure out how to write every column present in the given object to the database if the correct flag is set
 FILTER_DEPENDENT_KEYS = [
     "phaseAngle_min",
     "phaseAngle_range",
@@ -15,6 +15,7 @@ FILTER_DEPENDENT_KEYS = [
     "nobs",
     "arc",
     "n_outliers",
+    "n_std_outliers",
     "sustained_outliers",
 ]
 PHASE_MODEL_DEPENDENT_KEYS = [
@@ -24,13 +25,11 @@ PHASE_MODEL_DEPENDENT_KEYS = [
     "phase_parameter_1_err",
     "phase_parameter_2",
     "phase_parameter_2_err",
-    "modelFitMjd",
 ]
 VALID_PHASE_MODELS = ["HG", "HG1G2", "HG12", "HG12_Pen16", "LinearPhaseFunc"]
 AVG_MAG_MODEL_DEPENDENT_KEYS = [
     "avg_mag",
     "std_mag",
-    "modelFitMjd",
 ]
 VALID_AVG_MAG_MODELS = ["median", "mean"]
 ALL_FILTER_LIST = ["u", "g", "r", "i", "z", "y"]
@@ -60,6 +59,9 @@ class AdlerData:
     modelId : str, optional
         modelId for the model of interest that has been or is to be computed. Default: Empty str
 
+    updatedMJD : float, optional
+        Timestamp (in MJD) of the time that this AdlerData object was initialized.
+
     filter_dependent_values : list of FilterDependentAdler objects, optional
         List of FilterDependentAdler objects containing filter-dependent data in order of filter_list. Default empty list.
 
@@ -67,18 +69,27 @@ class AdlerData:
 
     ssObjectId: str
     filter_list: list
-
     modelId: str = ""
+    updatedMJD: float = np.nan
     filter_dependent_values: list = field(default_factory=list)
 
     def __post_init__(self):
         """This runs post-initialisation and creates the class attribute where one dimension is "filters" to ensure the array
-        has the correct size. This makes population a little easier.
+        has the correct size. This makes population a little easier. We also generate the current MJD timestamp to record the time this AdlerData object was initialized.
         """
 
         # note that we don't do the same for model-dependent values as we don't know a priori how many models the user wishes
         # to calculate, but we do know how many filters the AdlerPlanetoid object was generated with
         self.filter_dependent_values = [FilterDependentAdler(filter_name) for filter_name in self.filter_list]
+
+        self.updatedMJD = Time.now().mjd
+
+    def _MJD_update(self):
+        """
+        Function for updating the updatedMJD value stored in AdlerData. This should be called whenever an update is made to AdlerData so that it is clear what is the most up-to-date version of AdlerData.
+        """
+
+        self.updatedMJD = Time.now().mjd
 
     def set_modelId(self, model_name, end_mjd, data_timespan, n_new_nights):
         """
@@ -97,12 +108,23 @@ class AdlerData:
 
         n_new_nights : float
             The number of nights of data that are considered as "new observations" in calculating outliers.
-
         """
-        self.modelId = f"{model_name}_{end_mjd:.1f}_{data_timespan}n_{n_new_nights}n"
+        # N.B. double underscore is intentional to provide a point to break this string if searching for the model_name after generation (as HG12_Pen16 is a valid model name with a single underscore)
+        self.modelId = f"{model_name}__{end_mjd:.1f}_{data_timespan}n_{n_new_nights}n"
+
+        self._MJD_update()
 
     def populate_filter_dependent_parameters(self, filter_name, **kwargs):
-        """#TODO docstring"""
+        """Convenience method to correctly populate the filter-dependent parameters for a given filter.
+        Only the supplied arguments to the method will be updated, allowing for only some values to be populated if desired.
+
+        filter_name : str
+            The one-letter name of the filter of interest.
+        **kwargs : FilterDependentAdler attributes
+            The attribute names of the parameters you wish to update. See docs for FilterDependentAdler class for definitions of each attribute.
+            Valid keyword arguments are: model_name, phaseAngle_min, phaseAngle_range, observationTime_max, arc, nobs, n_outliers, n_std_outliers, sustained_outliers.
+
+        """
 
         # make sure the supplied filter is in the filter list
         try:
@@ -116,10 +138,12 @@ class AdlerData:
             if kwargs.get(filter_key):
                 setattr(self.filter_dependent_values[filter_index], filter_key, kwargs.get(filter_key))
 
+        self._MJD_update()
+
     def populate_phase_parameters(self, filter_name, **kwargs):
-        # TODO fix docstring
-        """Convenience method to correctly populate phase curve parameters for a given filter and (if desired) model.
+        """Convenience method to correctly populate phase curve parameters for a given filter and model.
         Only the supplied arguments to the method will be updated, allowing for only some values to be populated if desired.
+        This method will automatically populate filter-dependent parameters also.
 
         Parameters
         -----------
@@ -129,8 +153,7 @@ class AdlerData:
         **kwargs : FilterDependentAdler and PhaseModelDependentAdler attributes
             The attribute names of the parameters you wish to update. See docs for FilterDependentAdler and PhaseModelDependentAdler
             classes for definitions of each attribute.
-            Valid keyword arguments are: model_name, phaseAngle_min, phaseAngle_range, nobs, arc, H, H_err, phase_parameter_1,
-            phase_parameter_1_err, phase_parameter_2, phase_parameter_2_err.
+            Valid keyword arguments are: model_name, phaseAngle_min, phaseAngle_range, observationTime_max, arc, nobs, n_outliers, n_std_outliers, sustained_outliers, H, H_err, phase_parameter_1, phase_parameter_1_err, phase_parameter_2, phase_parameter_2_err.
             Note that to update any of the model-dependent parameters (H, H_err, etc.), you WILL need to supply a model_name.
 
         """
@@ -152,10 +175,12 @@ class AdlerData:
 
         # if no model_name is supplied, just end here
         # else, if the model does not exist for this filter, create it
-        # TODO need error handling or clear message of overwriting as this stands
         if not kwargs.get("model_name"):
             return
         elif kwargs.get("model_name") != self.filter_dependent_values[filter_index].model_name:
+            logger.warning(
+                f"Input model name {kwargs.get("model_name")} does not match model name {self.filter_dependent_values[filter_index].model_name} in AdlerData. Parameters will be overwritten."
+            )
             self.filter_dependent_values[filter_index].model_name = kwargs.get("model_name")
             self.filter_dependent_values[filter_index].model_dependent_values = PhaseModelDependentAdler(
                 filter_name, kwargs.get("model_name")
@@ -170,8 +195,25 @@ class AdlerData:
                     kwargs.get(model_key),
                 )
 
+        self._MJD_update()
+
     def populate_avg_mag_parameters(self, filter_name, **kwargs):
-        """#TODO docstring"""
+        """Convenience method to correctly populate average magnitude model parameters for a given filter and model.
+        Only the supplied arguments to the method will be updated, allowing for only some values to be populated if desired.
+        This method will automatically populate filter-dependent parameters also.
+
+        Parameters
+        -----------
+
+        filter_name : str
+            The one-letter name of the filter in which the model was calculated.
+        **kwargs : FilterDependentAdler and AvgMagModelDependentAdler attributes
+            The attribute names of the parameters you wish to update. See docs for FilterDependentAdler and AvgMagModelDependentAdler
+            classes for definitions of each attribute.
+            Valid keyword arguments are: model_name, phaseAngle_min, phaseAngle_range, observationTime_max, arc, nobs, n_outliers, n_std_outliers, sustained_outliers, avg_mag, std_mag.
+            Note that to update any of the model-dependent parameters (avg_mag, std_mag), you WILL need to supply a model_name.
+
+        """
 
         # make sure the supplied filter is in the filter list
         try:
@@ -195,6 +237,9 @@ class AdlerData:
         if not kwargs.get("model_name"):
             return
         elif kwargs.get("model_name") != self.filter_dependent_values[filter_index].model_name:
+            logger.warning(
+                f"Input model name {kwargs.get("model_name")} does not match model name {self.filter_dependent_values[filter_index].model_name} in AdlerData. Parameters will be overwritten."
+            )
             self.filter_dependent_values[filter_index].model_name = kwargs.get("model_name")
             self.filter_dependent_values[filter_index].model_dependent_values = AvgMagModelDependentAdler(
                 filter_name, kwargs.get("model_name")
@@ -209,9 +254,32 @@ class AdlerData:
                     kwargs.get(model_key),
                 )
 
-    # TODO develop this function further
+        self._MJD_update()
+
     def populate_source_flags(self, filter_name, modelId, df, **kwargs):
-        """#TODO docstring"""
+        """Convenience method to correctly populate the source outlier flags for a given filter and modelId.
+        Only the supplied arguments to the method will be updated, allowing for only some values to be populated if desired.
+        Observations detected as outliers (source flags) must be supplied in a pandas.DataFrame.
+        This method will automatically populate filter-dependent parameters also.
+
+        Parameters
+        -----------
+
+        filter_name : str
+            The one-letter name of the filter in which the model was calculated.
+
+        modelId : str
+            modelId that the given outliers correspond to. This is used to check the supplied modelId from the user matches that stored in AdlerData.
+
+        df : pandas.DataFrame
+            DataFrame of the observations that are identified as outliers. Must contain columns diaSourceId, midPointMjdTai, mag_diff, std_diff.
+
+        **kwargs : FilterDependentAdler and AvgMagModelDependentAdler attributes
+            The attribute names of the parameters you wish to update. See docs for FilterDependentAdler
+            classes for definitions of each attribute.
+            Valid keyword arguments are: model_name, phaseAngle_min, phaseAngle_range, observationTime_max, arc, nobs, n_outliers, n_std_outliers, sustained_outliers.
+
+        """
 
         if modelId != self.modelId:
             logger.error(
@@ -229,110 +297,152 @@ class AdlerData:
             raise ValueError("Filter {} does not exist in AdlerData.filter_list.".format(filter_name))
 
         # populate the filter dependent parameters
-        kwargs.update(
-            {"n_outliers": len(df)}
-        )  # Add n_outliers to kwargs so it populates FilterDependentAdler
+        # Add n_outliers, n_std_outliers to kwargs so it populates FilterDependentAdler
+        kwargs.update({"n_outliers": len(df.loc[df.mag_diff != 0])})
+        kwargs.update({"n_std_outliers": len(df.loc[df.std_diff != 0])})
+
         self.populate_filter_dependent_parameters(filter_name, **kwargs)
 
         self.filter_dependent_values[filter_index].source_flags = AdlerSourceFlags.construct_from_data_table(
             self.ssObjectId, filter_name, modelId, df
         )
 
-    # TODO figure out how to edit this with the new modelId and no lists
-    def populate_from_database(self, filepath):
+        self._MJD_update()
+
+    def populate_from_database(self, filepath, modelId=None):
         """Populates the AdlerData object with information from the most recent timestamped entry for the ssObjectId in a given database.
 
         Parameters
         -----------
         filepath : path-like object
             Filepath with the location of the output SQL database. Note that for now, we assume only one table with all the data.
+
+        modelId : str, optional
+            modelId for the model of interest that should be recovered. Default: None.
         """
+
+        if modelId:
+            self.modelId = modelId
 
         con = self._get_database_connection(filepath)
         cursor = con.cursor()
-        # TODO potentially populate on self.modelId? might have to be a try/except or option of whether it's by ssObjectId or modelId
-        # modelId would need to be supplied
-        sql_query = f"""SELECT * from AdlerData where ssObjectId='{self.ssObjectId}' ORDER BY timestamp DESC LIMIT 1"""
-        query_result = cursor.execute(sql_query)
 
-        try:
-            fetched_data_raw = query_result.fetchall()[0]
-        except IndexError:
-            logger.error("ValueError: No data found in this database for the supplied ssObjectId.")
-            raise ValueError("No data found in this database for the supplied ssObjectId.")
+        tbl_list = self._get_tables(con)
 
-        fetched_data = [np.nan if v is None else v for v in fetched_data_raw]  # replaces Nones with nans
-        column_list = self._get_database_columns(con, "AdlerData")
-        con.close()
+        # Ensure AdlerData is always the first table queried (thus populating modelId if not already specified)
+        tbl_list.insert(0, tbl_list.pop(tbl_list.index("AdlerData")))
 
-        filter_bools = [
-            any((column_heading.startswith(filter + "_") for column_heading in column_list))
-            for filter in ALL_FILTER_LIST
-        ]
-        database_filter_list = [b for a, b in zip(filter_bools, ALL_FILTER_LIST) if a]
+        for tbl_name in tbl_list:
+            logger.info(f"Populating information from {tbl_name}.")
+            # Specific query required for AdlerSourceFlags whereas the other tables can follow the same style (as they are unique on ssObjectId)
+            if tbl_name == "AdlerSourceFlags":
+                source_flags_query = f"SELECT * FROM AdlerSourceFlags WHERE ssObjectId='{self.ssObjectId}' and modelId='{self.modelId}'"
+                cursor.execute(source_flags_query)
+                rows = cursor.fetchall()
+                columns = [desc[0] for desc in cursor.description]
+                df = pd.DataFrame(rows, columns=columns)
 
-        if not all([requested_filter in database_filter_list for requested_filter in self.filter_list]):
-            logger.error(
-                "ValueError: Data does not exist for some of the requested filters in this database. Filters in database for this object: {}".format(
-                    database_filter_list
-                )
-            )
-            raise ValueError(
-                "Data does not exist for some of the requested filters in this database. Filters in database for this object: {}".format(
-                    database_filter_list
-                )
-            )
+                for filter_name in self.filter_list:
+                    _df = df.loc[df.filter_name == filter_name]
+                    self.populate_source_flags(filter_name, self.modelId, _df)
 
-        for filter_name in self.filter_list:
-            expected_filter_columns = [filter_name + "_" + filter_key for filter_key in FILTER_DEPENDENT_KEYS]
-            filter_indices_list = [column_list.index(column_name) for column_name in expected_filter_columns]
-            filter_values = [fetched_data[a] for a in filter_indices_list]
-            filter_dependent_info = dict(zip(FILTER_DEPENDENT_KEYS, filter_values))
-
-            r = re.compile("^(" + filter_name + "_).*_modelFitMjd$")
-            model_column_list = list(filter(r.match, column_list))
-            models_in_filter = [model[2:-12] for model in model_column_list]
-
-            self.populate_filter_dependent_parameters(filter_name, **filter_dependent_info)
-
-            # TODO remove loop
-            for model_name in models_in_filter:
-                if model_name in VALID_PHASE_MODELS:
-                    expected_model_columns = [
-                        filter_name + "_" + model_name + "_" + model_key
-                        for model_key in PHASE_MODEL_DEPENDENT_KEYS
-                    ]
-                    model_indices_list = [
-                        column_list.index(column_name) for column_name in expected_model_columns
-                    ]
-                    model_values = [fetched_data[a] for a in model_indices_list]
-                    model_dependent_info = dict(zip(PHASE_MODEL_DEPENDENT_KEYS, model_values))
-                    model_dependent_info["model_name"] = model_name
-
-                    self.populate_phase_parameters(filter_name, **model_dependent_info)
-                elif model_name in VALID_AVG_MAG_MODELS:
-                    expected_model_columns = [
-                        filter_name + "_" + model_name + "_" + model_key
-                        for model_key in AVG_MAG_MODEL_DEPENDENT_KEYS
-                    ]
-                    model_indices_list = [
-                        column_list.index(column_name) for column_name in expected_model_columns
-                    ]
-                    model_values = [fetched_data[a] for a in model_indices_list]
-                    model_dependent_info = dict(zip(AVG_MAG_MODEL_DEPENDENT_KEYS, model_values))
-                    model_dependent_info["model_name"] = model_name
-
-                    self.populate_avg_mag_parameters(filter_name, **model_dependent_info)
+            else:
+                if not modelId and tbl_name == "AdlerData":
+                    # If modelId isn't specified and we're querying AdlerData (i.e. the default first table to be queried), we take the most recent entry
+                    sql_query = f"""SELECT * from {tbl_name} WHERE ssObjectId='{self.ssObjectId}' ORDER BY updatedMJD DESC LIMIT 1"""
                 else:
-                    # TODO improve error message
+                    sql_query = f"""SELECT * from {tbl_name} WHERE ssObjectId='{self.ssObjectId}' AND modelId='{self.modelId}' ORDER BY updatedMJD DESC LIMIT 1"""
+                query_result = cursor.execute(sql_query)
+
+                try:
+                    fetched_data_raw = query_result.fetchall()[0]
+                except IndexError:
                     logger.error(
-                        f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
+                        f"ValueError: No data found in table {tbl_name} in this database for the supplied ssObjectId/modelId."
                     )
                     raise ValueError(
-                        f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
+                        f"ValueError: No data found in table {tbl_name} in this database for the supplied ssObjectId/modelId."
                     )
 
-    # TODO edits here to print all new info
+                fetched_data = [
+                    np.nan if v is None else v for v in fetched_data_raw
+                ]  # replaces Nones with nans
+                column_list = self._get_database_columns(con, tbl_name)
+
+                row_data = dict(zip(column_list, fetched_data))
+
+                # Set modelId
+                if not modelId:
+                    self.modelId = row_data["modelId"]
+
+                # TODO decide whether to update updatedMJD (and make it updatedMJD)
+                self.updatedMJD = row_data["updatedMJD"]
+
+                filter_bools = [
+                    any((column_heading.startswith(filter + "_") for column_heading in column_list))
+                    for filter in ALL_FILTER_LIST
+                ]
+                database_filter_list = [b for a, b in zip(filter_bools, ALL_FILTER_LIST) if a]
+
+                if not all(
+                    [requested_filter in database_filter_list for requested_filter in self.filter_list]
+                ):
+                    logger.error(
+                        "ValueError: Data does not exist for some of the requested filters in this database. Filters in database for this object: {}".format(
+                            database_filter_list
+                        )
+                    )
+                    raise ValueError(
+                        "Data does not exist for some of the requested filters in this database. Filters in database for this object: {}".format(
+                            database_filter_list
+                        )
+                    )
+
+                for filter_name in self.filter_list:
+                    expected_filter_columns = [
+                        filter_name + "_" + filter_key for filter_key in FILTER_DEPENDENT_KEYS
+                    ]
+                    filter_columns = [col for col in column_list if col in expected_filter_columns]
+                    filter_values = [row_data[col] for col in filter_columns]
+                    present_filter_columns = [col.strip(filter_name + "_") for col in filter_columns]
+                    filter_dependent_info = dict(zip(present_filter_columns, filter_values))
+
+                    self.populate_filter_dependent_parameters(filter_name, **filter_dependent_info)
+
+                    model_name = self.modelId.split("__")[0]
+
+                    if model_name in VALID_PHASE_MODELS:
+                        expected_model_columns = [
+                            filter_name + "_" + model_name + "_" + model_key
+                            for model_key in PHASE_MODEL_DEPENDENT_KEYS
+                        ]
+                        model_columns = [col for col in column_list if col in expected_model_columns]
+                        model_values = [row_data[col] for col in model_columns]
+                        model_dependent_info = dict(zip(PHASE_MODEL_DEPENDENT_KEYS, model_values))
+                        model_dependent_info["model_name"] = model_name
+
+                        self.populate_phase_parameters(filter_name, **model_dependent_info)
+                    elif model_name in VALID_AVG_MAG_MODELS:
+                        expected_model_columns = [
+                            filter_name + "_" + model_name + "_" + model_key
+                            for model_key in AVG_MAG_MODEL_DEPENDENT_KEYS
+                        ]
+                        model_columns = [col for col in column_list if col in expected_model_columns]
+                        model_values = [row_data[col] for col in model_columns]
+                        model_dependent_info = dict(zip(AVG_MAG_MODEL_DEPENDENT_KEYS, model_values))
+                        model_dependent_info["model_name"] = model_name
+
+                        self.populate_avg_mag_parameters(filter_name, **model_dependent_info)
+                    else:
+                        logger.error(
+                            f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
+                        )
+                        raise ValueError(
+                            f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
+                        )
+
+        con.close()
+
     def print_data(self):
         """Convenience method to clearly print the stored values."""
 
@@ -343,58 +453,64 @@ class AdlerData:
             print("Maximum observation time: {}".format(self.filter_dependent_values[f].observationTime_max))
             print("Number of observations: {}".format(self.filter_dependent_values[f].nobs))
             print("Arc: {}".format(self.filter_dependent_values[f].arc))
+            print("Number of outliers detected: {}".format(self.filter_dependent_values[f].n_outliers))
+            print(
+                "Number of outliers in sigma-space detected: {}".format(
+                    self.filter_dependent_values[f].n_std_outliers
+                )
+            )
+            print(
+                "Magnitude change of sustained outliers: {}".format(
+                    self.filter_dependent_values[f].sustained_outliers
+                )
+            )
 
-            for m, model_name in enumerate(self.filter_dependent_values[f].model_list):
-                print("Model: {}.".format(model_name))
-                if model_name in VALID_PHASE_MODELS:
-                    print("\tH: {}".format(self.filter_dependent_values[f].model_dependent_values[m].H))
-                    print(
-                        "\tH error: {}".format(
-                            self.filter_dependent_values[f].model_dependent_values[m].H_err
-                        )
+            model_name = self.filter_dependent_values[f].model_name
+
+            print("Model: {}.".format(model_name))
+            if model_name in VALID_PHASE_MODELS:
+                print("H: {}".format(self.filter_dependent_values[f].model_dependent_values.H))
+                print("H error: {}".format(self.filter_dependent_values[f].model_dependent_values.H_err))
+                print(
+                    "Phase parameter 1: {}".format(
+                        self.filter_dependent_values[f].model_dependent_values.phase_parameter_1
                     )
-                    print(
-                        "\tPhase parameter 1: {}".format(
-                            self.filter_dependent_values[f].model_dependent_values[m].phase_parameter_1
-                        )
+                )
+                print(
+                    "Phase parameter 1 error: {}".format(
+                        self.filter_dependent_values[f].model_dependent_values.phase_parameter_1_err
                     )
-                    print(
-                        "\tPhase parameter 1 error: {}".format(
-                            self.filter_dependent_values[f].model_dependent_values[m].phase_parameter_1_err
-                        )
+                )
+                print(
+                    "Phase parameter 2: {}".format(
+                        self.filter_dependent_values[f].model_dependent_values.phase_parameter_2
                     )
-                    print(
-                        "\tPhase parameter 2: {}".format(
-                            self.filter_dependent_values[f].model_dependent_values[m].phase_parameter_2
-                        )
+                )
+                print(
+                    "Phase parameter 2 error: {}".format(
+                        self.filter_dependent_values[f].model_dependent_values.phase_parameter_2_err
                     )
-                    print(
-                        "\tPhase parameter 2 error: {}".format(
-                            self.filter_dependent_values[f].model_dependent_values[m].phase_parameter_2_err
-                        )
+                )
+            elif model_name in VALID_AVG_MAG_MODELS:
+                print(
+                    "Average magnitude {}".format(
+                        self.filter_dependent_values[f].model_dependent_values.avg_mag
                     )
-                elif model_name in VALID_AVG_MAG_MODELS:
-                    print(
-                        "\tAverage magnitude {}".format(
-                            self.filter_dependent_values[f].model_dependent_values[m].avg_mag
-                        )
+                )
+                print(
+                    "Standard deviation of magnitudes {}".format(
+                        self.filter_dependent_values[f].model_dependent_values.std_mag
                     )
-                    print(
-                        "\tStandard deviation of magnitudes {}".format(
-                            self.filter_dependent_values[f].model_dependent_values[m].std_mag
-                        )
-                    )
-                else:
-                    # TODO improve error message
-                    logger.error(
-                        f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
-                    )
-                    raise ValueError(
-                        f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
-                    )
+                )
+            else:
+                logger.error(
+                    f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
+                )
+                raise ValueError(
+                    f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
+                )
             print("\n")
 
-    # TODO edit for modelid and no lists
     def get_phase_parameters_in_filter(self, filter_name, model_name=None):
         """Convenience method to return the phase parameters in a specific filter and model.
 
@@ -429,57 +545,39 @@ class AdlerData:
         output_obj.nobs = self.filter_dependent_values[filter_index].nobs
         output_obj.arc = self.filter_dependent_values[filter_index].arc
         output_obj.n_outliers = self.filter_dependent_values[filter_index].n_outliers
+        output_obj.n_std_outliers = self.filter_dependent_values[filter_index].n_std_outliers
         output_obj.sustained_outliers = self.filter_dependent_values[filter_index].sustained_outliers
 
         if not model_name:
             logger.warning("No model name was specified. Returning non-model-dependent phase parameters.")
             print("No model name specified. Returning non-model-dependent phase parameters.")
-        else:
-            try:
-                model_index = self.filter_dependent_values[filter_index].model_list.index(model_name)
-            except ValueError:
-                logger.error(
-                    "ValueError: Model {} does not exist for filter {} in AdlerData.model_lists.".format(
-                        model_name, filter_name
-                    )
-                )
-                raise ValueError(
-                    "Model {} does not exist for filter {} in AdlerData.model_lists.".format(
-                        model_name, filter_name
-                    )
-                )
-
+        elif model_name == self.filter_dependent_values[filter_index].model_name:
             output_obj.model_name = model_name
-            output_obj.H = self.filter_dependent_values[filter_index].model_dependent_values[model_index].H
-            output_obj.H_err = (
-                self.filter_dependent_values[filter_index].model_dependent_values[model_index].H_err
+            output_obj.H = self.filter_dependent_values[filter_index].model_dependent_values.H
+            output_obj.H_err = self.filter_dependent_values[filter_index].model_dependent_values.H_err
+            output_obj.phase_parameter_1 = self.filter_dependent_values[
+                filter_index
+            ].model_dependent_values.phase_parameter_1
+            output_obj.phase_parameter_1_err = self.filter_dependent_values[
+                filter_index
+            ].model_dependent_values.phase_parameter_1_err
+            output_obj.phase_parameter_2 = self.filter_dependent_values[
+                filter_index
+            ].model_dependent_values.phase_parameter_2
+            output_obj.phase_parameter_2_err = self.filter_dependent_values[
+                filter_index
+            ].model_dependent_values.phase_parameter_2_err
+        else:
+            logger.error(
+                f"Input model name {model_name} does not match model name {self.filter_dependent_values[filter_index].model_name} in AdlerData. Cannot get phase parameters for {model_name}."
             )
-            output_obj.phase_parameter_1 = (
-                self.filter_dependent_values[filter_index]
-                .model_dependent_values[model_index]
-                .phase_parameter_1
-            )
-            output_obj.phase_parameter_1_err = (
-                self.filter_dependent_values[filter_index]
-                .model_dependent_values[model_index]
-                .phase_parameter_1_err
-            )
-            output_obj.phase_parameter_2 = (
-                self.filter_dependent_values[filter_index]
-                .model_dependent_values[model_index]
-                .phase_parameter_2
-            )
-            output_obj.phase_parameter_2_err = (
-                self.filter_dependent_values[filter_index]
-                .model_dependent_values[model_index]
-                .phase_parameter_2_err
+            raise ValueError(
+                f"Input model name {model_name} does not match model name {self.filter_dependent_values[filter_index].model_name} in AdlerData. Cannot get phase parameters for {model_name}."
             )
 
         return output_obj
 
-    # TODO edit for modelid and no lists
     def get_avg_mag_parameters_in_filter(self, filter_name, model_name=None):
-        # TODO docstring edits/check
         """Convenience method to return the average magnitude parameters in a specific filter and model.
 
         Parameters
@@ -513,48 +611,36 @@ class AdlerData:
         output_obj.nobs = self.filter_dependent_values[filter_index].nobs
         output_obj.arc = self.filter_dependent_values[filter_index].arc
         output_obj.n_outliers = self.filter_dependent_values[filter_index].n_outliers
+        output_obj.n_std_outliers = self.filter_dependent_values[filter_index].n_std_outliers
         output_obj.sustained_outliers = self.filter_dependent_values[filter_index].sustained_outliers
 
         if not model_name:
-            logger.warning(
-                "No model name was specified. Returning non-model-dependent average magnitude parameters."
-            )
-            print("No model name specified. Returning non-model-dependent average magnitude parameters.")
-        else:
-            try:
-                model_index = self.filter_dependent_values[filter_index].model_list.index(model_name)
-            except ValueError:
-                logger.error(
-                    "ValueError: Model {} does not exist for filter {} in AdlerData.model_lists.".format(
-                        model_name, filter_name
-                    )
-                )
-                raise ValueError(
-                    "Model {} does not exist for filter {} in AdlerData.model_lists.".format(
-                        model_name, filter_name
-                    )
-                )
-
+            logger.warning("No model name was specified. Returning non-model-dependent phase parameters.")
+            print("No model name specified. Returning non-model-dependent phase parameters.")
+        elif model_name == self.filter_dependent_values[filter_index].model_name:
             output_obj.model_name = model_name
-            output_obj.avg_mag = (
-                self.filter_dependent_values[filter_index].model_dependent_values[model_index].avg_mag
+            output_obj.avg_mag = self.filter_dependent_values[filter_index].model_dependent_values.avg_mag
+            output_obj.std_mag = self.filter_dependent_values[filter_index].model_dependent_values.std_mag
+        else:
+            logger.error(
+                f"Input model name {model_name} does not match model name {self.filter_dependent_values[filter_index].model_name} in AdlerData. Cannot get average magnitude parameters for {model_name}."
             )
-            output_obj.std_mag = (
-                self.filter_dependent_values[filter_index].model_dependent_values[model_index].std_mag
+            raise ValueError(
+                f"Input model name {model_name} does not match model name {self.filter_dependent_values[filter_index].model_name} in AdlerData. Cannot get average magnitude parameters for {model_name}."
             )
 
         return output_obj
 
-    def _get_database_connection(self, filepath, create_new=False):
-        """Returns the connection to the output SQL database, creating it if it does not exist.
+    def _get_database_connection(self, filepath, table_name=None):
+        """Returns the connection to the output SQL database, creating it and the given table if it does not exist.
 
         Parameters
         -----------
         filepath : path-like object
             Filepath with the location of the output SQL database.
 
-        create_new : Boolean
-            Whether to create the database if it doesn't already exist. Default is False.
+        table_name : str, optional
+            Name of the table to create if it doesn't exist. (This replaces the create_new argument)
 
         Returns
         ----------
@@ -567,126 +653,42 @@ class AdlerData:
             filepath
         )  # check this FIRST as the next statement creates the db if it doesn't exist
 
-        if not database_exists and create_new:  # we need to make the table and a couple of starter columns
+        if not database_exists and table_name:  # we need to make the table and a couple of starter columns
             con = sqlite3.connect(filepath)
             cur = con.cursor()
-            # TODO perhaps bare minimum columns is set at the top so it can be drawn from here too?
-            cur.execute("CREATE TABLE AdlerData(ssObjectId PRIMARY KEY, modelId, timestamp REAL)")
-        elif not database_exists and not create_new:
+            cur.execute(f"CREATE TABLE {table_name}(ssObjectId PRIMARY KEY, modelId, updatedMJD REAL)")
+        elif not database_exists and not table_name:
             logger.error("ValueError: Database cannot be found at given filepath.")
             raise ValueError("Database cannot be found at given filepath.")
+        elif database_exists and not table_name:
+            # If no table_name specified connect and return the connection
+            con = sqlite3.connect(filepath)
         else:
+            # If the database exists, connect to it
             con = sqlite3.connect(filepath)
             cur = con.cursor()
-            # Create the table if it doesn't exist (in case database was created through AdlerSourceFlags)
+            # If the table doesn't exist (i.e. we're creating the table for writing, this will create it)
             cur.execute(
-                "CREATE TABLE IF NOT EXISTS AdlerData(ssObjectId PRIMARY KEY, modelId, timestamp REAL)"
+                f"CREATE TABLE IF NOT EXISTS {table_name}(ssObjectId PRIMARY KEY, modelId, updatedMJD REAL)"
             )
 
         return con
 
-    def _get_database_columns(self, con, tablename="AdlerData"):
-        """Gets a list of the current columns in a given table in a SQL database.
-
-        Parameters
-        -----------
-        con : sqlite3 Connection object
-            The connection to the output SQL database.
-
-        tablename : str
-            The name of the relevant table in the database. Default is "AdlerData".
-
-
-        Returns
-        ----------
-        list of str
-            List of current columns existing in the table.
-
-        """
-
-        cur = con.cursor()
-        cur.execute(f"""SELECT * from {tablename} where 1=0""")
-        return [d[0] for d in cur.description]
-
-    def _get_row_data_and_columns(self, write_model_data=False):
+    def _get_row_data_and_columns(self, table_name):
         """Collects all of the data present in the AdlerData object as a list with a corresponding list of column names,
-        in preparation for a row to be written to a SQL database table.
-
-        Parameters
-        -----------
-        write_model_data : Boolean, optional
-            A flag to set whether to write out specific model data to AdlerData. Default: False.
+        in preparation for a row to be written to a SQL database in the given table_name.
 
         Returns
         -----------
-        row_data : list
-            A list containing all of the relevant data present in the AdlerData object.
-
-        required_columns : list of str
-            A list of the corresponding column names in the same order.
+        table_name : str
+            Name of the table that we want to collect data for in preparation for writing to the database.
 
         """
-        # TODO set actual bare minimum required columns here
-        # TODO include another flag (before write_model_data, maybe more explicit names) for whether to include stuff like phaseAngle_range etc.
-        required_columns = ["ssObjectId", "modelId", "timestamp"]
-        row_data = [self.ssObjectId, self.modelId, Time.now().mjd]
+        required_columns = ["ssObjectId", "modelId", "updatedMJD"]
+        row_data = [self.ssObjectId, self.modelId, self.updatedMJD]
 
         for f, filter_name in enumerate(self.filter_list):
-            if write_model_data:
-                logger.info(
-                    f"write_model_data={write_model_data}, calculated model-specific parameters will be written to AdlerData"
-                )
-                columns_by_filter = [
-                    "_".join([filter_name, filter_key]) for filter_key in FILTER_DEPENDENT_KEYS
-                ]
-                data_by_filter = [
-                    getattr(self.filter_dependent_values[f], filter_key)
-                    for filter_key in FILTER_DEPENDENT_KEYS
-                ]
-
-                required_columns.extend(columns_by_filter)
-                row_data.extend(data_by_filter)
-
-                model_name = self.filter_dependent_values[f].model_name
-                if model_name in VALID_PHASE_MODELS:
-                    columns_by_model = [
-                        "_".join([filter_name, model_name, model_key])
-                        for model_key in PHASE_MODEL_DEPENDENT_KEYS
-                    ]
-                    data_by_model = [
-                        getattr(self.filter_dependent_values[f].model_dependent_values, model_key)
-                        for model_key in PHASE_MODEL_DEPENDENT_KEYS
-                    ]
-
-                    required_columns.extend(columns_by_model)
-                    row_data.extend(data_by_model)
-                elif model_name in VALID_AVG_MAG_MODELS:
-                    columns_by_model = [
-                        "_".join([filter_name, model_name, model_key])
-                        for model_key in AVG_MAG_MODEL_DEPENDENT_KEYS
-                    ]
-                    data_by_model = [
-                        getattr(self.filter_dependent_values[f].model_dependent_values, model_key)
-                        for model_key in AVG_MAG_MODEL_DEPENDENT_KEYS
-                    ]
-
-                    required_columns.extend(columns_by_model)
-                    row_data.extend(data_by_model)
-                elif model_name == "":
-                    # TODO possibly doesn't need to be a warning, just found with this new setup I was hitting an error below for filters with no observations and therefore no model
-                    logger.warning(f"AdlerData empty for filter {f}, continuing to next filter")
-                else:
-                    # TODO improve error message
-                    logger.error(
-                        f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
-                    )
-                    raise ValueError(
-                        f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
-                    )
-            else:
-                logger.info(
-                    f"write_model_data={write_model_data}, only filter-dependent/model metadata will be written to AdlerData"
-                )
+            if table_name == "AdlerData":
                 columns_by_filter = [
                     "_".join([filter_name, filter_key])
                     for filter_key in FILTER_DEPENDENT_KEYS
@@ -701,7 +703,113 @@ class AdlerData:
                 required_columns.extend(columns_by_filter)
                 row_data.extend(data_by_filter)
 
+            elif table_name == "FilterDependentAdler":
+                columns_by_filter = [
+                    "_".join([filter_name, filter_key]) for filter_key in FILTER_DEPENDENT_KEYS
+                ]
+                data_by_filter = [
+                    getattr(self.filter_dependent_values[f], filter_key)
+                    for filter_key in FILTER_DEPENDENT_KEYS
+                ]
+
+                required_columns.extend(columns_by_filter)
+                row_data.extend(data_by_filter)
+
+            elif table_name == "PhaseModelDependentAdler":
+                model_name = self.filter_dependent_values[f].model_name
+                if model_name == "":
+                    logger.warning(
+                        f"No models calculated for filter {filter_name}, continuing to next filter"
+                    )
+                    continue
+                else:
+                    columns_by_model = [
+                        "_".join([filter_name, model_name, model_key])
+                        for model_key in PHASE_MODEL_DEPENDENT_KEYS
+                    ]
+                    data_by_model = [
+                        getattr(self.filter_dependent_values[f].model_dependent_values, model_key)
+                        for model_key in PHASE_MODEL_DEPENDENT_KEYS
+                    ]
+
+                    required_columns.extend(columns_by_model)
+                    row_data.extend(data_by_model)
+
+            elif table_name == "AvgMagModelDependentAdler":
+                model_name = self.filter_dependent_values[f].model_name
+                if model_name == "":
+                    logger.warning(
+                        f"No models calculated for filter {filter_name}, continuing to next filter"
+                    )
+                    continue
+                else:
+                    columns_by_model = [
+                        "_".join([filter_name, model_name, model_key])
+                        for model_key in AVG_MAG_MODEL_DEPENDENT_KEYS
+                    ]
+                    data_by_model = [
+                        getattr(self.filter_dependent_values[f].model_dependent_values, model_key)
+                        for model_key in AVG_MAG_MODEL_DEPENDENT_KEYS
+                    ]
+
+                    required_columns.extend(columns_by_model)
+                    row_data.extend(data_by_model)
+
+            else:
+                logger.error(
+                    f"{table_name} must be one of [AdlerData, FilterDependentAlder, PhaseModelDependentAdler, AvgMagModelDependentAdler]"
+                )
+                raise ValueError(
+                    (
+                        f"{table_name} must be one of [AdlerData, FilterDependentAlder, PhaseModelDependentAdler, AvgMagModelDependentAdler]"
+                    )
+                )
+
         return row_data, required_columns
+
+    def _get_database_columns(self, con, table_name):
+        """Gets a list of the current columns in a given table in a SQL database.
+
+        Parameters
+        -----------
+        con : sqlite3 Connection object
+            The connection to the output SQL database.
+
+        table_name : str
+            The name of the relevant table in the database.
+
+
+        Returns
+        ----------
+        list of str
+            List of current columns existing in the table.
+
+        """
+
+        cur = con.cursor()
+        cur.execute(f"""SELECT * from {table_name} where 1=0""")
+        return [d[0] for d in cur.description]
+
+    def _get_tables(self, con):
+        """Gets a list of the current tables in a SQL database.
+
+        Parameters
+        -----------
+        con : sqlite3 Connection object
+            The connection to the output SQL database.
+
+
+        Returns
+        ----------
+        list of str
+            List of current tables existing in the database.
+
+        """
+
+        cur = con.cursor()
+        cur.execute(f"SELECT tbl_name FROM sqlite_schema WHERE type='table'")
+        res = cur.fetchall()
+        return [r[0] for r in res]
 
     def _ensure_columns(self, con, table_name, current_columns, required_columns):
         """Creates new columns in a given table of a SQL database as needed by checking the list of current columns against a list
@@ -729,31 +837,27 @@ class AdlerData:
             if column_name not in current_columns:
                 cur.execute(f"""ALTER TABLE {table_name} ADD COLUMN {column_name}""")
 
-    def write_row_to_database(self, filepath, table_name="AdlerData", write_model_data=False):
-        """Writes all of the relevant data contained within the AdlerData object to a timestamped row in a SQLite database.
+    def _write_table(self, filepath, table_name):
+        """
+        Function for writing information to a given table in the given database.
+        Connects to the database and creates table if necessary, gathers data from AdlerData, ensures required columns are present and writes to the database.
 
         Parameters
         -----------
         filepath : path-like object
             Filepath with the location of the output SQL database.
 
-        table_name : str, optiona
-            String containing the table name to write the data to. Default is "AdlerData".
-
-        write_model_data : Boolean, optional
-            A flag to set whether to write out specific model data to AdlerData. Default: False.
+        table_name : str
+            Name of table to write to. Must be one of AdlerData, FilterDependentAdler, PhaseModelDependentAdler, AvgMagModelDependentAdler
 
         """
 
-        # TODO include a force flag or something to control append versus update versus error
+        con = self._get_database_connection(filepath, table_name=table_name)
 
-        con = self._get_database_connection(filepath, create_new=True)
-
-        row_data, required_columns = self._get_row_data_and_columns(write_model_data=write_model_data)
+        row_data, required_columns = self._get_row_data_and_columns(table_name=table_name)
         current_columns = self._get_database_columns(con, table_name)
         self._ensure_columns(con, table_name, current_columns, required_columns)
 
-        # TODO edit this (or create new one for metadata, that doesn't overwrite)
         column_names = ",".join(required_columns)
         column_spaces = ",".join(["?"] * len(required_columns))
         update_clause = ", ".join([f"{col} = excluded.{col}" for col in required_columns[1:]])
@@ -766,6 +870,60 @@ class AdlerData:
         cur.execute(sql_command, row_data)
         con.commit()
         con.close()
+
+    def write_to_database(self, filepath, write_model_data=False):
+        """Writes all of the relevant data contained within the AdlerData object to a SQLite database.
+
+        Parameters
+        -----------
+        filepath : path-like object
+            Filepath with the location of the output SQL database.
+
+        write_model_data : Boolean, optional
+            A flag to set whether to write out specific model data to AdlerData. Default: False.
+
+        """
+
+        # Write default AdlerData information
+        self._write_table(filepath=filepath, table_name="AdlerData")
+        logger.info(f"Top-level information written to AdlerData table")
+
+        if write_model_data:
+            # Write FilterDependentAdler data
+            self._write_table(filepath=filepath, table_name="FilterDependentAdler")
+            logger.info(f"Filter-specific information written to FilterDependentAdler table")
+
+            model_name = self.modelId.split("__")[0]
+            if model_name in VALID_PHASE_MODELS:
+                # Write PhaseModelDependentAdler data
+                self._write_table(filepath=filepath, table_name="PhaseModelDependentAdler")
+                logger.info(
+                    f"Phase Model-specific information for model {model_name} written to PhaseModelDependentAdler table"
+                )
+            elif model_name in VALID_AVG_MAG_MODELS:
+                # Write AvgMagModelDependentAdler data
+                self._write_table(filepath=filepath, table_name="AvgMagModelDependentAdler")
+                logger.info(
+                    f"Average Magnitude model-specific information for model {model_name} written to AvgMagModelDependentAdler table"
+                )
+            else:
+                logger.error(
+                    f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
+                )
+                raise ValueError(
+                    f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
+                )
+
+            # Write AdlerSourceFlags data
+            for f, filter_name in enumerate(self.filter_list):
+                filter_source_flags = self.filter_dependent_values[f].source_flags
+                if filter_source_flags:
+                    filter_source_flags.write_flags_to_database(filepath=filepath)
+                    logger.info(
+                        f"Source flags information written to AdlerSourceFlags for filter '{filter_name}'"
+                    )
+                else:
+                    logger.info(f"No source flags for filter '{filter_name}', continuing to next filter")
 
 
 @dataclass
@@ -798,9 +956,6 @@ class PhaseModelDependentAdler:
     phase_parameter_2_err : float, optional
         The error on the second parameter of the phase model. Default NaN.
 
-    modelFitMjd : float, optional
-        The MJD of when the model fit was calculated. Default NaN.
-
     """
 
     filter_name: str
@@ -811,7 +966,6 @@ class PhaseModelDependentAdler:
     phase_parameter_1_err: float = np.nan
     phase_parameter_2: float = np.nan
     phase_parameter_2_err: float = np.nan
-    modelFitMjd: float = np.nan
 
 
 @dataclass
@@ -832,16 +986,12 @@ class AvgMagModelDependentAdler:
     std_mag : float, optional
         Standard deviation of the measurements used to calculate the model. Default NaN.
 
-    modelFitMjd : float, optional
-        The MJD of when the model fit was calculated. Default NaN.
-
     """
 
     filter_name: str
     model_name: str
     avg_mag: float = np.nan
     std_mag: float = np.nan
-    modelFitMjd: float = np.nan
 
 
 class PhaseParameterOutput:
@@ -869,41 +1019,71 @@ class AdlerSourceFlags:
     filter_name : str
         Filter the observation was taken in.
 
-    modelId : str, optional
-        modelId for the model that the outliers are compared to. Default: Empty str
+    modelId : str
+        modelId for the model that the outliers are compared to.
 
     n_outliers : int
-        Number of observations identified as outliers
+        Number of observations identified as outliers.
+
+    n_std_outliers : int, optional
+        Number of outliers detected for the given model in sigma space.
 
     diaSourceId : array_like of ints or strs
         Unique identifier of the observation.
 
+    midPointMjdTai : array_like of floats
+        Observation timestamps.
+
     mag_diff : array_like of floats
-        Differences in (reduced) magnitude between the observations and the model. Default: np.nan
+        Differences in (reduced) magnitude between the observations and the model.
 
     std_diff : array_like of floats
-        Differences in sigma-space between the observations and the model. Default: np.nan
+        Deviation (in terms of the observations uncertainties) between the observations and the model.
 
     """
 
     ssObjectId: str
     filter_name: str
     modelId: str
-    n_outliers: int  # TODO possibly a cleaner interaction between this and the value in AdlerData/FilterDependentAdler
+    n_outliers: int
+    n_std_outliers: int
     diaSourceId: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    midPointMjdTai: np.ndarray = field(default_factory=lambda: np.zeros(0))
     mag_diff: np.ndarray = field(default_factory=lambda: np.zeros(0))
-    # std_diff: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    std_diff: np.ndarray = field(default_factory=lambda: np.zeros(0))
 
-    # TODO probably make this more like the one in Observations.py for consistency
     @classmethod
     def construct_from_data_table(cls, ssObjectId, filter_name, modelId, df):
-        """#TODO docstring"""
-        obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "modelId": modelId}
-        obs_dict.update({"n_outliers": len(df)})
-        obs_dict.update(df.loc[:, ["diaSourceId", "mag_diff"]].to_dict(orient="list"))
+        """Method for constructing the AdlerSourceFlags object from a dataframe.
 
-        # TODO check this will still work if there is difference between what is an outlier for mag_diff vs std_diff
-        # i.e. a different number of rows (need to make sure to NULL or 0 fill)
+        Parameters
+        -----------
+        ssObjectId : str
+            ssObjectId of the object of interest.
+
+        filter_name : str
+        Filter the observation was taken in.
+
+        modelId : str
+            modelId for the model that the outliers are compared to.
+
+        df : pandas.DataFrame
+            DataFrame of the observations that are identified as outliers. Must contain columns diaSourceId, midPointMjdTai, mag_diff, std_diff
+
+        Returns
+        -----------
+        AdlerSourceFlags object
+            Object containing the source flags information on outliers identified.
+
+        """
+        obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "modelId": modelId}
+
+        obs_dict.update(
+            df.loc[:, ["diaSourceId", "midPointMjdTai", "mag_diff", "std_diff"]].to_dict(orient="list")
+        )
+
+        obs_dict.update({"n_outliers": len(df.loc[df.mag_diff != 0])})
+        obs_dict.update({"n_std_outliers": len(df.loc[df.std_diff != 0])})
 
         return cls(**obs_dict)
 
@@ -929,12 +1109,11 @@ class AdlerSourceFlags:
             filepath
         )  # check this FIRST as the next statement creates the db if it doesn't exist
 
-        # TODO does this need an explicit PRIMARY KEY? Currently the default columns are non-unique
         if not database_exists and create_new:  # we need to make the table and a couple of starter columns
             con = sqlite3.connect(filepath)
             cur = con.cursor()
             cur.execute(
-                "CREATE TABLE AdlerSourceFlags(ssObjectId, filter_name, modelId, diaSourceId, mag_diff, std_diff)"
+                "CREATE TABLE AdlerSourceFlags(ssObjectId, filter_name, modelId, diaSourceId, midPointMjdTai, mag_diff, std_diff)"
             )
         elif not database_exists and not create_new:
             logger.error("ValueError: Database cannot be found at given filepath.")
@@ -942,27 +1121,37 @@ class AdlerSourceFlags:
         else:
             con = sqlite3.connect(filepath)
             cur = con.cursor()
-            # Create the table if it doesn't exist (in case database was created through AdlerData)
+            # Create the table if it doesn't exist (in case database was created previously without this table)
             cur.execute(
-                "CREATE TABLE IF NOT EXISTS AdlerSourceFlags(ssObjectId, filter_name, modelId, diaSourceId, mag_diff, std_diff)"
+                "CREATE TABLE IF NOT EXISTS AdlerSourceFlags(ssObjectId, filter_name, modelId, diaSourceId, midPointMjdTai, mag_diff, std_diff)"
             )
 
         return con
 
     def write_flags_to_database(self, filepath, table_name="AdlerSourceFlags"):
-        """#TODO docstring"""
+        """
+        Writes the information from AdlerSourceFlags to the given database.
+
+        Parameters
+        -----------
+        filepath : path-like object
+            Path to the output database.
+
+        table_name : str, optional
+            Name of the table to write the flags to. Default: AdlerSourceFlags.
+        """
 
         con = self._get_database_connection(filepath, create_new=True)
 
-        # Don't need to write out n_outliers in this table
-        # TODO implement std_diff
         required_columns = [
             "ssObjectId",
             "filter_name",
             "modelId",
             "diaSourceId",
+            "midPointMjdTai",
             "mag_diff",
-        ]  # , "std_diff"]
+            "std_diff",
+        ]
 
         column_names = ",".join(required_columns)
         column_spaces = ",".join(["?"] * len(required_columns))
@@ -971,16 +1160,15 @@ class AdlerSourceFlags:
                         VALUES ({column_spaces});
                         """
 
-        # TODO implement check for data in mag_diff, std_diff data
-
         row_data = list(
             zip(
-                [self.ssObjectId] * self.n_outliers,
-                [self.filter_name] * self.n_outliers,
-                [self.modelId] * self.n_outliers,
+                [self.ssObjectId] * len(self.diaSourceId),
+                [self.filter_name] * len(self.diaSourceId),
+                [self.modelId] * len(self.diaSourceId),
                 self.diaSourceId,
+                self.midPointMjdTai,
                 self.mag_diff,
-                # self.std_diff,
+                self.std_diff,
             )
         )
 
@@ -988,11 +1176,6 @@ class AdlerSourceFlags:
         cur.executemany(sql_command, row_data)
         con.commit()
         con.close()
-
-        # TODO sqlite ON CONFLICT on modelId and diaSourceId combined?
-        #  (modelId can appear multiple times with different diaSourceIds)
-        # (diaSourceId can appear multilpe times for different modelIds)
-        # but we shouldn't have two rows with the same modelId and diaSourceId
 
 
 @dataclass
@@ -1011,7 +1194,7 @@ class FilterDependentAdler:
         Max minus min phase angle range of observations used in fitting model (degrees).
 
     observationTime_max : float, optional
-        Maximum time of observation used in fitting model (modifided Julian day).
+        Maximum time of observation used in fitting the model (in modified Julian day).
 
     arc: float, optional
         Observational arc used to fit model (days).
@@ -1022,15 +1205,20 @@ class FilterDependentAdler:
     n_outliers : int, optional
         Number of outliers detected for the given model.
 
+    n_std_outliers : int, optional
+        Number of outliers detected for the given model in sigma space.
+
     sustained_outliers : float, optional
-        Magnitude difference between old and new observations
+        Magnitude difference between old and new observations.
 
-    TODO fixdocstring here!
-    model_name: str, optional
-        TODO fix description
+    model_name : str, optional
+        Name of the model computed. Must be one of "HG", "HG1G2", "HG12", "HG12_Pen16", "LinearPhaseFunc", "median", "mean".
 
-    model_dependent_values: list of PhaseModelDependentAdler or AvgMagModelDependentAdler objects, optional
-        List of PhaseModelDependentAdler or AvgMagModelDependentAdler objects storing phase-model or average-magnitude-model parameters for each model, given in order of model_list. Default: empty list.
+    model_dependent_values : PhaseModelDependentAdler or AvgMagModelDependentAdler object, optional
+        PhaseModelDependentAdler or AvgMagModelDependentAdler object storing phase-model or average-magnitude-model parameters for the given model. Default: None.
+
+    source_flags : AdlerSourceFlags, optional
+        AdlerSourceFlags object storing the information on specific observations identified as outliers compared to the given model.
 
     """
 
@@ -1041,6 +1229,7 @@ class FilterDependentAdler:
     arc: float = np.nan
     nobs: int = 0
     n_outliers: int = 0
+    n_std_outliers: int = 0
     sustained_outliers: float = np.nan
     model_name: str = ""
     model_dependent_values: Optional[PhaseModelDependentAdler | AvgMagModelDependentAdler] = None

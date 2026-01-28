@@ -5,7 +5,6 @@ from numpy.testing import assert_almost_equal
 from adler.utilities.tests_utilities import get_test_data_filepath
 from adler.objectdata.AdlerPlanetoid import AdlerPlanetoid
 
-
 ssoid = "8268570668335894776"
 test_db_path = get_test_data_filepath("testing_database.db")
 

@@ -242,9 +242,9 @@ def test_print_data(capsys):
     assert captured.out == expected
 
 
-def test_write_row_to_database(tmp_path):
+def test_write_to_database(tmp_path):
     db_location = os.path.join(tmp_path, "test_AdlerData_database.db")
-    test_object.write_row_to_database(db_location)
+    test_object.write_to_database(db_location)
 
     con = sqlite3.connect(db_location)
     written_data = pd.read_sql_query("SELECT * from AdlerData", con)
@@ -254,7 +254,7 @@ def test_write_row_to_database(tmp_path):
     expected_data = pd.read_csv(expected_data_filepath, index_col=0)
 
     # we don't expect the timestamp column to be the same, obviously
-    drop_cols = [x for x in written_data if (x == "timestamp") or ("modelFitMjd" in x)]
+    drop_cols = [x for x in written_data if (x == "timestamp")]
     expected_data = expected_data.drop(columns=drop_cols)
     written_data = written_data.drop(columns=drop_cols)
 
@@ -277,14 +277,14 @@ def test_overwriting_rows_in_database(tmp_path):
 
     # write the initial object
     db_location = os.path.join(tmp_path, "test_AdlerData_database.db")
-    test_object.write_row_to_database(db_location)
+    test_object.write_to_database(db_location)
 
     # make a change to a value, then create a new AdlerData object
     # and write that to the database
     test_object_2 = AdlerData("8268570668335894776", ["g"])
     _g_model_1["nobs"] = 666
     test_object_2.populate_phase_parameters("g", **_g_model_1)
-    test_object_2.write_row_to_database(db_location)
+    test_object_2.write_to_database(db_location)
 
     con = sqlite3.connect(db_location)
     written_data = pd.read_sql_query("SELECT * from AdlerData", con)
@@ -386,7 +386,7 @@ def test_write_db_dtypes():
         os.remove(db_location)
 
     # create an AdlerData database for this object
-    test_object.write_row_to_database(db_location)
+    test_object.write_to_database(db_location)
 
     # Check that the database file exists
     assert os.path.isfile(db_location)
@@ -410,7 +410,6 @@ def test_write_db_dtypes():
         "r_HG12_Pen16_phase_parameter_1_err": np.float64,
         "r_HG12_Pen16_phase_parameter_2": np.float64,
         "r_HG12_Pen16_phase_parameter_2_err": object,
-        "r_HG12_Pen16_modelFitMjd": object,
     }
 
     # check the type of each field
