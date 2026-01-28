@@ -438,8 +438,11 @@ def generate_summary_csvs(
 
     mag_diff_output = f"{output_file_root}_outliers.csv"
     mag_diff_df = pd.read_sql_query(mag_diff_sql_query, con)
-    mag_diff_df.to_csv(mag_diff_output, index=False)
-    logger.info(f"Output written to {mag_diff_output}")
+    if len(mag_diff_df) == 0:
+        logger.info(f"No outliers found, {mag_diff_output} not generated")
+    else:
+        mag_diff_df.to_csv(mag_diff_output, index=False)
+        logger.info(f"Output written to {mag_diff_output}")
 
     # Outliers in sigma-space
     std_diff_sql_query = f"""
@@ -449,8 +452,11 @@ def generate_summary_csvs(
 
     std_diff_output = f"{output_file_root}_std_outliers.csv"
     std_diff_df = pd.read_sql_query(std_diff_sql_query, con)
-    std_diff_df.to_csv(std_diff_output, index=False)
-    logger.info(f"Output written to {std_diff_output}")
+    if len(std_diff_df) == 0:
+        logger.info(f"No outliers found, {std_diff_output} not generated")
+    else:
+        std_diff_df.to_csv(std_diff_output, index=False)
+        logger.info(f"Output written to {std_diff_output}")
 
     # Sustained outliers
     sus_outlier_sql_condition = " OR ".join(f"{filt}_sustained_outliers IS NOT NULL" for filt in filter_list)
@@ -458,7 +464,10 @@ def generate_summary_csvs(
 
     sus_outlier_output = f"{output_file_root}_sustained_outliers.csv"
     sus_outlier_df = pd.read_sql_query(sus_outlier_sql_query, con)
-    sus_outlier_df.to_csv(sus_outlier_output, index=False)
-    logger.info(f"Output written to {sus_outlier_output}")
+    if len(sus_outlier_df) == 0:
+        logger.info(f"No outliers found, {sus_outlier_output} not generated")
+    else:
+        sus_outlier_df.to_csv(sus_outlier_output, index=False)
+        logger.info(f"Output written to {sus_outlier_output}")
 
     con.close()
