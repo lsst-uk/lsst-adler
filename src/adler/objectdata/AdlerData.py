@@ -34,6 +34,10 @@ AVG_MAG_MODEL_DEPENDENT_KEYS = [
 VALID_AVG_MAG_MODELS = ["median", "mean"]
 ALL_FILTER_LIST = ["u", "g", "r", "i", "z", "y"]
 
+VALID_MODELS = sorted(
+    VALID_PHASE_MODELS + VALID_AVG_MAG_MODELS, key=len, reverse=True
+)  # sorted to avoid partial matches when using _get_model_name
+
 logger = logging.getLogger(__name__)
 
 # Ensure that numpy dtypes correctly map to SQL types
@@ -110,7 +114,7 @@ class AdlerData:
             The number of nights of data that are considered as "new observations" in calculating outliers.
         """
         # N.B. double underscore is intentional to provide a point to break this string if searching for the model_name after generation (as HG12_Pen16 is a valid model name with a single underscore)
-        self.modelId = f"{model_name}__{end_mjd:.1f}_{data_timespan}n_{n_new_nights}n"
+        self.modelId = f"{model_name}_{end_mjd:.1f}_{data_timespan}n_{n_new_nights}n"
 
         self._MJD_update()
 
@@ -409,7 +413,7 @@ class AdlerData:
 
                     self.populate_filter_dependent_parameters(filter_name, **filter_dependent_info)
 
-                    model_name = self.modelId.split("__")[0]
+                    model_name = self._get_model_name()
 
                     if model_name in VALID_PHASE_MODELS:
                         expected_model_columns = [
@@ -871,6 +875,22 @@ class AdlerData:
         con.commit()
         con.close()
 
+    def _get_model_name(self):
+        """Returns the model_name by parsing the modelId
+
+        Returns
+        -----------
+            Name of the model specified in self.modelId
+        """
+        matches = [m for m in VALID_MODELS if self.modelId.startswith(m + "_")]
+        if len(matches) == 1:
+            return matches[0]
+        if not matches:
+            logger.error(f"No valid model found in: {self.modelId}")
+            raise ValueError(f"No valid model found in: {self.modelId}")
+        logger.error(f"Ambiguous model match in: {self.modelId}")
+        raise ValueError(f"Ambiguous model match in: {self.modelId}")
+
     def write_to_database(self, filepath, write_model_data=False):
         """Writes all of the relevant data contained within the AdlerData object to a SQLite database.
 
@@ -893,7 +913,7 @@ class AdlerData:
             self._write_table(filepath=filepath, table_name="FilterDependentAdler")
             logger.info(f"Filter-specific information written to FilterDependentAdler table")
 
-            model_name = self.modelId.split("__")[0]
+            model_name = self._get_model_name()
             if model_name in VALID_PHASE_MODELS:
                 # Write PhaseModelDependentAdler data
                 self._write_table(filepath=filepath, table_name="PhaseModelDependentAdler")
