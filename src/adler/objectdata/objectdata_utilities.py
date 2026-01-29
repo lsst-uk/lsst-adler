@@ -8,6 +8,7 @@ import erfa
 import astropy.units as u
 import os
 import pyvo
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -424,6 +425,12 @@ def get_tap_service_api(rsp_tap_path, api_token_path):  # pragma: no cover
     )  # Expands '~' to full path if included in user-provided path
     with open(expanded_path, "r") as f:
         token_str = f.readline()
+
+    token_str = token_str.replace("\n", "")
+
+    # tap_session = requests.Session()
+    # tap_session.headers['Authorization'] = f"Bearer {token_str}"
+    # rsp_tap_service = pyvo.dal.TAPService(RSP_TAP_SERVICE, session=tap_session)
 
     cred = pyvo.auth.CredentialStore()
     cred.set_password("x-oauth-basic", token_str)
