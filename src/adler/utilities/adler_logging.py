@@ -32,7 +32,7 @@ def setup_adler_logging(
         Log object.
     """
 
-    log = logging.getLogger()  # ROOT LOGGER
+    log = logging.getLogger("adler")
 
     # Prevent duplicate handlers if called more than once
     if log.handlers:
