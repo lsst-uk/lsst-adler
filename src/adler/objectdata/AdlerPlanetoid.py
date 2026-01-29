@@ -10,7 +10,7 @@ from adler.objectdata.Observations import Observations
 from adler.objectdata.MPCORB import MPCORB
 from adler.objectdata.SSObject import SSObject
 from adler.objectdata.AdlerData import AdlerData
-from adler.objectdata.objectdata_utilities import get_data_table, flux_to_magnitude
+from adler.objectdata.objectdata_utilities import get_data_table, flux_to_magnitude, get_tap_service_api
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,7 @@ SCHEMA_CONFIG_DICT = {
         ),
     },
 }
+RSP_TAP_CONFIG_DICT = {"dp03_catalogs_10yr": "ssotap", "dp1": "tap"}
 
 
 class AdlerPlanetoid:
@@ -244,6 +245,7 @@ class AdlerPlanetoid:
         filter_list=["u", "g", "r", "i", "z", "y"],
         date_range=[60000.0, 67300.0],
         schema="dp03_catalogs_10yr",
+        api_token_path=None,
         flux_flag=None,
     ):  # pragma: no cover
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects
@@ -263,6 +265,9 @@ class AdlerPlanetoid:
         schema : str or None
             Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
 
+        api_token_path : str or None
+            Path to user RSP API token if running not on RSP. See https://rsp.lsst.io/guides/auth/creating-user-tokens.html and lsst-adler/notebooks/adler_demo/adler_demo_rsp_api.ipynb for guide on setting this up.
+
         flux_flag : str or None
             Name of the flux column to select from DP1 DiaSource table. Determines FluxErr and ra/dec columns to select also. Default is None (selects mag/magErr/ra/dec for DP0.3)
 
@@ -271,14 +276,14 @@ class AdlerPlanetoid:
         if len(date_range) != 2:
             raise ValueError("date_range argument must be of length 2.")
 
+        rsp_tap_path = RSP_TAP_CONFIG_DICT[schema]  # TODO give better name
+
         # Select correct TAP service depending on schema chosen
-        if schema == "dp03_catalogs_10yr":
-            service = get_tap_service("ssotap")
-        elif schema == "dp1":
-            service = get_tap_service("tap")
+        if api_token_path:
+            service = get_tap_service_api(rsp_tap_path, api_token_path=api_token_path)
         else:
-            logger.error(f"Schema {schema} not recognised.")
-            raise Exception(f"Schema {schema} not recognised.")
+            service = get_tap_service(rsp_tap_path)
+
         logger.info("Getting past observations from DIASource/SSSource...")
 
         observations_by_filter = cls.populate_observations(
