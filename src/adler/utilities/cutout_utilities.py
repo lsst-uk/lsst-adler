@@ -206,7 +206,7 @@ class Cutout:
         if len(self.calib_level) == 1:
             query = """SELECT access_url, calib_level FROM ivoa.ObsCore
             WHERE lsst_visit = {} AND lsst_detector = {} AND calib_level = {}
-            """.format(self.visit, self.detector, self.calib_level[0])
+            """.format(self.dataset, self.IdTable, self.IdCol, self.Id)
         else:
             query = """SELECT access_url, calib_level FROM ivoa.ObsCore
             WHERE lsst_visit = {} AND lsst_detector = {} AND calib_level IN {}
