@@ -183,7 +183,7 @@ class AdlerData:
             return
         elif kwargs.get("model_name") != self.filter_dependent_values[filter_index].model_name:
             logger.warning(
-                f"Input model name {kwargs.get("model_name")} does not match model name {self.filter_dependent_values[filter_index].model_name} in AdlerData. Parameters will be overwritten."
+                f"Input model name {kwargs.get('model_name')} does not match model name {self.filter_dependent_values[filter_index].model_name} in AdlerData. Parameters will be overwritten."
             )
             self.filter_dependent_values[filter_index].model_name = kwargs.get("model_name")
             self.filter_dependent_values[filter_index].model_dependent_values = PhaseModelDependentAdler(
@@ -242,7 +242,7 @@ class AdlerData:
             return
         elif kwargs.get("model_name") != self.filter_dependent_values[filter_index].model_name:
             logger.warning(
-                f"Input model name {kwargs.get("model_name")} does not match model name {self.filter_dependent_values[filter_index].model_name} in AdlerData. Parameters will be overwritten."
+                f"Input model name {kwargs.get('model_name')} does not match model name {self.filter_dependent_values[filter_index].model_name} in AdlerData. Parameters will be overwritten."
             )
             self.filter_dependent_values[filter_index].model_name = kwargs.get("model_name")
             self.filter_dependent_values[filter_index].model_dependent_values = AvgMagModelDependentAdler(
@@ -307,8 +307,8 @@ class AdlerData:
 
         self.populate_filter_dependent_parameters(filter_name, **kwargs)
 
-        self.filter_dependent_values[filter_index].source_flags = AdlerSourceFlags.construct_from_data_table(
-            self.ssObjectId, filter_name, modelId, df
+        self.filter_dependent_values[filter_index].source_flags = (
+            AdlerSourceFlags.construct_source_flags_from_data_table(self.ssObjectId, filter_name, modelId, df)
         )
 
         self._MJD_update()
@@ -340,7 +340,7 @@ class AdlerData:
             logger.info(f"Populating information from {tbl_name}.")
             # Specific query required for AdlerSourceFlags whereas the other tables can follow the same style (as they are unique on ssObjectId)
             if tbl_name == "AdlerSourceFlags":
-                source_flags_query = f"SELECT * FROM AdlerSourceFlags WHERE ssObjectId='{self.ssObjectId}' and modelId='{self.modelId}'"
+                source_flags_query = f"SELECT * FROM AdlerSourceFlags WHERE CAST(ssObjectId AS TEXT)='{self.ssObjectId}' and modelId='{self.modelId}'"
                 cursor.execute(source_flags_query)
                 rows = cursor.fetchall()
                 columns = [desc[0] for desc in cursor.description]
@@ -353,9 +353,9 @@ class AdlerData:
             else:
                 if not modelId and tbl_name == "AdlerData":
                     # If modelId isn't specified and we're querying AdlerData (i.e. the default first table to be queried), we take the most recent entry
-                    sql_query = f"""SELECT * from {tbl_name} WHERE ssObjectId='{self.ssObjectId}' ORDER BY updatedMJD DESC LIMIT 1"""
+                    sql_query = f"""SELECT * from {tbl_name} WHERE CAST(ssObjectId AS TEXT)='{self.ssObjectId}' ORDER BY updatedMJD DESC LIMIT 1"""
                 else:
-                    sql_query = f"""SELECT * from {tbl_name} WHERE ssObjectId='{self.ssObjectId}' AND modelId='{self.modelId}' ORDER BY updatedMJD DESC LIMIT 1"""
+                    sql_query = f"""SELECT * from {tbl_name} WHERE CAST(ssObjectId AS TEXT)='{self.ssObjectId}' AND modelId='{self.modelId}' ORDER BY updatedMJD DESC LIMIT 1"""
                 query_result = cursor.execute(sql_query)
 
                 try:
@@ -882,14 +882,11 @@ class AdlerData:
         -----------
             Name of the model specified in self.modelId
         """
-        matches = [m for m in VALID_MODELS if self.modelId.startswith(m + "_")]
-        if len(matches) == 1:
-            return matches[0]
-        if not matches:
-            logger.error(f"No valid model found in: {self.modelId}")
-            raise ValueError(f"No valid model found in: {self.modelId}")
-        logger.error(f"Ambiguous model match in: {self.modelId}")
-        raise ValueError(f"Ambiguous model match in: {self.modelId}")
+        for model in VALID_MODELS:
+            if self.modelId.startswith(model + "_"):
+                return model
+        logger.error(f"Unknown model in string: {self.modelId}")
+        raise ValueError(f"Unknown model in string: {self.modelId}")
 
     def write_to_database(self, filepath, write_model_data=False):
         """Writes all of the relevant data contained within the AdlerData object to a SQLite database.
@@ -1073,7 +1070,7 @@ class AdlerSourceFlags:
     std_diff: np.ndarray = field(default_factory=lambda: np.zeros(0))
 
     @classmethod
-    def construct_from_data_table(cls, ssObjectId, filter_name, modelId, df):
+    def construct_source_flags_from_data_table(cls, ssObjectId, filter_name, modelId, df):
         """Method for constructing the AdlerSourceFlags object from a dataframe.
 
         Parameters
