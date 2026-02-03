@@ -474,8 +474,8 @@ def generate_summary_csvs(
         logger.info(f"Output written to {sus_outlier_output}")
 
     con.close()
-    
-    
+
+
 def get_tap_service_api(rsp_tap_path, api_token_path):  # pragma: no cover
     """Returns a pyvo.dal.TAPService object linked to the RSP if provided with the desired API path and valid API token. For use with querying the RSP remotely.
 

@@ -379,7 +379,6 @@ class AdlerData:
                 if not modelId:
                     self.modelId = row_data["modelId"]
 
-                # TODO decide whether to update updatedMJD (and make it updatedMJD)
                 self.updatedMJD = row_data["updatedMJD"]
 
                 filter_bools = [
@@ -437,13 +436,6 @@ class AdlerData:
                         model_dependent_info["model_name"] = model_name
 
                         self.populate_avg_mag_parameters(filter_name, **model_dependent_info)
-                    else:
-                        logger.error(
-                            f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
-                        )
-                        raise ValueError(
-                            f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
-                        )
 
         con.close()
 
@@ -922,13 +914,6 @@ class AdlerData:
                 self._write_table(filepath=filepath, table_name="AvgMagModelDependentAdler")
                 logger.info(
                     f"Average Magnitude model-specific information for model {model_name} written to AvgMagModelDependentAdler table"
-                )
-            else:
-                logger.error(
-                    f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
-                )
-                raise ValueError(
-                    f"Invalid model name '{model_name}' provided. Model must be one of {VALID_PHASE_MODELS} or {VALID_AVG_MAG_MODELS}"
                 )
 
             # Write AdlerSourceFlags data

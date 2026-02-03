@@ -156,6 +156,7 @@ def test_failed_SQL_queries():
     )
 
 
+# TODO edit here to pull in from new output AdlerData tests (adler_output....sqlite)
 def test_attach_previous_adlerdata():
     test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path, filter_list=["g", "r"])
 
