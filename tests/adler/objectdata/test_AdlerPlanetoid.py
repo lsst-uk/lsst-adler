@@ -156,9 +156,8 @@ def test_failed_SQL_queries():
     )
 
 
-# TODO edit here to pull in from new output AdlerData tests (adler_output....sqlite)
 def test_attach_previous_adlerdata():
-    test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path, filter_list=["g", "r"])
+    test_planetoid = AdlerPlanetoid.construct_from_SQL(6098332225018000, test_db_path, filter_list=["r", "i"])
 
     # TODO: this setup is currently a bit dodgy. Because AdlerData write_row_to_database appends a new line to the db the most recent model for a given object may be nan in that row
     # as such this test depends on the order/number of times the adler commands have been run to make it
@@ -166,7 +165,8 @@ def test_attach_previous_adlerdata():
     # the test database can be recreated by running the Adler commands in the tests/data dir:
     # adler -s 8268570668335894776 -i testing_database.db -n test_AdlerData_database.db
     # adler -s 8268570668335894776 -i testing_database.db -n test_AdlerData_database.db -m HG
-    db_location = get_test_data_filepath("test_AdlerData_database.db")
+    # db_location = get_test_data_filepath("test_AdlerData_database.db")
+    db_location = get_test_data_filepath(f"adler_output_HG12_Pen16_63335.5_400n_31n.sqlite")
     print(db_location)
 
     test_planetoid.attach_previous_adler_data(db_location)
@@ -176,15 +176,19 @@ def test_attach_previous_adlerdata():
 
     expected_output = {
         "filter_name": "r",
-        "phaseAngle_min": 2.553332567214966,
-        "phaseAngle_range": 124.23803400993347,
-        "nobs": 38,
-        "arc": 3338.0655999999944,
+        "phaseAngle_min": 9.478214263916016,
+        "phaseAngle_range": 10.772890090942383,
+        "observationTime_max": 63001.97873,
+        "nobs": 9,
+        "arc": 62.78039,
+        "n_outliers": 1,
+        "n_std_outliers": 6,
+        "sustained_outliers": np.nan,
         "model_name": "HG12_Pen16",
-        "H": 19.92863542616601,
-        "H_err": 0.018525355171274356,
-        "phase_parameter_1": 1.0,
-        "phase_parameter_1_err": 0.05300829494059732,
+        "H": 16.299738958850803,
+        "H_err": 0.008126418528902073,
+        "phase_parameter_1": 0.7074497288054502,
+        "phase_parameter_1_err": 0.09699260052621479,
         "phase_parameter_2": np.nan,
         "phase_parameter_2_err": np.nan,
     }
@@ -228,7 +232,6 @@ def test_construct_from_mpc_obs_sbn():
     assert test_planetoid.date_range == [60000.0, 67300.0]
 
 
-# TODO these tests
 def test_construct_from_mpc_with_single_filter():
     test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(mpc_ssoid, mpc_test_db_path, filter_list=["g"])
 

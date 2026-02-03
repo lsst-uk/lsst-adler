@@ -995,8 +995,7 @@ class AdlerPlanetoid:
 
         return self.SSObject.filter_dependent_values[filter_index]
 
-    # TODO edit this once populate_from_database in AdlerData.py edited
-    def attach_previous_adler_data(self, filepath):
+    def attach_previous_adler_data(self, filepath, modelId=None):
         """Attaches and returns an AdlerData object containing the most recent AdlerData
         for this ssObjectId.
 
@@ -1004,9 +1003,13 @@ class AdlerPlanetoid:
         -----------
         filepath : path-like object
             Filepath with the location of the output SQL database.
+
+        modelId : str, optional
+            modelId for the model of interest that should be recovered. Default: None.
+
         """
 
         self.PreviousAdlerData = AdlerData(self.ssObjectId, self.filter_list)
-        self.PreviousAdlerData.populate_from_database(filepath)
+        self.PreviousAdlerData.populate_from_database(filepath, modelId=modelId)
 
         return self.PreviousAdlerData
