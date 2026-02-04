@@ -129,6 +129,9 @@ def run_outliers(
                     raise ValueError("Schema not recognised")
 
                 for filt in planetoid.filter_list:
+                    # Set the modelId here
+                    planetoid.AdlerData.set_modelId(model_name, process_mjd, data_timespan, n_new_nights)
+
                     df_obs = sci_utils.get_df_obs_filt(planetoid, filt=filt)
 
                     err_flag = df_obs.magErr.isnull().all()
@@ -170,9 +173,6 @@ def run_outliers(
                             "Insufficient number of previous observations after sigma clipping, continuing to next band/object"
                         )
                         continue
-
-                    # Set the modelId here
-                    planetoid.AdlerData.set_modelId(model_name, process_mjd, data_timespan, n_new_nights)
 
                     # Populate summary AdlerData params for this filter and particular model
                     ad_params = {}
