@@ -1,6 +1,8 @@
 import argparse
+import glob
 import os
 import sqlite3
+import subprocess
 import sys
 from typing import List
 import logging
@@ -10,6 +12,7 @@ import numpy as np
 import pandas as pd
 from astropy.stats import sigma_clip as astropy_sigma_clip
 import astropy.units as u
+from astropy.time import Time
 from tqdm import tqdm
 
 from adler.objectdata.AdlerPlanetoid import AdlerPlanetoid
@@ -26,26 +29,39 @@ logger = logging.getLogger(__name__)
 
 def parse_args(argv: List[str] = None):
     p = argparse.ArgumentParser(description="Run outlier detection for a single process_mjd")
-    p.add_argument("--process-mjd", type=float, required=True, help="MJD to process (e.g. 60799.5)")
-    p.add_argument("--input-sql-file", type=str, default="rubin.sqlite", help="Path to input SQLite file")
+    p.add_argument("--process-mjd", type=float, help="MJD to process (e.g. 60799.5)")
+    p.add_argument(
+        "--process-isot",
+        type=str,
+        help="ISOT date to process (e.g. 2025-05-04T12:00:00.000 (YYYY-MM-DDTHH:MM:SS.sss) or 2025-05-04 (YYYY-MM-DD))",
+    )
+    p.add_argument(
+        "--input-sql-file",
+        type=str,
+        default="rubin.sqlite",
+        help="Path to input SQLite file",
+    )
     p.add_argument("--schema", type=str, choices=["MPC", "dp03_catalogs_10yr"], default="MPC")
     p.add_argument(
-        "--filter-list", nargs="+", default=["u", "g", "r", "i", "z", "y"], help="Filters to consider"
+        "--filter-list",
+        nargs="+",
+        default=["u", "g", "r", "i", "z", "y"],
+        help="Filters to consider",
     )
     p.add_argument("--model-name", type=str, default="median", help="Name of model to use")
     p.add_argument(
         "--data-timespan",
         type=int,
         nargs="+",
-        default=[30, 7],
-        help="Days of history to use (one or more values)",
+        default=[30],
+        help="Number of nights of observations to use (one or more values)",
     )
     p.add_argument(
         "--n-new-nights",
         type=int,
         nargs="+",
-        default=[3, 1],
-        help="New-night windows to consider (one or more values)",
+        default=[3],
+        help="Number of nights of obsversations to consider as new nights (one or more values)",
     )
     p.add_argument("--diff-cut", type=float, default=1.5, help="Magnitude difference threshold")
     p.add_argument("--std-cut", type=float, default=5.0, help="Sigma-space threshold")
@@ -53,7 +69,17 @@ def parse_args(argv: List[str] = None):
     p.add_argument("--make-plots", action="store_true", help="Generate output plots")
     p.add_argument("--write-model-data", action="store_false", help="Generate output plots")
     p.add_argument("--output-dir", type=str, default="adler_output_files", help="Output directory")
+    p.add_argument(
+        "--force-overwrite",
+        action="store_true",
+        help="Flag to force overwriting of any existing output files",
+    )
     p.add_argument("--logs-dir", type=str, default="adler_logs", help="Logs directory")
+    p.add_argument(
+        "--rsp-path",
+        type=str,
+        help="Path to where you wish to upload the output files to the RSP. This will parse your RSP username from the path specified and use the rsp_sync.sh script. See the SSSC Prompt Products Bandaid for instructions on using this script.",
+    )
     return p.parse_args(argv)
 
 
@@ -63,14 +89,16 @@ def run_outliers(
     schema: str = "MPC",
     filter_list: List[str] = ["u", "g", "r", "i", "z", "y"],
     model_name: str = "median",
-    data_timespan_arr: List[int] = [30, 7],
-    n_new_nights_arr: List[int] = [3, 1],
+    data_timespan_arr: List[int] = [30],
+    n_new_nights_arr: List[int] = [3],
     diff_cut: float = 1.5,
     std_cut: float = 5.0,
     sig_clip_val: float = 3.0,
     make_plots: bool = False,
     write_model_data: bool = False,
     output_dir: str = "demo_output_files",
+    force_overwrite: bool = False,
+    rsp_path: str = None,
 ):
     if schema == "MPC":
         logger.info(
@@ -104,9 +132,16 @@ def run_outliers(
         logger.info(f"Processing data_timespan of {data_timespan} nights")
         for n_new_nights in n_new_nights_arr:
             logger.info(f"Processing n_new_nights of {n_new_nights} nights")
-            os.makedirs(output_dir, exist_ok=True)
 
             output_db = f"{output_dir}/adler_output_{model_name}_{process_mjd:.1f}_{data_timespan}n_{n_new_nights}n.sqlite"
+
+            if os.path.isfile(output_db) and not force_overwrite:
+                logger.error(
+                    f"Output database already exists and force_overwrite not specified. Delete/rename the file at {output_db} or specifiy --force-overwrite in the input arguments"
+                )
+                raise ValueError(
+                    f"Output database already exists and force_overwrite not specified. Delete/rename the file at {output_db} or specifiy --force-overwrite in the input arguments"
+                )
 
             for ssObjectId in tqdm(unique_obj_ids, desc=f"Objects to process for {process_mjd}"):
                 logger.info(f"Processing {ssObjectId}")
@@ -185,7 +220,9 @@ def run_outliers(
                     # Fit model
                     if model_name in VALID_AVG_MAG_MODELS:
                         model = AvgMagModel().InitModelObs(
-                            mag=df_obs_old[mag_col], magErr=df_obs_old[magErr_col], model_name=model_name
+                            mag=df_obs_old[mag_col],
+                            magErr=df_obs_old[magErr_col],
+                            model_name=model_name,
                         )
                         ad_params.update(model.__dict__)  # store model values in ad_params
                         planetoid.AdlerData.populate_avg_mag_parameters(filt, **ad_params)
@@ -228,7 +265,9 @@ def run_outliers(
                     combined_outlier_arr = diff_cut_outlier_arr | std_cut_outlier_arr
 
                     planetoid.AdlerData.populate_source_flags(
-                        filt, planetoid.AdlerData.modelId, df_obs_new.loc[combined_outlier_arr]
+                        filt,
+                        planetoid.AdlerData.modelId,
+                        df_obs_new.loc[combined_outlier_arr],
                     )
 
                     ####
@@ -349,9 +388,56 @@ def run_outliers(
                 filter_list=planetoid.AdlerData.filter_list,
             )
 
+    ####
+    # Upload results to RSP
+    ####
+    if rsp_path:
+        logger.info("Starting upload of output files to RSP...")
+
+        # Parse RSP username from path: /home/<rsp-username>/path/to/file.sqlite
+        # Extract the username from the path
+        path_parts = rsp_path.split("/")
+        if len(path_parts) >= 3 and path_parts[1] == "home":
+            rsp_username = path_parts[2]
+        else:
+            logger.error(
+                f"Could not parse RSP username from path: {rsp_path}. Expected /home/<rsp-username>/..."
+            )
+            raise ValueError(
+                f"Could not parse RSP username from path: {rsp_path}. Expected /home/<rsp-username>/..."
+            )
+
+        # Find all .sqlite and .csv files in the output directory
+        output_files = glob.glob(
+            os.path.join(output_dir, f"*{planetoid.AdlerData.modelId}*.sqlite")
+        ) + glob.glob(os.path.join(output_dir, f"*{planetoid.AdlerData.modelId}*.csv"))
+
+        for file_path in output_files:
+            file_name = os.path.basename(file_path)
+            # Construct the remote path in format: <rsp-username>@rsp:<rsp-path>
+            remote_path = f"{rsp_username}@rsp:{rsp_path}/{file_name}".replace(
+                "//", "/"
+            )  # Replace any double slashes with single slash (guard against filepath ending being directory without end slash)
+            logger.info(f"Uploading {file_path} -> {remote_path}")
+            try:
+                subprocess.run(["./rsp_sync.sh", file_path, remote_path], check=True)
+                logger.info(f"Successfully uploaded {file_name}")
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Failed to upload {file_name}: {e}")
+                raise
+        logger.info("Upload to RSP complete!")
+    else:
+        logger.info("No RSP path specified, skipping upload")
+
 
 def main(argv=None):
     args = parse_args(argv)
+
+    if not (args.process_mjd or args.process_isot):
+        raise ValueError("Processing date not set. Please set process-mjd or process-isot to proceed.")
+    elif args.process_isot:
+        print(f"Processing date {args.process_isot} specified in ISOT format, converting to MJD...")
+        args.process_mjd = Time(args.process_isot, format="isot", scale="utc").tai.mjd
 
     setup_adler_logging(
         log_location=args.logs_dir,
@@ -372,7 +458,9 @@ def main(argv=None):
         sig_clip_val=args.sig_clip_val,
         make_plots=args.make_plots,
         write_model_data=args.write_model_data,
+        force_overwrite=args.force_overwrite,
         output_dir=args.output_dir,
+        rsp_path=args.rsp_path,
     )
 
 
