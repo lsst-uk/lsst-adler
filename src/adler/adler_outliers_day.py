@@ -439,6 +439,8 @@ def main(argv=None):
         print(f"Processing date {args.process_isot} specified in ISOT format, converting to MJD...")
         args.process_mjd = Time(args.process_isot, format="isot", scale="utc").tai.mjd
 
+    os.makedirs(args.logs_dir, exist_ok=True)
+
     setup_adler_logging(
         log_location=args.logs_dir,
         log_file_info=f"adler_{args.model_name}_{args.process_mjd:.1f}.log",
