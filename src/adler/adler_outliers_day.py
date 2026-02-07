@@ -423,7 +423,7 @@ def run_outliers(
             )  # Replace any double slashes with single slash (guard against filepath ending being directory without end slash)
             logger.info(f"Uploading {file_path} -> {remote_path}")
             try:
-                subprocess.run(["./rsp_sync.sh", file_path, remote_path], check=True)
+                subprocess.run(["~/rsp_sync.sh", file_path, remote_path], check=True)
                 logger.info(f"Successfully uploaded {file_name}")
             except subprocess.CalledProcessError as e:
                 logger.error(f"Failed to upload {file_name}: {e}")
@@ -436,9 +436,9 @@ def run_outliers(
 def main(argv=None):
     args = parse_args(argv)
 
+    # Determine process_mjd from database if not provided
     if not (args.process_mjd or args.process_isot):
-        # Determine process_mjd from database
-        logger.info("Processing date not specified, calculating from database max time")
+        print("Processing date not specified, calculating from database max time")
 
         # Get the maximum obstime from the database
         conn = sqlite3.connect(args.input_sql_file)
@@ -453,11 +453,11 @@ def main(argv=None):
         # Round to nearest 0.5
         args.process_mjd = math.ceil(max_time_mjd_tai - 0.5) + 0.5
 
-        logger.info(f"Max time (ISOT UTC): {max_time_isot_utc}")
-        logger.info(f"Max time (TAI MJD): {max_time_mjd_tai}")
-        logger.info(f"Process MJD (rounded to nearest 0.5): {args.process_mjd}")
+        print(f"Max time (ISOT UTC): {max_time_isot_utc}")
+        print(f"Max time (TAI MJD): {max_time_mjd_tai}")
+        print(f"Process MJD (rounded to nearest 0.5): {args.process_mjd}")
     elif args.process_isot:
-        logger.info(f"Processing date {args.process_isot} specified in ISOT format, converting to MJD...")
+        print(f"Processing date {args.process_isot} specified in ISOT format, converting to MJD...")
         args.process_mjd = Time(args.process_isot, format="isot", scale="utc").tai.mjd
 
     os.makedirs(args.logs_dir, exist_ok=True)
@@ -467,6 +467,8 @@ def main(argv=None):
         log_file_info=f"adler_{args.model_name}_{args.process_mjd:.1f}.log",
         log_file_error=f"adler_{args.model_name}_{args.process_mjd:.1f}.err",
     )
+
+    logger.info(f"Process MJD: {args.process_mjd}")
 
     run_outliers(
         process_mjd=args.process_mjd,
