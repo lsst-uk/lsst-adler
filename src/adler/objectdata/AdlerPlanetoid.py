@@ -46,7 +46,14 @@ class AdlerPlanetoid:
     """AdlerPlanetoid class. Contains the Observations, MPCORB and SSObject dataclass objects."""
 
     def __init__(
-        self, ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data
+        self,
+        ssObjectId,
+        filter_list,
+        date_range,
+        observations_by_filter,
+        mpcorb,
+        ssobject,
+        adler_data,
     ):
         """Initialises the AdlerPlanetoid object.
 
@@ -153,7 +160,15 @@ class AdlerPlanetoid:
 
         adler_data = AdlerData(ssObjectId, filter_list)
 
-        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
+        return cls(
+            ssObjectId,
+            filter_list,
+            date_range,
+            observations_by_filter,
+            mpcorb,
+            ssobject,
+            adler_data,
+        )
 
     @classmethod
     def construct_from_cassandra(
@@ -236,7 +251,15 @@ class AdlerPlanetoid:
 
         adler_data = AdlerData(ssObjectId, filter_list)
 
-        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
+        return cls(
+            ssObjectId,
+            filter_list,
+            date_range,
+            observations_by_filter,
+            mpcorb,
+            ssobject,
+            adler_data,
+        )
 
     @classmethod
     def construct_from_RSP(
@@ -312,7 +335,15 @@ class AdlerPlanetoid:
 
         adler_data = AdlerData(ssObjectId, filter_list)
 
-        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
+        return cls(
+            ssObjectId,
+            filter_list,
+            date_range,
+            observations_by_filter,
+            mpcorb,
+            ssobject,
+            adler_data,
+        )
 
     def populate_observations(
         self,
@@ -750,7 +781,15 @@ class AdlerPlanetoid:
 
         adler_data = AdlerData(ssObjectId, filter_list)
 
-        return cls(ssObjectId, filter_list, date_range, observations_by_filter, mpcorb, ssobject, adler_data)
+        return cls(
+            ssObjectId,
+            filter_list,
+            date_range,
+            observations_by_filter,
+            mpcorb,
+            ssobject,
+            adler_data,
+        )
 
     def populate_observations_from_mpc_obs_sbn(self, ssObjectId, filter_list, date_range, sql_filename):
         """Populates the observations_by_filter class attribute. This version is specific to the construct_from_mpc_obs_sbn function.
@@ -956,7 +995,7 @@ class AdlerPlanetoid:
 
         return self.SSObject.filter_dependent_values[filter_index]
 
-    def attach_previous_adler_data(self, filepath):
+    def attach_previous_adler_data(self, filepath, modelId=None):
         """Attaches and returns an AdlerData object containing the most recent AdlerData
         for this ssObjectId.
 
@@ -964,9 +1003,13 @@ class AdlerPlanetoid:
         -----------
         filepath : path-like object
             Filepath with the location of the output SQL database.
+
+        modelId : str, optional
+            modelId for the model of interest that should be recovered. Default: None.
+
         """
 
         self.PreviousAdlerData = AdlerData(self.ssObjectId, self.filter_list)
-        self.PreviousAdlerData.populate_from_database(filepath)
+        self.PreviousAdlerData.populate_from_database(filepath, modelId=modelId)
 
         return self.PreviousAdlerData

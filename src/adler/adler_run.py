@@ -168,7 +168,6 @@ def runAdler(cli_args):
             ad_params["phaseAngle_range"] = np.ptp(df_obs["phaseAngle"])  # * u.deg
             ad_params["arc"] = np.ptp(df_obs["midPointMjdTai"])  # * u.d
             ad_params["nobs"] = len(df_obs)
-            ad_params["modelFitMjd"] = Time.now().mjd
             # adler_data.populate_phase_parameters(filt, **pc_fit.__dict__)
             # TODO: replace any None with np.nan? e.g. phase_parameter_2?
             adler_data.populate_phase_parameters(filt, **ad_params)

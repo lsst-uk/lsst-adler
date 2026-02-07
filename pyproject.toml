@@ -23,6 +23,7 @@ dependencies = [
     "pandas",
     "scipy",
     "photutils",
+    "tqdm", # for progress bars
 ]
 
 [project.urls]
