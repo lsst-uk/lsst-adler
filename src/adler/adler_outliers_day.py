@@ -1,5 +1,6 @@
 import argparse
 import glob
+import math
 import os
 import sqlite3
 import subprocess
@@ -122,6 +123,8 @@ def run_outliers(
         q = f"SELECT DISTINCT ssObjectId FROM diaSource WHERE midPointMjdTai BETWEEN '{start_of_night_mjd}' AND '{process_mjd}'"
         obj_df = pd.read_sql_query(q, conn)
         unique_obj_ids = obj_df.ssObjectId.to_numpy()
+
+    # TODO implement unique_obj_ids.isin(<user_supplied_list_of_ids>)
 
     logger.info(f"{len(unique_obj_ids)} objects to analyze for {process_mjd}")
     if len(unique_obj_ids) == 0:
@@ -434,9 +437,27 @@ def main(argv=None):
     args = parse_args(argv)
 
     if not (args.process_mjd or args.process_isot):
-        raise ValueError("Processing date not set. Please set process-mjd or process-isot to proceed.")
+        # Determine process_mjd from database
+        logger.info("Processing date not specified, calculating from database max time")
+
+        # Get the maximum obstime from the database
+        conn = sqlite3.connect(args.input_sql_file)
+        cur = conn.cursor()
+        cur.execute("SELECT MAX(obstime) FROM obs_sbn")
+        max_time_isot_utc = cur.fetchone()[0]
+        conn.close()
+
+        # Convert to TAI MJD
+        max_time_mjd_tai = Time(max_time_isot_utc, format="isot", scale="utc").tai.mjd
+
+        # Round to nearest 0.5
+        args.process_mjd = math.ceil(max_time_mjd_tai - 0.5) + 0.5
+
+        logger.info(f"Max time (ISOT UTC): {max_time_isot_utc}")
+        logger.info(f"Max time (TAI MJD): {max_time_mjd_tai}")
+        logger.info(f"Process MJD (rounded to nearest 0.5): {args.process_mjd}")
     elif args.process_isot:
-        print(f"Processing date {args.process_isot} specified in ISOT format, converting to MJD...")
+        logger.info(f"Processing date {args.process_isot} specified in ISOT format, converting to MJD...")
         args.process_mjd = Time(args.process_isot, format="isot", scale="utc").tai.mjd
 
     os.makedirs(args.logs_dir, exist_ok=True)
