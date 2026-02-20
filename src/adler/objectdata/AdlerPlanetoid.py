@@ -984,7 +984,7 @@ class AdlerPlanetoid:
 
         Returns
         -------
-        observations : list of Observations
+        observations : pandas.DataFrame
 
         """
 
