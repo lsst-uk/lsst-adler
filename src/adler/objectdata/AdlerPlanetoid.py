@@ -990,11 +990,13 @@ class AdlerPlanetoid:
 
         result = pd.DataFrame()
         for obs in self.observations_by_filter:
-            df = pd.DataFrame(obs.__dict__)
+            df = pd.DataFrame(obs.__dict__ | {"filter_name": [obs.filter_name] * obs.num_obs})
             result = pd.concat([result, df]).reset_index(drop=True)
 
-        i = (obs.midPointMjdTai >= start) * (obs.midPointMjdTai <= stop)
-        return result.iloc[i]
+        i = (result.midPointMjdTai >= start) * (result.midPointMjdTai <= stop)
+        result = result.iloc[i]
+        result.sort_values("midPointMjdTai")
+        return result
 
     def SSObject_in_filter(self, filter_name):
         """User-friendly helper function. Returns the filter-dependent values from SSObject for a given filter.
