@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from numpy.testing import assert_almost_equal
+from numpy.testing import assert_almost_equal, assert_array_equal
 
 from adler.utilities.tests_utilities import get_test_data_filepath
 from adler.objectdata.AdlerPlanetoid import AdlerPlanetoid
@@ -110,6 +110,25 @@ def test_observations_in_filter():
         test_planetoid.observations_in_filter("f")
 
     assert error_info_1.value.args[0] == "Filter f is not in AdlerPlanetoid.filter_list."
+
+
+def test_observations_within_time():
+    test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path)
+
+    df_obs = test_planetoid.observations_within_time()
+
+    assert len(df_obs) == test_planetoid.SSObject.numObs
+    assert_array_equal(np.sort(np.unique(df_obs["filter_name"])), np.sort(test_planetoid.filter_list))
+
+    # test retrieving between a start and stop date
+    t1 = 61000
+    t2 = 63500
+    df_obs2 = test_planetoid.observations_within_time(start=t1, stop=t2)
+    assert len(df_obs2) == len(df_obs[(df_obs["midPointMjdTai"] >= t1) & (df_obs["midPointMjdTai"] <= t2)])
+
+    # test setting only the start (stop is set to max date automatically)
+    df_obs3 = test_planetoid.observations_within_time(start=t1)
+    assert len(df_obs3) == len(df_obs[(df_obs["midPointMjdTai"] >= t1)])
 
 
 def test_SSObject_in_filter():
