@@ -972,14 +972,14 @@ class AdlerPlanetoid:
 
         return self.observations_by_filter[filter_index]
 
-    def observations_within_time(self, start, stop):
-        """Get observations taken within a given time interval.
+    def observations_within_time(self, start=None, stop=None):
+        """Get a dataframe of all observations (across all filters) taken within a given time interval.
 
 
         Parameters
         ----------
         start, stop : float
-            The time limits as modified Julian dates.
+            The time limits as modified Julian dates. Optional, if not declared then get all data
 
 
         Returns
@@ -993,9 +993,13 @@ class AdlerPlanetoid:
             df = pd.DataFrame(obs.__dict__ | {"filter_name": [obs.filter_name] * obs.num_obs})
             result = pd.concat([result, df]).reset_index(drop=True)
 
+        if start is None:
+            start = np.amin(result["midPointMjdTai"])
+        if stop is None:
+            stop = np.amax(result["midPointMjdTai"])
         i = (result.midPointMjdTai >= start) * (result.midPointMjdTai <= stop)
-        result = result.iloc[i]
-        result.sort_values("midPointMjdTai")
+        result = result[i]
+        result = result.sort_values("midPointMjdTai")
         return result
 
     def SSObject_in_filter(self, filter_name):
