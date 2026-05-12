@@ -137,6 +137,9 @@ venv.bak/
 .spyderproject
 .spyproject
 
+# VSCode settings
+.vscode/
+
 # Rope project settings
 .ropeproject
 
@@ -169,3 +172,17 @@ cython_debug/
 
 # Ignore image files created by notebooks
 *.png
+*.pdf
+
+# Ignore .npy files
+*.npy
+
+# Ignoring output directories from MPC tests
+notebooks/adler_demo_outliers/outputs*
+# Ignore various output files
+*.fits
+*.csv
+*.db
+
+# Allow full content of specific output_files directory
+!notebooks/adler_demo_outliers/demo_output_files/*

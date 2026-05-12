@@ -23,6 +23,7 @@ dependencies = [
     "pandas",
     "scipy",
     "photutils",
+    "tqdm", # for progress bars
 ]
 
 [project.urls]
@@ -66,7 +67,7 @@ testpaths = [
 
 [tool.black]
 line-length = 110
-target-version = ["py38"]
+target-version = ["py312"]
 
 [tool.isort]
 profile = "black"

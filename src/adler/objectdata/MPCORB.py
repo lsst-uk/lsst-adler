@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from adler.objectdata.objectdata_utilities import get_from_table, get_from_dictionary
 
+# TODO MPCORB_KEYS needs changing for DP1
 MPCORB_KEYS = {
     "mpcDesignation": str,
     "fullDesignation": str,
@@ -104,7 +105,7 @@ class MPCORB:
             ssObjectId of the object of interest.
 
         data_table : table-like object
-            Table of data from which attributes shoud be populated.
+            Table of data from which attributes should be populated.
 
         Returns
         -----------

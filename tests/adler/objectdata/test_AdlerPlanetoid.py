@@ -1,10 +1,9 @@
 import pytest
 import numpy as np
-from numpy.testing import assert_almost_equal
+from numpy.testing import assert_almost_equal, assert_array_equal
 
 from adler.utilities.tests_utilities import get_test_data_filepath
 from adler.objectdata.AdlerPlanetoid import AdlerPlanetoid
-
 
 ssoid = "8268570668335894776"
 test_db_path = get_test_data_filepath("testing_database.db")
@@ -113,6 +112,25 @@ def test_observations_in_filter():
     assert error_info_1.value.args[0] == "Filter f is not in AdlerPlanetoid.filter_list."
 
 
+def test_observations_within_time():
+    test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path)
+
+    df_obs = test_planetoid.observations_within_time()
+
+    assert len(df_obs) == test_planetoid.SSObject.numObs
+    assert_array_equal(np.sort(np.unique(df_obs["filter_name"])), np.sort(test_planetoid.filter_list))
+
+    # test retrieving between a start and stop date
+    t1 = 61000
+    t2 = 63500
+    df_obs2 = test_planetoid.observations_within_time(start=t1, stop=t2)
+    assert len(df_obs2) == len(df_obs[(df_obs["midPointMjdTai"] >= t1) & (df_obs["midPointMjdTai"] <= t2)])
+
+    # test setting only the start (stop is set to max date automatically)
+    df_obs3 = test_planetoid.observations_within_time(start=t1)
+    assert len(df_obs3) == len(df_obs[(df_obs["midPointMjdTai"] >= t1)])
+
+
 def test_SSObject_in_filter():
     test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path)
 
@@ -143,13 +161,13 @@ def test_failed_SQL_queries():
     )
 
     with pytest.raises(Exception) as error_info_1:
-        test_planetoid.populate_MPCORB("826857066833589477", sql_filename=test_db_path, schema="")
+        test_planetoid.populate_MPCORB("826857066833589477", sql_filename=test_db_path, schema=None)
 
     assert error_info_1.value.args[0] == "No MPCORB data for this object could be found for this SSObjectId."
 
     with pytest.raises(Exception) as error_info_2:
         test_planetoid.populate_SSObject(
-            "826857066833589477", filter_list=["u"], sql_filename=test_db_path, schema=""
+            "826857066833589477", filter_list=["u"], sql_filename=test_db_path, schema=None
         )
 
     assert (
@@ -158,7 +176,7 @@ def test_failed_SQL_queries():
 
 
 def test_attach_previous_adlerdata():
-    test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path, filter_list=["g", "r"])
+    test_planetoid = AdlerPlanetoid.construct_from_SQL(6098332225018000, test_db_path, filter_list=["r", "i"])
 
     # TODO: this setup is currently a bit dodgy. Because AdlerData write_row_to_database appends a new line to the db the most recent model for a given object may be nan in that row
     # as such this test depends on the order/number of times the adler commands have been run to make it
@@ -166,7 +184,8 @@ def test_attach_previous_adlerdata():
     # the test database can be recreated by running the Adler commands in the tests/data dir:
     # adler -s 8268570668335894776 -i testing_database.db -n test_AdlerData_database.db
     # adler -s 8268570668335894776 -i testing_database.db -n test_AdlerData_database.db -m HG
-    db_location = get_test_data_filepath("test_AdlerData_database.db")
+    # db_location = get_test_data_filepath("test_AdlerData_database.db")
+    db_location = get_test_data_filepath(f"adler_output_HG12_Pen16_63335.5_400n_31n.sqlite")
     print(db_location)
 
     test_planetoid.attach_previous_adler_data(db_location)
@@ -176,15 +195,19 @@ def test_attach_previous_adlerdata():
 
     expected_output = {
         "filter_name": "r",
-        "phaseAngle_min": 2.553332567214966,
-        "phaseAngle_range": 124.23803400993347,
-        "nobs": 38,
-        "arc": 3338.0655999999944,
+        "phaseAngle_min": 9.478214263916016,
+        "phaseAngle_range": 10.772890090942383,
+        "observationTime_max": 63001.97873,
+        "nobs": 9,
+        "arc": 62.78039,
+        "n_outliers": 1,
+        "n_std_outliers": 6,
+        "sustained_outliers": np.nan,
         "model_name": "HG12_Pen16",
-        "H": 19.92863542616601,
-        "H_err": 0.018525355171274356,
-        "phase_parameter_1": 1.0,
-        "phase_parameter_1_err": 0.05300829494059732,
+        "H": 16.299738958850803,
+        "H_err": 0.008126418528902073,
+        "phase_parameter_1": 0.7074497288054502,
+        "phase_parameter_1_err": 0.09699260052621479,
         "phase_parameter_2": np.nan,
         "phase_parameter_2_err": np.nan,
     }
@@ -200,3 +223,94 @@ def test_attach_previous_adlerdata():
             assert test_val == expect_val
         else:
             assert_almost_equal(test_val, expect_val)
+
+
+mpc_ssoid = "2025 MS22"
+mpc_test_db_path = get_test_data_filepath("mpc_obs_sbn_testing_database.sqlite")
+
+
+def test_construct_from_mpc_obs_sbn():
+    test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(
+        mpc_ssoid, mpc_test_db_path, filter_list=["u", "g", "r", "i", "z", "y"]
+    )
+
+    # testing just a few values here to ensure correct setup: these objects have their own unit tests
+    assert test_planetoid.MPCORB.mpcH == 18.54
+    assert test_planetoid.SSObject.numObs == 73
+    assert_almost_equal(
+        test_planetoid.observations_by_filter[0].mag,
+        [24.366, 24.173, 24.529, 24.48, 24.205, 24.058],
+    )
+
+    # did we pick up all the filters? note we ask for ugrizy but this object was not observed in uzy, so the code should eliminate them
+    assert len(test_planetoid.observations_by_filter) == 3
+    assert len(test_planetoid.SSObject.filter_dependent_values) == 3
+    assert test_planetoid.filter_list == ["g", "r", "i"]
+
+    # checking the date range to ensure it's the default
+    assert test_planetoid.date_range == [60000.0, 67300.0]
+
+
+def test_construct_from_mpc_with_single_filter():
+    test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(mpc_ssoid, mpc_test_db_path, filter_list=["g"])
+
+    # should only be one filter in here now
+    assert len(test_planetoid.observations_by_filter) == 1
+    assert len(test_planetoid.SSObject.filter_dependent_values) == 1
+    assert test_planetoid.filter_list == ["g"]
+
+    assert_almost_equal(
+        test_planetoid.observations_by_filter[0].mag,
+        [24.366, 24.173, 24.529, 24.48, 24.205, 24.058],
+    )
+
+
+def test_construct_from_mpc_with_date_range():
+    test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(
+        mpc_ssoid, mpc_test_db_path, filter_list=["g"], date_range=[60795.0, 60798.0]
+    )
+
+    expected_dates = np.array(
+        [60797.11380400463, 60797.121616296296, 60797.12747140046, 60797.12846829861, 60797.130895902774]
+    )
+
+    assert_almost_equal(test_planetoid.observations_by_filter[0].midPointMjdTai, expected_dates)
+
+    with pytest.raises(ValueError) as error_info_1:
+        test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(
+            mpc_ssoid, mpc_test_db_path, date_range=[61000.0, 62000.0, 63000.0]
+        )
+
+    assert error_info_1.value.args[0] == "date_range argument must be of length 2."
+
+
+def test_mpc_no_observations():
+    with pytest.raises(Exception) as error_info:
+        test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn("2025 FakeId", mpc_test_db_path)
+
+    assert (
+        error_info.value.args[0]
+        == "No observations found for this object in the given filter(s). Check SSOID and try again."
+    )
+
+
+def test_mpc_failed_SQL_queries():
+    test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(
+        mpc_ssoid, mpc_test_db_path, filter_list=["u", "g", "r", "i", "z", "y"]
+    )
+
+    with pytest.raises(Exception) as error_info_1:
+        test_planetoid.populate_MPCORB_from_mpc_obs_sbn("2025 FakeId", sql_filename=mpc_test_db_path)
+
+    assert (
+        error_info_1.value.args[0] == "No mpc_orbits data for this object could be found for this SSObjectId."
+    )
+
+    with pytest.raises(Exception) as error_info_2:
+        test_planetoid.populate_SSObject_from_mpc_obs_sbn(
+            "2025 FakeId", filter_list=["u"], sql_filename=mpc_test_db_path
+        )
+
+    assert (
+        error_info_2.value.args[0] == "No SSObject data for this object could be found for this SSObjectId."
+    )

@@ -20,7 +20,7 @@ from adler.utilities.plotting_utilities import plot_errorbar
 import adler.utilities.science_utilities as sci_utils
 
 """
-Copy of adler_run.oy which can be used to make the AdlerData testing database
+Copy of adler_run.py which can be used to make the AdlerData testing database
 """
 
 ssObjectId = "8268570668335894776"
@@ -32,12 +32,14 @@ db_name = "test_AdlerData_database.db"
 sql_filename = "testing_database.db"
 plot_show = False
 # phase_model="HG12_Pen16"
-phase_model_list = ["HG12_Pen16", "HG"]
+phase_model_list = ["HG12_Pen16"]
+avg_mag_model_list = ["median"]
+
 
 # adler parameters
 N_pc_fit = 10  # minimum number of data points to fit phase curve
 diff_cut = 1.0  # magnitude difference used to identify outliers
-obs_cols = ["diaSourceId", "midPointMjdTai", "outlier"]  # observation columns to use
+obs_cols = ["diaSourceId", "midPointMjdTai", "mag_diff"]  # observation columns to use
 
 
 # Define colour parameters
@@ -147,7 +149,6 @@ for i, ssObjectId in enumerate(ssObjectId_list):
             ad_params["phaseAngle_range"] = np.ptp(df_obs["phaseAngle"])  # * u.deg
             ad_params["arc"] = np.ptp(df_obs["midPointMjdTai"])  # * u.d
             ad_params["nobs"] = len(df_obs)
-            ad_params["modelFitMjd"] = Time.now().mjd
             # adler_data.populate_phase_parameters(filt, **pc_fit.__dict__)
             # TODO: replace any None with np.nan? e.g. phase_parameter_2?
             adler_data.populate_phase_parameters(filt, **ad_params)
@@ -237,7 +238,7 @@ for i, ssObjectId in enumerate(ssObjectId_list):
 
         msg = "write to {}".format(adler_db)
         print(msg)
-        adler_data.write_row_to_database(adler_db)
+        adler_data.write_to_database(adler_db)
 
 # create the test csv file
 fname_csv = "{}/test_SQL_database_table.csv".format(outpath)

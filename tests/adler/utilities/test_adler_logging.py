@@ -10,10 +10,16 @@ def test_setup_adler_logging():
     with tempfile.TemporaryDirectory() as dir_name:
         logger = setup_adler_logging(dir_name)
 
+        # Emit at least one record to force file creation
+        logger.info("Test1")
+        logger.error("Error1")
+
         # Check that the files get created.
         errlog = glob.glob(os.path.join(dir_name, "*-adler.err"))
         datalog = glob.glob(os.path.join(dir_name, "*-adler.log"))
 
+        assert len(errlog) == 1
+        assert len(datalog) == 1
         assert os.path.exists(errlog[0])
         assert os.path.exists(datalog[0])
 
