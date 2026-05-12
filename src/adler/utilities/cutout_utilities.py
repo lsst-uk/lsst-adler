@@ -206,7 +206,7 @@ class Cutout:
         if len(self.calib_level) == 1:
             query = """SELECT access_url, calib_level FROM ivoa.ObsCore
             WHERE lsst_visit = {} AND lsst_detector = {} AND calib_level = {}
-            """.format(self.dataset, self.IdTable, self.IdCol, self.Id)
+            """.format(self.visit, self.detector, self.calib_level[0])
         else:
             query = """SELECT access_url, calib_level FROM ivoa.ObsCore
             WHERE lsst_visit = {} AND lsst_detector = {} AND calib_level IN {}
@@ -227,7 +227,60 @@ class Cutout:
         df_visit = results.to_pandas()
         self.datalink_url = df_visit
 
-        return df_visit
+        return self.datalink_url
+
+    def getSodaCutoutMem(self, url, cal_lev, cutout_service="cutout-sync-exposure"):
+        """
+        Retrieve a given image using soda and return it as an lsst.afw.fits MemFileManager object.
+        The MemFileManager object can subsequently be converted into lsst.afw.image ExposureF or FITS.
+        Credit: Rubin Community Science Team tutorial notebook https://dp1.lsst.io/tutorials/notebook/103/notebook-103-4.html
+
+        Parameters
+        -----------
+        url: str
+            URL location of image to be retrieved
+        cal_lev : int
+            Calibration level of image to retrieve: 1,2,3 - raw, visit, diff
+        cutout_service : str
+           Define the cutout service to be used:
+           cutout-sync-exposure: return the full cutout (all planes and metadata). Can be converted to ExposureF.
+           cutout-sync: return only the image pixels and header. Cannot be converted to ExposureF (save as FITS).
+           cutout-sync-maskedimage: return image pixels, header, and masks. Cannot be converted to ExposureF (save as FITS).
+
+        Returns
+        ----------
+
+        sq : SodaQuery
+            SodaQuery result for the cutout query
+        mem : MemFileManager
+           The cutout data
+        """
+
+        # find the image on the RSP
+        dl_result = DatalinkResults.from_result_url(url, session=get_pyvo_auth())
+        print(f"Datalink status: {dl_result.status}. Datalink service url: {url}")
+        sq = SodaQuery.from_resource(
+            dl_result,
+            dl_result.get_adhocservice_by_id(cutout_service),
+            session=get_pyvo_auth(),  # TODO: query fails for cal_lev = 1, raw images?
+        )
+
+        # define the cutout geometry
+        # TODO: allow different shapes to be passed to main class?
+        spherePoint = geom.SpherePoint(self.ra * geom.degrees, self.dec * geom.degrees)
+        sq.circle = (
+            spherePoint.getRa().asDegrees() * u.deg,
+            spherePoint.getDec().asDegrees() * u.deg,
+            self.radius,
+        )
+
+        # retrieve the image data for only the area covered by the cutout
+        cutout_bytes = sq.execute_stream().read()
+        sq.raise_if_error()
+        mem = MemFileManager(len(cutout_bytes))
+        mem.setData(cutout_bytes, len(cutout_bytes))
+
+        return sq, mem
 
     def getSodaCutoutMem(self, url, cal_lev, cutout_service="cutout-sync-exposure"):
         """
@@ -345,7 +398,7 @@ class Cutout:
                             print("save {}".format(cutout_file))
                 else:
                     # save the hdu list as a FITS file
-                    hdul.writeto(cutout_file)
+                    hdul.writeto(cutout_file, overwrite=True)
 
         return
 
