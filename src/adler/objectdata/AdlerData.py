@@ -874,11 +874,15 @@ class AdlerData:
         -----------
             Name of the model specified in self.modelId
         """
-        for model in VALID_MODELS:
-            if self.modelId.startswith(model + "_"):
-                return model
-        logger.error(f"Unknown model in string: {self.modelId}")
-        raise ValueError(f"Unknown model in string: {self.modelId}")
+
+        results = [x for x in VALID_MODELS if x in self.modelId]
+        print(results)
+        if len(results) > 0:
+            model = results[0]
+            return model
+        else:
+            logger.error(f"Unknown model in string: {self.modelId}")
+            raise ValueError(f"Unknown model in string: {self.modelId}")
 
     def write_to_database(self, filepath, write_model_data=False):
         """Writes all of the relevant data contained within the AdlerData object to a SQLite database.
