@@ -53,6 +53,8 @@ class NoiseChisel:
 
         Parameters
         -----------
+        nc_flags : str
+            Use this variable to adjust astnoisechisel settings (see `astnoisechisel --help`)
         pre_cmd : str
             Use this variable to pass any additional code to be run before the gnuastro command (e.g. set up conda env)
 
@@ -82,7 +84,7 @@ class NoiseChisel:
 
         return self.file_nc
 
-    def segment_image(self, pre_cmd=None):
+    def segment_image(self, pre_cmd=None, seg_flags="--clumpsnthresh=5"):
         """
         Function to invoke the gnuastro image segmentation routine command. This step is required to separate the noisechisel chisel detections into individual objects/clumps. The results are stored in the file that is created (file_seg).
 
@@ -90,6 +92,8 @@ class NoiseChisel:
         -----------
         pre_cmd : str
             Use this variable to pass any additional code to be run before the gnuastro command (e.g. set up conda env)
+        seg_flags : str
+            Use this variable to adjust astsegment settings (see `astsegment --help`)
 
 
         Returns
@@ -97,7 +101,7 @@ class NoiseChisel:
         file_seg: str
             Name of the image segmentation results file
         """
-        ast_cmd = "astsegment {} --clumpsnthresh=5 -o {}".format(self.file_nc, self.file_seg)
+        ast_cmd = "astsegment {} {} -o {}".format(self.file_nc, seg_flags, self.file_seg)
 
         # add prerequisite commands if necessary, ensuring separation between pre_cmd and ast_cmd
         if pre_cmd is not None:
@@ -110,7 +114,12 @@ class NoiseChisel:
 
         return self.file_seg
 
-    def make_catalogue(self, i_cat=1, pre_cmd=None):
+    def make_catalogue(
+        self,
+        i_cat=1,
+        pre_cmd=None,
+        cat_flags="--clumpscat --ids -x -y --ra --dec --magnitude --sn --axis-ratio --geo-axis-ratio --geo-position-angle --geo-semi-major --geo-semi-minor --position-angle --semi-major --semi-minor",
+    ):
         """
         Function to invoke the gnuastro make catalogue command. The results are stored in the file that is created (file_cat)
 
@@ -121,6 +130,8 @@ class NoiseChisel:
             Use either the object (i_cat=1) or the clump (i_cat=2) detections to make the catalogue
         pre_cmd : str
             Use this variable to pass any additional code to be run before the gnuastro command (e.g. set up conda env)
+        cat_flags : str
+            Use this variable to adjust astmkcatalog settings, e.g. what catalog measurements to make (see `astmkcatalog --help`)
 
         Returns
         ----------
@@ -129,9 +140,10 @@ class NoiseChisel:
         """
         # TODO: use a gnuastro conf file to determine which columns are calculated?
 
-        ast_cmd = "astmkcatalog {} -o {} --clumpscat --ids -x -y --ra --dec --magnitude --sn --axis-ratio --geo-axis-ratio --geo-position-angle --geo-semi-major --geo-semi-minor --position-angle --semi-major --semi-minor".format(
+        ast_cmd = "astmkcatalog {} -o {} {}".format(
             self.file_seg,
             self.file_cat,
+            cat_flags,
         )
 
         # add prerequisite commands if necessary, ensuring separation between pre_cmd and ast_cmd
@@ -164,7 +176,9 @@ class NoiseChisel:
 
         return
 
-    def run_noise_chisel(self, conda_start=None, conda_env=None, keep_files=False):
+    def run_noise_chisel(
+        self, conda_start=None, conda_env=None, keep_files=False, nc_flags="", seg_flags="", cat_flags="-x -y"
+    ):
         """
         Wrapper function that calls each step to go from an input image to measurements of detections made by noisechisel.
         If required, conda_start and conda_env are used to set up the conda environment for subprocess to run gnuastro.
@@ -179,8 +193,12 @@ class NoiseChisel:
             Optional, name of the conda environment to use in the subprocess virtual environment.
         keep_files : float
             Optional, flag to either remove all noisechisel associated files (by default) or keep them.
-
-
+        nc_flags : str
+            Use this variable to adjust astnoisechisel settings (see `astnoisechisel --help`)
+        seg_flags : str
+            Use this variable to adjust astsegment settings (see `astsegment --help`)
+        cat_flags : str
+            Use this variable to adjust astmkcatalog settings, e.g. what catalog measurements to make (see `astmkcatalog --help`). N.B. astmkcatlog will not run if measurements are not requested.
         Returns
         ----------
         df_cat: DataFrame
@@ -195,9 +213,13 @@ class NoiseChisel:
         if conda_env is not None:
             conda_run += "conda run -n {}".format(conda_env)
 
-        self.noise_chisel(pre_cmd=conda_run)
-        self.segment_image(pre_cmd=conda_run)
-        df_cat = self.make_catalogue(pre_cmd=conda_run)
+        self.noise_chisel(pre_cmd=conda_run, nc_flags=nc_flags)
+        self.segment_image(
+            pre_cmd=conda_run, seg_flags=seg_flags
+        )  # TODO: pass/change additional flags, e.g. --clumpsnthresh=5
+        df_cat = self.make_catalogue(
+            pre_cmd=conda_run, cat_flags=cat_flags
+        )  # TODO: pass/change additional flags
 
         if not keep_files:
             self.clean_up()
