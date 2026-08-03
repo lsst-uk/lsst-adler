@@ -876,7 +876,6 @@ class AdlerData:
         """
 
         results = [x for x in VALID_MODELS if x in self.modelId]
-        print(results)
         if len(results) > 0:
             model = results[0]
             return model
