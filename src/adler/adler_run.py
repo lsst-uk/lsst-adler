@@ -37,7 +37,7 @@ def runAdler(cli_args):
     # adler parameters
     N_pc_fit = 10  # minimum number of data points to fit phase curve
     diff_cut = 1.0  # magnitude difference used to identify outliers
-    obs_cols = ["diaSourceId", "midPointMjdTai", "outlier"]  # observation columns to use
+    obs_cols = ["diaSourceId", "midpointMjdTai", "outlier"]  # observation columns to use
     phase_model = cli_args.phase_model  # which phase curve model to fit
 
     # get the name of the phase parameter
@@ -166,7 +166,7 @@ def runAdler(cli_args):
             ad_params = pc_fit.__dict__
             ad_params["phaseAngle_min"] = np.amin(df_obs["phaseAngle"])  # * u.deg
             ad_params["phaseAngle_range"] = np.ptp(df_obs["phaseAngle"])  # * u.deg
-            ad_params["arc"] = np.ptp(df_obs["midPointMjdTai"])  # * u.d
+            ad_params["arc"] = np.ptp(df_obs["midpointMjdTai"])  # * u.d
             ad_params["nobs"] = len(df_obs)
             # adler_data.populate_phase_parameters(filt, **pc_fit.__dict__)
             # TODO: replace any None with np.nan? e.g. phase_parameter_2?
@@ -198,7 +198,7 @@ def runAdler(cli_args):
             # Save figures at the outpath location
             else:
                 fig_file = "{}/phase_curve_{}_{}_{}.png".format(
-                    cli_args.outpath, cli_args.ssObjectId, phase_model, int(np.amax(df_obs["midPointMjdTai"]))
+                    cli_args.outpath, cli_args.ssObjectId, phase_model, int(np.amax(df_obs["midpointMjdTai"]))
                 )
                 msg = "Save figure: {}".format(fig_file)
                 print(msg)

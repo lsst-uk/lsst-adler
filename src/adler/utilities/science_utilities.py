@@ -166,7 +166,7 @@ def apparition_gap_finder(x, dx=100.0):
     return x_gaps
 
 
-def get_df_obs_filt(planetoid, filt, x_col="midPointMjdTai", x1=None, x2=None, col_list=None, pc_model=None):
+def get_df_obs_filt(planetoid, filt, x_col="midpointMjdTai", x1=None, x2=None, col_list=None, pc_model=None):
     """Retrieve a dataframe of observations in a given filter. Has the option to limit the observations to a range of values, e.g. times/phase angles, if required.
 
     Parameters
@@ -241,7 +241,7 @@ def split_obs(df_obs, process_mjd, n_new_nights=3):
     """
     # TODO docstring
     """
-    mask = df_obs["midPointMjdTai"] < process_mjd - n_new_nights
+    mask = df_obs["midpointMjdTai"] < process_mjd - n_new_nights
 
     df_obs_old = df_obs[mask].copy()
     df_obs_new = df_obs[~mask].copy()

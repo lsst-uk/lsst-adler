@@ -5,6 +5,7 @@ import logging
 import json
 import astropy.units as u
 from astropy.table import Table
+import os
 
 from adler.objectdata.Observations import Observations
 from adler.objectdata.MPCORB import MPCORB
@@ -14,10 +15,14 @@ from adler.objectdata.objectdata_utilities import get_data_table, flux_to_magnit
 
 logger = logging.getLogger(__name__)
 
+# Load the adler schema file that maps different input schema onto adler
+schema_file = os.path.join(os.path.dirname(__file__), "adler_schema_map.csv")
+ADLER_SCHEMA = pd.read_csv(schema_file, index_col=0).to_dict()
+
 # Convenient dict for setting which columns to include in SQL query given schema and desired flux flag
 # TODO better handling of None case (this is probably bad Python)
 SCHEMA_CONFIG_DICT = {
-    None: {None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec")},
+    # None: {None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec")},
     "dp03_catalogs_10yr": {
         None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec")
     },
@@ -97,7 +102,7 @@ class AdlerPlanetoid:
         sql_filename,
         filter_list=["u", "g", "r", "i", "z", "y"],
         date_range=[60000.0, 67300.0],
-        schema=None,
+        schema="dp03_catalogs_10yr",
         flux_flag=None,
     ):
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects from
@@ -118,7 +123,7 @@ class AdlerPlanetoid:
             The minimum and maximum dates of the desired observations.
 
         schema : str or None
-            Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
+            Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3. # TODO: remove None option?
 
         flux_flag : str or None
             Name of the flux column to select from DP1 DiaSource table. Determines FluxErr and ra/dec columns to select also. Default is None (selects mag/magErr/ra/dec for DP0.3)
@@ -413,7 +418,7 @@ class AdlerPlanetoid:
         for filter_name in filter_list:
             observations_sql_query = f"""
                 SELECT
-                    SSObject.ssObjectId, SSSource.diaSourceId, {fluxmag_column}, {fluxmag_err_column}, band, midPointMjdTai, {ra_column} AS ra, {dec_column} AS dec, phaseAngle,
+                    SSObject.ssObjectId, SSSource.diaSourceId, {fluxmag_column}, {fluxmag_err_column}, band, {ADLER_SCHEMA[schema]['midpointMjdTai']} AS midpointMjdTai, {ra_column} AS ra, {dec_column} AS dec, phaseAngle,
                     topocentricDist, heliocentricDist, heliocentricX, heliocentricY, heliocentricZ,
                     topocentricX, topocentricY, topocentricZ,
                     eclipticLambda, eclipticBeta
@@ -422,7 +427,7 @@ class AdlerPlanetoid:
                     JOIN {sql_schema}DiaSource ON {sql_schema}SSObject.ssObjectId   = {sql_schema}DiaSource.ssObjectId
                     JOIN {sql_schema}SSSource  ON {sql_schema}DiaSource.diaSourceId = {sql_schema}SSSource.diaSourceId
                 WHERE
-                    SSObject.ssObjectId = {ssObjectId} AND band = '{filter_name}' AND midPointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
+                    SSObject.ssObjectId = {ssObjectId} AND band = '{filter_name}' AND midpointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
                 """
 
             # This function submits the query and gets the results (or pulls from the SQL database)
@@ -815,7 +820,7 @@ class AdlerPlanetoid:
             f"Constructing from the MPC obs_sbn table populates the following LSST schema columns as their best case obs_sbn analogs (LSST column name = obs_sbn column name):"
         )
         logger.warning(f"SSObjectId = provid; diaSourceId = obsid; magErr = rmsmag")
-        logger.warning(f"mjd_utc is converted to mjd_tai and presented as midPointMjdTai")
+        logger.warning(f"mjd_utc is converted to mjd_tai and presented as midpointMjdTai")
         logger.warning(
             f"phaseAngle, topocentricDist and heliocentricDist are not currently corrected for light travel time effects"
         )
@@ -828,7 +833,7 @@ class AdlerPlanetoid:
         for filter_name in filter_list:
             observations_sql_query = f"""
                 SELECT
-                    provid AS SSObjectId, obsid as diaSourceId, mag, rmsmag AS magErr, band, mjd_tai AS midPointMjdTai, ra, dec,
+                    provid AS SSObjectId, obsid as diaSourceId, mag, rmsmag AS magErr, band, mjd_tai AS midpointMjdTai, ra, dec,
                     phaseAngle, topocentricDist, heliocentricDist,
                     NULL AS heliocentricX, NULL AS heliocentricY, NULL AS heliocentricZ,
                     NULL AS topocentricX, NULL AS topocentricY, NULL AS topocentricZ,
@@ -995,12 +1000,12 @@ class AdlerPlanetoid:
             result = pd.concat([result, df]).reset_index(drop=True)
 
         if start is None:
-            start = np.amin(result["midPointMjdTai"])
+            start = np.amin(result["midpointMjdTai"])
         if stop is None:
-            stop = np.amax(result["midPointMjdTai"])
-        i = (result.midPointMjdTai >= start) * (result.midPointMjdTai <= stop)
+            stop = np.amax(result["midpointMjdTai"])
+        i = (result.midpointMjdTai >= start) * (result.midpointMjdTai <= stop)
         result = result[i]
-        result = result.sort_values("midPointMjdTai")
+        result = result.sort_values("midpointMjdTai")
         return result
 
     def SSObject_in_filter(self, filter_name):

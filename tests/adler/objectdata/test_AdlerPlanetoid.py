@@ -87,7 +87,7 @@ def test_construct_with_date_range():
         ]
     )
 
-    assert_almost_equal(test_planetoid.observations_by_filter[0].midPointMjdTai, expected_dates)
+    assert_almost_equal(test_planetoid.observations_by_filter[0].midpointMjdTai, expected_dates)
 
     with pytest.raises(ValueError) as error_info_1:
         test_planetoid = AdlerPlanetoid.construct_from_SQL(
@@ -124,11 +124,11 @@ def test_observations_within_time():
     t1 = 61000
     t2 = 63500
     df_obs2 = test_planetoid.observations_within_time(start=t1, stop=t2)
-    assert len(df_obs2) == len(df_obs[(df_obs["midPointMjdTai"] >= t1) & (df_obs["midPointMjdTai"] <= t2)])
+    assert len(df_obs2) == len(df_obs[(df_obs["midpointMjdTai"] >= t1) & (df_obs["midpointMjdTai"] <= t2)])
 
     # test setting only the start (stop is set to max date automatically)
     df_obs3 = test_planetoid.observations_within_time(start=t1)
-    assert len(df_obs3) == len(df_obs[(df_obs["midPointMjdTai"] >= t1)])
+    assert len(df_obs3) == len(df_obs[(df_obs["midpointMjdTai"] >= t1)])
 
 
 def test_SSObject_in_filter():
@@ -274,7 +274,7 @@ def test_construct_from_mpc_with_date_range():
         [60797.11380400463, 60797.121616296296, 60797.12747140046, 60797.12846829861, 60797.130895902774]
     )
 
-    assert_almost_equal(test_planetoid.observations_by_filter[0].midPointMjdTai, expected_dates)
+    assert_almost_equal(test_planetoid.observations_by_filter[0].midpointMjdTai, expected_dates)
 
     with pytest.raises(ValueError) as error_info_1:
         test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(

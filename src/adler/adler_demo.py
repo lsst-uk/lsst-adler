@@ -32,7 +32,7 @@ def runAdlerDemo(cli_args):
     # adler parameters
     N_pc_fit = 10  # minimum number of data points to fit phase curve
     diff_cut = 1.0  # magnitude difference used to identify outliers
-    obs_cols = ["diaSourceId", "midPointMjdTai", "outlier"]  # observation columns to use
+    obs_cols = ["diaSourceId", "midpointMjdTai", "outlier"]  # observation columns to use
     phase_model = "HG12_Pen16"  # which phase curve model to fit
 
     # Define colour parameters
@@ -107,7 +107,7 @@ def runAdlerDemo(cli_args):
             if os.path.isfile(save_file):
                 logger.info("load previously classified observations: {}".format(save_file))
                 _df_obs = pd.read_csv(save_file, index_col=0)
-                df_obs = df_obs.merge(_df_obs, on=["diaSourceId", "midPointMjdTai"], how="left")
+                df_obs = df_obs.merge(_df_obs, on=["diaSourceId", "midpointMjdTai"], how="left")
                 df_obs.loc[pd.isnull(df_obs["outlier_y"]), "outlier_y"] = (
                     False  # ensure that classifications exist (nan entries can only be false?). Weird behaviour here for g filter, is it to do with when new g obs appear relative to r/i etc?
                 )
@@ -119,15 +119,15 @@ def runAdlerDemo(cli_args):
             # define the date range to for new observations taken in the night to be analysed
             logger.info(
                 "Most recent {} filter observation in query: date = {}".format(
-                    filt, np.amax(df_obs["midPointMjdTai"])
+                    filt, np.amax(df_obs["midpointMjdTai"])
                 )
             )
-            t1 = int(np.amax(df_obs["midPointMjdTai"])) + 1
+            t1 = int(np.amax(df_obs["midpointMjdTai"])) + 1
             t0 = t1 - 1
 
             # get all past observations
-            # mask = df_obs["midPointMjdTai"] < t0
-            mask = (df_obs["midPointMjdTai"] < t0) & (df_obs["outlier"] == False)  # reject any past outliers
+            # mask = df_obs["midpointMjdTai"] < t0
+            mask = (df_obs["midpointMjdTai"] < t0) & (df_obs["outlier"] == False)  # reject any past outliers
 
             # split observations into "old" and "new"
             df_obs_old = df_obs[(mask)]
@@ -256,7 +256,7 @@ def runAdlerDemo(cli_args):
                 # Check the last colour calculation date (x_obs) to avoid recalculation
                 obs = planetoid.observations_in_filter(filt_obs)
                 df_obs = pd.DataFrame(obs.__dict__)
-                if np.amax(df_col["midPointMjdTai"]) >= np.amax(df_obs["midPointMjdTai"]):
+                if np.amax(df_col["midpointMjdTai"]) >= np.amax(df_obs["midpointMjdTai"]):
                     print("colour already calculated, skip")
                     continue
 

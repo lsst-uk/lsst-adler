@@ -25,7 +25,7 @@ t_app2 = 61678
 
 # define columns
 column_dict = {
-    "x_col": "midPointMjdTai",
+    "x_col": "midpointMjdTai",
     "y_col": "AbsMag",
     "y_col": "reduced_mag",
     "yerr_col": "magErr",

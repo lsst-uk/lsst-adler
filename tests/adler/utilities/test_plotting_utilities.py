@@ -13,6 +13,7 @@ test_db_path = get_test_data_filepath("testing_database.db")
 test_planetoid = AdlerPlanetoid.construct_from_SQL(
     ssoid, test_db_path, filter_list=["u", "g", "r", "i", "z", "y"]
 )
+print(test_planetoid.__dict__)
 
 
 def test_plot_errorbar_return():
@@ -41,7 +42,7 @@ def test_plot_errorbar_file(tmp_path):
 def test_plot_errorbar_xy_label():
 
     # make the fig object
-    x_plot = "midPointMjdTai"
+    x_plot = "midpointMjdTai"
     y_plot = "mag"
     fig = plot_errorbar(test_planetoid, filt_list=["r"], y_plot=y_plot, x_plot=x_plot)
 
