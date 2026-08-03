@@ -39,7 +39,8 @@ SCHEMA_CONFIG_DICT = {
         ),
     },
 }
-RSP_TAP_CONFIG_DICT = {"dp03_catalogs_10yr": "ssotap", "dp1": "tap"}
+SCHEMA_CONFIG_DICT["dp2"] = SCHEMA_CONFIG_DICT["dp1"].copy()
+RSP_TAP_CONFIG_DICT = {"dp03_catalogs_10yr": "ssotap", "dp1": "tap", "dp2": "tap"}
 
 
 class AdlerPlanetoid:
