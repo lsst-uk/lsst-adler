@@ -65,8 +65,8 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of float
-            The minimum and maximum dates of the desired observations.
+        date_range : list of float or None
+            Optional. The minimum and maximum dates of the desired observations (MJD), e.g. [60000.0, 67300.0]
 
         observations_by_filter : list of Observations objects
             A list of Observations objects holding joined DIASource/SSSource observations of the planetoid specified by ssObjectId. Each item in the list holds observations of a different filter, in the order specified by filter_list.
@@ -95,7 +95,7 @@ class AdlerPlanetoid:
         ssObjectId,
         sql_filename,
         filter_list=["u", "g", "r", "i", "z", "y"],
-        date_range=[60000.0, 67300.0],
+        date_range=None,
         schema=None,
         flux_flag=None,
     ):
@@ -113,8 +113,8 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of float
-            The minimum and maximum dates of the desired observations.
+        date_range : list of float or None
+            Optional. The minimum and maximum dates of the desired observations (MJD), e.g. [60000.0, 67300.0]
 
         schema : str or None
             Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
@@ -124,9 +124,10 @@ class AdlerPlanetoid:
 
         """
 
-        if len(date_range) != 2:
-            logger.error("ValueError: date_range attribute must be of length 2.")
-            raise ValueError("date_range attribute must be of length 2.")
+        if date_range is not None:
+            if len(date_range) != 2:
+                logger.error("ValueError: date_range attribute must be of length 2.")
+                raise ValueError("date_range attribute must be of length 2.")
 
         observations_by_filter = cls.populate_observations(
             cls,
@@ -175,7 +176,7 @@ class AdlerPlanetoid:
         cls,
         ssObjectId,
         filter_list=["u", "g", "r", "i", "z", "y"],
-        date_range=[60000.0, 67300.0],
+        date_range=None,
         cassandra_hosts=["10.21.3.123"],
     ):  # pragma: no cover
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects from
@@ -191,8 +192,8 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of float
-            The minimum and maximum dates of the desired observations.
+        date_range : list of float or None
+            Optional. The minimum and maximum dates of the desired observations (MJD), e.g. [60000.0, 67300.0]
 
         cassandra_hosts : list of str
             Location of the Cassandra database - usually an IP address. Default is ["10.21.3.123"].
@@ -216,10 +217,12 @@ class AdlerPlanetoid:
 
         observations_by_filter = []
         for filter_name in filter_list:
-            obs_slice = observations_table[
-                (observations_table["band"] == filter_name)
-                & (observations_table["midpointmjdtai"].between(date_range[0], date_range[1]))
-            ]
+            obs_filt_mask = observations_table["band"] == filter_name
+            if date_range is not None:
+                obs_filt_mask = obs_filt_mask & (
+                    observations_table["midpointmjdtai"].between(date_range[0], date_range[1])
+                )
+            obs_slice = observations_table[obs_filt_mask]
 
             if len(obs_slice) == 0:
                 logger.warning(
@@ -266,7 +269,7 @@ class AdlerPlanetoid:
         cls,
         ssObjectId,
         filter_list=["u", "g", "r", "i", "z", "y"],
-        date_range=[60000.0, 67300.0],
+        date_range=None,
         schema="dp03_catalogs_10yr",
         api_token_path=None,
         flux_flag=None,
@@ -282,8 +285,8 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of float
-            The minimum and maximum dates of the desired observations.
+        date_range : list of float or None
+            Optional. The minimum and maximum dates of the desired observations (MJD), e.g. [60000.0, 67300.0]
 
         schema : str or None
             Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
@@ -296,8 +299,10 @@ class AdlerPlanetoid:
 
         """
 
-        if len(date_range) != 2:
-            raise ValueError("date_range argument must be of length 2.")
+        if date_range is not None:
+            if len(date_range) != 2:
+                logger.error("ValueError: date_range attribute must be of length 2.")
+                raise ValueError("date_range attribute must be of length 2.")
 
         rsp_tap_path = RSP_TAP_CONFIG_DICT[schema]  # TODO give better name
 
@@ -366,8 +371,8 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of float
-            The minimum and maximum dates of the desired observations.
+        date_range : list of float or None
+            Optional. The minimum and maximum dates of the desired observations (MJD), e.g. [60000.0, 67300.0]
 
         service : pyvo.dal.tap.TAPService object or None
             TAPService object linked to the RSP. Default=None.
@@ -421,8 +426,11 @@ class AdlerPlanetoid:
                     JOIN {sql_schema}DiaSource ON {sql_schema}SSObject.ssObjectId   = {sql_schema}DiaSource.ssObjectId
                     JOIN {sql_schema}SSSource  ON {sql_schema}DiaSource.diaSourceId = {sql_schema}SSSource.diaSourceId
                 WHERE
-                    SSObject.ssObjectId = {ssObjectId} AND band = '{filter_name}' AND midPointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
+                    SSObject.ssObjectId = {ssObjectId} AND band = '{filter_name}'
                 """
+
+            if date_range is not None:
+                observations_sql_query += f" AND midPointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}"
 
             # This function submits the query and gets the results (or pulls from the SQL database)
             data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
@@ -731,7 +739,7 @@ class AdlerPlanetoid:
         ssObjectId,
         sql_filename,
         filter_list=["u", "g", "r", "i", "z", "y"],
-        date_range=[60000.0, 67300.0],
+        date_range=None,
     ):
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects
         from the MPC obs_sbn database. This is designed specifically for the SSSC Prompt Products Database Bandaid.
@@ -747,13 +755,15 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of float
-            The minimum and maximum dates of the desired observations (in MJD).
+        date_range : list of float or None
+            Optional. The minimum and maximum dates of the desired observations (MJD), e.g. [60000.0, 67300.0]
 
         """
 
-        if len(date_range) != 2:
-            raise ValueError("date_range argument must be of length 2.")
+        if date_range is not None:
+            if len(date_range) != 2:
+                logger.error("ValueError: date_range attribute must be of length 2.")
+                raise ValueError("date_range attribute must be of length 2.")
 
         observations_by_filter = cls.populate_observations_from_mpc_obs_sbn(
             cls, ssObjectId, filter_list, date_range, sql_filename=sql_filename
@@ -802,8 +812,8 @@ class AdlerPlanetoid:
         filter_list : list of str
             A comma-separated list of the filters of interest.
 
-        date_range : list of float
-            The minimum and maximum dates of the desired observations.
+        date_range : list of float or None
+            Optional. The minimum and maximum dates of the desired observations (MJD), e.g. [60000.0, 67300.0]
 
         sql_filename : str
             Filepath to an SQL database.
@@ -835,8 +845,10 @@ class AdlerPlanetoid:
                 FROM
                     obs_sbn
                 WHERE
-                    provid='{ssObjectId}' AND band = '{filter_name}' AND mjd_tai BETWEEN '{date_range[0]}' AND '{date_range[1]}'
+                    provid='{ssObjectId}' AND band = '{filter_name}'
                 """
+            if date_range is not None:
+                observations_sql_query += f" AND mjd_tai BETWEEN '{date_range[0]}' AND '{date_range[1]}'"
 
             # This function submits the query and gets the results from the SQL database supplied
             # Explicitly setting service=None here for clarity as this version does not query from non-local databases
