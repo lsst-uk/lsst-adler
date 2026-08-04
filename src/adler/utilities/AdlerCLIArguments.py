@@ -25,6 +25,7 @@ class AdlerCLIArguments:
         self.outpath = args.outpath
         self.db_name = args.db_name
         self.sql_filename = args.sql_filename
+        self.MPC = args.MPC
         self.phase_model = args.phase_model
         self.plot_show = args.plot_show
         self.no_plot = args.no_plot
@@ -46,6 +47,9 @@ class AdlerCLIArguments:
 
         if self.sql_filename:
             self._validate_sql_filename()
+
+        if self.MPC:
+            self._validate_MPC()
 
         if self.colour_list:
             self._validate_colour_list()
@@ -93,11 +97,14 @@ class AdlerCLIArguments:
         """
         Validation checks for the ssObjectId command-line argument.
         """
-        try:
-            int(self.ssObjectId)
-        except ValueError:
-            logging.error("--ssObjectId command-line argument does not appear to be a valid ssObjectId.")
-            raise ValueError("--ssObjectId command-line argument does not appear to be a valid ssObjectId.")
+        if not self.MPC:
+            try:
+                int(self.ssObjectId)
+            except ValueError:
+                logging.error("--ssObjectId command-line argument does not appear to be a valid ssObjectId.")
+                raise ValueError(
+                    "--ssObjectId command-line argument does not appear to be a valid ssObjectId."
+                )
 
     def _validate_date_range(self):
         """
@@ -149,7 +156,7 @@ class AdlerCLIArguments:
 
     def _validate_sql_filename(self):
         """
-        Validation checks for the sel_filename command-line argument.
+        Validation checks for the sql_filename command-line argument.
         """
         self.sql_filename = os.path.abspath(self.sql_filename)
 
@@ -158,6 +165,15 @@ class AdlerCLIArguments:
             raise ValueError(
                 "The file supplied for the command-line argument --sql_filename cannot be found."
             )
+
+    def _validate_MPC(self):
+        """
+        Validation checks for the MPC command-line argument. If set check that sql_filename is also set.
+        """
+
+        if self.MPC:
+            logger.info("MPC flag is set, --sql_filename should also be set and of MPC format")
+            self._validate_sql_filename()
 
     def _validate_phase_model(self):
         """Validation checks for the phase_model command-line argument."""

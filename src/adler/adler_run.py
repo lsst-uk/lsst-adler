@@ -80,12 +80,20 @@ def runAdler(cli_args):
             msg = "query sql database {}".format(cli_args.sql_filename)
             logger.info(msg)
             print(msg)
-            planetoid = AdlerPlanetoid.construct_from_SQL(
-                ssObjectId,
-                filter_list=cli_args.filter_list,
-                date_range=cli_args.date_range,
-                sql_filename=cli_args.sql_filename,
-            )
+            if cli_args.MPC:
+                planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(
+                    ssObjectId,
+                    filter_list=cli_args.filter_list,
+                    date_range=cli_args.date_range,
+                    sql_filename=cli_args.sql_filename,
+                )
+            else:
+                planetoid = AdlerPlanetoid.construct_from_SQL(
+                    ssObjectId,
+                    filter_list=cli_args.filter_list,
+                    date_range=cli_args.date_range,
+                    sql_filename=cli_args.sql_filename,
+                )
         else:  # otherwise load from the Rubin Science Platform
             msg = "query RSP"
             logger.info(msg)
@@ -96,6 +104,7 @@ def runAdler(cli_args):
 
         # TODO: Here we would load the AdlerData object from our data tables
         adler_data = AdlerData(ssObjectId, planetoid.filter_list)
+        adler_data.modelId = phase_model
         print(adler_data.__dict__)
 
         logger.info("Data successfully ingested.")
@@ -132,7 +141,7 @@ def runAdler(cli_args):
             # TODO: use the ssObject value for phase parameter as initial guess?
             pc = PhaseCurve(
                 # H=sso.H * u.mag,
-                H=sso.H,
+                # H=sso.H, # TODO: loading from MPC has no H, make initial guess from brightest reduced_mag?
                 # phase_parameter_1=phase_param_1_default,
                 model_name=phase_model,
             )
@@ -215,7 +224,8 @@ def runAdler(cli_args):
             msg = "write to {}".format(adler_db)
             print(msg)
             logger.info(msg)
-            adler_data.write_row_to_database(adler_db)
+            print("modelId = ", adler_data.modelId)
+            adler_data.write_to_database(adler_db, write_model_data=True)
 
         # analyse colours for the filters provided
         logger.info("Calculate colours: {}".format(cli_args.colour_list))
@@ -331,6 +341,11 @@ def main():
         help="Optional input path location of a sql database file containing observations.",
         type=str,
         default=None,
+    )
+    optional_group.add_argument(
+        "--MPC",
+        help="Flag to indicate the input sql file is from the Minor Planet Center; use alongside --sql-filename",
+        action="store_true",
     )
     optional_group.add_argument(
         "-m",

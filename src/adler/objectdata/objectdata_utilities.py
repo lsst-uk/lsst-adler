@@ -12,6 +12,14 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+# define the mapping between layup column names and adler column names
+# https://discovery-alliance.slack.com/docs/T06D204F2/F09QX885UG2
+LAYUP_ADLER_DICT = {
+    "Obj_Sun_LTC_au": "heliocentricDist",
+    "Range_LTC_au": "topocentricDist",
+    "phase_deg": "phaseAngle",
+}
+
 
 def get_data_table(sql_query, service=None, sql_filename=None):
     """Gets a table of data based on a SQL query. Table is pulled from either the RSP or a local SQL database:
@@ -289,7 +297,9 @@ def add_column_if_not_exists(conn, table, column, coltype):
         logger.info(f"{column} already exists in {table}")
 
 
-def mpc_file_preprocessing(sql_filename):  # pragma: no cover
+def mpc_file_preprocessing(
+    sql_filename,
+):  # pragma: no cover
     """
     Function for performing pre-processing steps on the obs_sbn table in the MPC file format.
     The function strips the leading 'L' from the band in the obs_sbn file;
@@ -317,7 +327,7 @@ def mpc_file_preprocessing(sql_filename):  # pragma: no cover
 
     # Add MJD TAI column
     if sqlite_column_exists(conn, "obs_sbn", "mjd_tai"):
-        logger.info(f"mjd_tai column already in file")
+        logger.info(f"mjd_tai column already in file.")
     else:
         add_column_if_not_exists(conn, "obs_sbn", "mjd_tai", "REAL")
         cursor.execute(f"SELECT rowid, mjd_utc FROM obs_sbn;")
@@ -333,41 +343,21 @@ def mpc_file_preprocessing(sql_filename):  # pragma: no cover
 
         logger.info(f"Added mjd_tai column to obs_sbn")
 
-    if (
-        sqlite_column_exists(conn, "obs_sbn", "heliocentricDist")
-        and sqlite_column_exists(conn, "obs_sbn", "topocentricDist")
-        and sqlite_column_exists(conn, "obs_sbn", "phaseAngle")
-    ):
-        logger.info(f"heliocentricDist, topocentricDist and phaseAngle information exist in obs_sbn already.")
-    else:
-        # Check if columns with alternative names exist:
-        # Once we fix the light travel time considerations this won't be technically wrong
-        if sqlite_column_exists(
-            conn, "obs_sbn", "r"
-        ):  # heliocentricDist (without ltt corretion) is called r in some versions of this file
-            cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN r TO heliocentricDist")
-            conn.commit()
-            logger.warning(
-                "Column r renamed to heliocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
-            )
+    # Loop through all columns that might need to be renamed
+    for col_in in LAYUP_ADLER_DICT.keys():
+        col_out = LAYUP_ADLER_DICT[col_in]
 
-        if sqlite_column_exists(
-            conn, "obs_sbn", "delta"
-        ):  # topocentricDist (without ltt corretion) is called delta in some versions of this file
-            cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN delta TO topocentricDist")
-            conn.commit()
-            logger.warning(
-                "Column delta renamed to topocentricDist in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
-            )
-
-        if sqlite_column_exists(
-            conn, "obs_sbn", "alpha"
-        ):  # phaseAngle is called alpha in JPL Horizons and may not have been changed in the file
-            cursor.execute("ALTER TABLE obs_sbn RENAME COLUMN alpha TO phaseAngle")
-            conn.commit()
-            logger.warning(
-                "Column alpha renamed to phaseAngle in obs_sbn. Be wary of light travel time as this may not have been accounted for yet"
-            )
+        # check if the adler equivalent columns exists
+        if sqlite_column_exists(conn, "obs_sbn", col_out):
+            logger.info(f"{col_out} column already in file.")
+        else:
+            try:
+                cursor.execute(f"ALTER TABLE obs_sbn RENAME COLUMN {col_in} TO {col_out}")
+                conn.commit()
+                logger.warning(f"Column {col_in} renamed to {col_out} in obs_sbn.")
+            except sqlite3.Error as err:
+                logger.error(err)
+                raise sqlite3.Error(err)
 
 
 def flux_to_magnitude(flux, flux_err=np.nan):
