@@ -120,7 +120,7 @@ class AdlerPlanetoid:
         sql_filename,
         filter_list=["u", "g", "r", "i", "z", "y"],
         date_range=None,
-        schema=None,
+        schema="dp03_catalogs_10yr",
         flux_flag=None,
     ):
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects from
@@ -140,8 +140,8 @@ class AdlerPlanetoid:
         date_range : list of float or None
             Optional. The minimum and maximum dates of the desired observations (MJD), e.g. [60000.0, 67300.0]
 
-        schema : str or None
-            Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3. # TODO: remove None option?
+        schema : str
+            Schema/database from which to select the data tables. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
 
         flux_flag : str or None
             Name of the flux column to select from DP1 DiaSource table. Determines FluxErr and ra/dec columns to select also. Default is None (selects mag/magErr/ra/dec for DP0.3)
@@ -313,7 +313,7 @@ class AdlerPlanetoid:
             Optional. The minimum and maximum dates of the desired observations (MJD), e.g. [60000.0, 67300.0]
 
         schema : str or None
-            Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
+            Schema/database from which to select the data tables. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
 
         api_token_path : str or None
             Path to user RSP API token if running not on RSP. See https://rsp.lsst.io/guides/auth/creating-user-tokens.html and lsst-adler/notebooks/adler_demo/adler_demo_rsp_api.ipynb for guide on setting this up.
@@ -404,7 +404,7 @@ class AdlerPlanetoid:
         sql_filename : str or None
             Filepath to a SQL database. Default=None.
 
-        schema : str or None
+        schema : str
             Schema/database from which to select the data tables. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
 
         flux_flag : str or None
@@ -523,7 +523,7 @@ class AdlerPlanetoid:
             Filepath to a SQL database. Default=None.
 
         schema : str or None
-            Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
+            Schema/database from which to select the data tables. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
 
         """
 
@@ -636,8 +636,8 @@ class AdlerPlanetoid:
         sql_filename : str or None
             Filepath to a SQL database. Default=None.
 
-        schema : str or None
-            Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
+        schema : str
+            Schema/database from which to select the data tables. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
 
         """
 
