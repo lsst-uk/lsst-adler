@@ -16,7 +16,9 @@ from adler.objectdata.objectdata_utilities import get_data_table, flux_to_magnit
 logger = logging.getLogger(__name__)
 
 # Load the adler schema file that maps different input schema onto adler
-schema_file = os.path.join(os.path.dirname(__file__), "adler_schema_map.csv")
+schema_file = os.path.join(
+    os.path.dirname(__file__), "adler_schema_map.csv"
+)  # ensure the filepath is always relative to the location of this file, AdlerPlanetoid.py
 ADLER_SCHEMA = pd.read_csv(schema_file, index_col=0).to_dict()
 
 # Convenient dict for setting which columns to include in SQL query given schema and desired flux flag
@@ -32,7 +34,24 @@ SCHEMA_CONFIG_DICT = {
         ),
         "trailFlux": dict(
             fluxmag_column="trailFlux",
+            fluxmag_err_column="psfFluxErr",  # TODO: warn that DP1 does not have an uncertainty for trailFlux?
+            ra_column="trailRa",
+            dec_column="trailDec",
+        ),
+        "psfFlux": dict(
+            fluxmag_column="psfFlux",
             fluxmag_err_column="psfFluxErr",
+            ra_column="ra",
+            dec_column="dec",
+        ),
+    },
+    "dp2": {
+        "apFlux": dict(
+            fluxmag_column="apFlux", fluxmag_err_column="apFluxErr", ra_column="ra", dec_column="dec"
+        ),
+        "trailFlux": dict(
+            fluxmag_column="trailFlux",
+            fluxmag_err_column="trailFluxErr",
             ra_column="trailRa",
             dec_column="trailDec",
         ),
@@ -44,7 +63,6 @@ SCHEMA_CONFIG_DICT = {
         ),
     },
 }
-SCHEMA_CONFIG_DICT["dp2"] = SCHEMA_CONFIG_DICT["dp1"].copy()
 RSP_TAP_CONFIG_DICT = {"dp03_catalogs_10yr": "ssotap", "dp1": "tap", "dp2": "tap"}
 
 
@@ -387,7 +405,7 @@ class AdlerPlanetoid:
             Filepath to a SQL database. Default=None.
 
         schema : str or None
-            Schema/database from which to select the data tables. Can be None. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
+            Schema/database from which to select the data tables. Default is currently "dp03_catalogs_10yr" for testing using DP0.3.
 
         flux_flag : str or None
             Name of the flux column to select from DP1 DiaSource table. Determines FluxErr and ra/dec columns to select also. Default is None (selects mag/magErr/ra/dec for DP0.3)
