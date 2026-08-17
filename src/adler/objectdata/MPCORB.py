@@ -1,3 +1,4 @@
+import numpy as np
 from dataclasses import dataclass
 
 from adler.objectdata.objectdata_utilities import get_from_table, get_from_dictionary
@@ -18,7 +19,6 @@ MPCORB_KEYS = {
     "n": float,
     "q": float,
     "uncertaintyParameter": str,
-    "flags": str,
 }
 
 
@@ -73,9 +73,6 @@ class MPCORB:
     uncertaintyParameter: str
         Uncertainty parameter, U
 
-    flags: str
-        4-hexdigit flags. See https://minorplanetcenter.net//iau/info/MPOrbitFormat.html for details
-
     """
 
     ssObjectId: str = ""
@@ -93,7 +90,6 @@ class MPCORB:
     n: float = 0.0
     q: float = 0.0
     uncertaintyParameter: str = ""
-    flags: str = ""
 
     @classmethod
     def construct_from_data_table(cls, ssObjectId, data_table):
@@ -117,7 +113,20 @@ class MPCORB:
         mpcorb_dict = {"ssObjectId": ssObjectId}
 
         for mpcorb_key, mpcorb_type in MPCORB_KEYS.items():
-            mpcorb_dict[mpcorb_key] = get_from_table(data_table, mpcorb_key, mpcorb_type, "MPCORB")
+            # add null values if they don't exist
+            if mpcorb_key in data_table:
+                mpcorb_dict[mpcorb_key] = get_from_table(data_table, mpcorb_key, mpcorb_type, "MPCORB")
+            else:
+                if mpcorb_type == str:
+                    mpcorb_dict[mpcorb_key] = ""  # blank string
+                elif mpcorb_type == int:
+                    mpcorb_dict[mpcorb_key] = (
+                        0  # use zero to avoid compatiblity between np.nan and int columns
+                    )
+                else:
+                    mpcorb_dict[mpcorb_key] = np.nan  # set everything else (floats) to np.nan
+
+                # TODO: uncertaintyParameter is ending up as int?
 
         return cls(**mpcorb_dict)
 

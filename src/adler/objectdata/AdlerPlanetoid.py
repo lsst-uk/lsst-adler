@@ -26,7 +26,9 @@ ADLER_SCHEMA = pd.read_csv(schema_file, index_col=0).to_dict()
 SCHEMA_CONFIG_DICT = {
     # None: {None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec")},
     "dp03_catalogs_10yr": {
-        None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec")
+        None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec"),
+        "mpc_table": "MPCORB",
+        "mpc_id": "ssObjectId",
     },
     "dp1": {
         "apFlux": dict(
@@ -44,6 +46,8 @@ SCHEMA_CONFIG_DICT = {
             ra_column="ra",
             dec_column="dec",
         ),
+        "mpc_table": "MPCORB",
+        "mpc_id": "ssObjectId",
     },
     "dp2": {
         "apFlux": dict(
@@ -61,6 +65,8 @@ SCHEMA_CONFIG_DICT = {
             ra_column="ra",
             dec_column="dec",
         ),
+        "mpc_table": "mpc_orbits",
+        "mpc_id": "designation",
     },
 }
 RSP_TAP_CONFIG_DICT = {"dp03_catalogs_10yr": "ssotap", "dp1": "tap", "dp2": "tap"}
@@ -441,10 +447,10 @@ class AdlerPlanetoid:
         for filter_name in filter_list:
             observations_sql_query = f"""
                 SELECT
-                    SSObject.ssObjectId, SSSource.diaSourceId, {fluxmag_column}, {fluxmag_err_column}, band, {ADLER_SCHEMA[schema]['midpointMjdTai']} AS midpointMjdTai, {ra_column} AS ra, {dec_column} AS dec, phaseAngle,
-                    topocentricDist, heliocentricDist, heliocentricX, heliocentricY, heliocentricZ,
-                    topocentricX, topocentricY, topocentricZ,
-                    eclipticLambda, eclipticBeta
+                    SSObject.ssObjectId, SSSource.diaSourceId, {fluxmag_column}, {fluxmag_err_column}, band, {ADLER_SCHEMA[schema]['midpointMjdTai']} AS midpointMjdTai, {ra_column} AS ra, {dec_column} AS dec, {ADLER_SCHEMA[schema]['phaseAngle']} AS phaseAngle,
+                    {ADLER_SCHEMA[schema]['topocentricDist']} AS topocentricDist, {ADLER_SCHEMA[schema]['heliocentricDist']} AS heliocentricDist, {ADLER_SCHEMA[schema]['heliocentricX']} AS heliocentricX, {ADLER_SCHEMA[schema]['heliocentricY']} AS heliocentricY, {ADLER_SCHEMA[schema]['heliocentricZ']} AS heliocentricZ,
+                    {ADLER_SCHEMA[schema]['topocentricX']} AS topocentricX, {ADLER_SCHEMA[schema]['topocentricY']} AS topocentricY, {ADLER_SCHEMA[schema]['topocentricZ']} AS topocentricZ,
+                    {ADLER_SCHEMA[schema]['eclipticLambda']} AS eclipticLambda, {ADLER_SCHEMA[schema]['eclipticBeta']} AS eclipticBeta 
                 FROM
                     {sql_schema}SSObject
                     JOIN {sql_schema}DiaSource ON {sql_schema}SSObject.ssObjectId   = {sql_schema}DiaSource.ssObjectId
@@ -466,21 +472,26 @@ class AdlerPlanetoid:
                     )
                 )
             else:
-                if schema in [None, "dp03_catalogs_10yr"]:  # TODO probably better way to do this
-                    observations_by_filter.append(
-                        Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
-                    )
-                elif schema == "dp1":
+                # if schema in [None, "dp03_catalogs_10yr"]:  # TODO probably better way to do this
+                #     observations_by_filter.append(
+                #         Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
+                #     )
+                # elif schema == "dp1":
+
+                if ("mag" not in data_table) & ("magErr" not in data_table):
+
+                    # add the mag and magErr columns if missing
                     # Convert to astropy table so we can operate on it and add mag,magErr columns
                     # TODO temporary fix, get_data_table returns two possible objects (DALResultsTable or Pandas dataframe) that need different handling to convert to astropy tables
+
+                    data_table_astropy = data_table.to_table()
+
                     if isinstance(data_table, pd.DataFrame):
                         data_table_astropy = Table.from_pandas(data_table)
                         data_table_astropy[fluxmag_column] = data_table_astropy[fluxmag_column] * u.nJy
                         data_table_astropy[fluxmag_err_column] = (
                             data_table_astropy[fluxmag_err_column] * u.nJy
                         )
-                    else:
-                        data_table_astropy = data_table.to_table()
 
                     # Compute magnitudes
                     mag, mag_err = flux_to_magnitude(
@@ -498,12 +509,11 @@ class AdlerPlanetoid:
                     # Remove the old flux columns
                     data_table_astropy.remove_columns([fluxmag_column, fluxmag_err_column])
 
-                    observations_by_filter.append(
-                        Observations.construct_from_data_table(ssObjectId, filter_name, data_table_astropy)
-                    )
-                else:
-                    logger.error(f"Schema {schema} not recognised.")
-                    raise Exception(f"Schema {schema} not recognised.")
+                    data_table = data_table_astropy
+
+                observations_by_filter.append(
+                    Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
+                )
 
         return observations_by_filter
 
@@ -537,84 +547,118 @@ class AdlerPlanetoid:
         # else:
         #     sql_schema = ""
 
-        if schema in [None, "dp03_catalogs_10yr"]:
-            # Query for DP0.3. Compatible with subsequent adler code
+        # if schema in [None, "dp03_catalogs_10yr"]:
+        #     # Query for DP0.3. Compatible with subsequent adler code
+        #     MPCORB_sql_query = f"""
+        #         SELECT
+        #             ssObjectId, mpcDesignation, fullDesignation, mpcNumber, mpcH, mpcG, epoch, tperi, peri, node, incl, e, n, q, uncertaintyParameter, flags
+        #         FROM
+        #             {sql_schema}MPCORB
+        #         WHERE
+        #             ssObjectId = {ssObjectId}
+        #     """
+        # elif schema == "dp1":
+        #     # Query for DP1. Selecting the columns that still exist in the DP1 table
+        #     # We select t_p (MJD of pericentric passage) as tperi for consistency with DP0.3
+        #     MPCORB_sql_query = f"""
+        #         SELECT
+        #             ssObjectId, mpcDesignation, mpcH, epoch, t_p AS tperi, peri, node, incl, e, q
+        #         FROM
+        #             {sql_schema}MPCORB
+        #         WHERE
+        #             ssObjectId = {ssObjectId}
+        #     """
+        if schema in SCHEMA_CONFIG_DICT:
+
+            # TODO: removed flags as it is not all schemas and is not used
+
+            mpc_id = SCHEMA_CONFIG_DICT[schema]["mpc_id"]
+            mpc_table = SCHEMA_CONFIG_DICT[schema]["mpc_table"]
+
+            # determine the query_id (ssObjectId or designation) and construct the constraint
+            if mpc_id != "ssObjectId":
+                constraint = f"JOIN {schema}.SSObject AS sso ON mpc.{mpc_id} = sso.{mpc_id} WHERE sso.ssObjectId={ssObjectId}"
+            else:
+                constraint = f"WHERE mpc.{mpc_id} = {ssObjectId}"
+
+            query_fields = [
+                x
+                for x in ADLER_SCHEMA[schema]
+                if (ADLER_SCHEMA[schema + "_table"][x] == mpc_table)
+                & (not pd.isnull(ADLER_SCHEMA[schema][x]))
+            ]
+            print(query_fields)
+            query_fields = ["mpc.{} AS {}".format(ADLER_SCHEMA[schema][x], x) for x in query_fields]
+            query_fields = ["mpc.{}".format(mpc_id)] + query_fields
+
             MPCORB_sql_query = f"""
                 SELECT
-                    ssObjectId, mpcDesignation, fullDesignation, mpcNumber, mpcH, mpcG, epoch, tperi, peri, node, incl, e, n, q, uncertaintyParameter, flags
+                    {",".join(query_fields)}
                 FROM
-                    {sql_schema}MPCORB
-                WHERE
-                    ssObjectId = {ssObjectId}
+                    {sql_schema}{mpc_table} as mpc
+                {constraint}
             """
-        elif schema == "dp1":
-            # Query for DP1. Selecting the columns that still exist in the DP1 table
-            # We select t_p (MJD of pericentric passage) as tperi for consistency with DP0.3
-            MPCORB_sql_query = f"""
-                SELECT
-                    ssObjectId, mpcDesignation, mpcH, epoch, t_p AS tperi, peri, node, incl, e, q
-                FROM
-                    {sql_schema}MPCORB
-                WHERE
-                    ssObjectId = {ssObjectId}
-            """
+            print(MPCORB_sql_query)
         else:
             logger.error(f"Schema {schema} not recognised.")
             raise Exception(f"Schema {schema} not recognised.")
 
         data_table = get_data_table(MPCORB_sql_query, service=service, sql_filename=sql_filename)
+        print(data_table)
 
         if len(data_table) == 0:
-            logger.error("No MPCORB data for this object could be found for this SSObjectId.")
-            raise Exception("No MPCORB data for this object could be found for this SSObjectId.")
-
-        if schema in [None, "dp03_catalogs_10yr"]:
-            return MPCORB.construct_from_data_table(ssObjectId, data_table)
-        elif schema == "dp1":
-            # TODO get_data_table (above) NaN fills if we, e.g., SELECT NULL AS mpcNumber, which may be fine and remove the need for this
-            # Convert to astropy Table and add in NaNs/0/empty strings for the columns that do not appear in DP1
-            if isinstance(data_table, pd.DataFrame):
-                data_table_astropy = Table.from_pandas(data_table)
-            else:
-                data_table_astropy = data_table.to_table()
-
-            data_table_astropy.add_columns(
-                cols=[
-                    np.full(len(data_table_astropy), ""),  # fullDesignation (str)
-                    np.full(len(data_table_astropy), 0),  # mpcNumber (int)
-                    np.full(len(data_table_astropy), np.nan),  # mpcG (float)
-                    np.full(len(data_table_astropy), np.nan),  # n (float)
-                    np.full(len(data_table_astropy), ""),  # uncertaintyParameter (str)
-                    np.full(len(data_table_astropy), ""),  # flags (str)
-                ],
-                names=["fullDesignation", "mpcNumber", "mpcG", "n", "uncertaintyParameter", "flags"],
+            err_message = "No {} data for this object could be found for {}={}.".format(
+                mpc_table, mpc_id, query_id
             )
+            logger.error(err_message)
+            raise Exception(err_message)
 
-            # Reorder columns to match DP0.3 expected order
-            data_table_astropy = data_table_astropy[
-                [
-                    "ssObjectId",
-                    "mpcDesignation",
-                    "fullDesignation",
-                    "mpcNumber",
-                    "mpcH",
-                    "mpcG",
-                    "epoch",
-                    "tperi",
-                    "peri",
-                    "node",
-                    "incl",
-                    "e",
-                    "n",
-                    "q",
-                    "uncertaintyParameter",
-                    "flags",
-                ]
-            ]
-            return MPCORB.construct_from_data_table(ssObjectId, data_table_astropy)
-        else:
-            logger.error(f"Schema {schema} not recognised.")
-            raise Exception(f"Schema {schema} not recognised.")
+        # TODO: add values if missing
+
+        # if schema in [None, "dp03_catalogs_10yr"]:
+        #     return MPCORB.construct_from_data_table(ssObjectId, data_table)
+        # elif schema == "dp1":
+        #     # TODO get_data_table (above) NaN fills if we, e.g., SELECT NULL AS mpcNumber, which may be fine and remove the need for this
+        #     # Convert to astropy Table and add in NaNs/0/empty strings for the columns that do not appear in DP1
+        #     if isinstance(data_table, pd.DataFrame):
+        #         data_table_astropy = Table.from_pandas(data_table)
+        #     else:
+        #         data_table_astropy = data_table.to_table()
+
+        #     data_table_astropy.add_columns(
+        #         cols=[
+        #             np.full(len(data_table_astropy), ""),  # fullDesignation (str)
+        #             np.full(len(data_table_astropy), 0),  # mpcNumber (int)
+        #             np.full(len(data_table_astropy), np.nan),  # mpcG (float)
+        #             np.full(len(data_table_astropy), np.nan),  # n (float)
+        #             np.full(len(data_table_astropy), ""),  # uncertaintyParameter (str)
+        #         ],
+        #         names=["fullDesignation", "mpcNumber", "mpcG", "n", "uncertaintyParameter"],
+        #     )
+
+        #     # Reorder columns to match DP0.3 expected order
+        #     data_table_astropy = data_table_astropy[
+        #         [
+        #             "ssObjectId",
+        #             "mpcDesignation",
+        #             "fullDesignation",
+        #             "mpcNumber",
+        #             "mpcH",
+        #             "mpcG",
+        #             "epoch",
+        #             "tperi",
+        #             "peri",
+        #             "node",
+        #             "incl",
+        #             "e",
+        #             "n",
+        #             "q",
+        #             "uncertaintyParameter",
+        #         ]
+        #     ]
+        # return MPCORB.construct_from_data_table(ssObjectId, data_table_astropy)
+
+        return MPCORB.construct_from_data_table(ssObjectId, data_table)
 
     def populate_SSObject(
         self, ssObjectId, filter_list, service=None, sql_filename=None, schema="dp03_catalogs_10yr"
