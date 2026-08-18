@@ -3,7 +3,7 @@ import numpy as np
 
 from adler.objectdata.objectdata_utilities import get_from_table, get_from_dictionary
 
-# TODO SSO_KEYS needs editing for DP1
+# TODO: SSO_KEYS needs editing for DP1
 # NB Filter keys not here?
 SSO_KEYS = {
     "discoverySubmissionDate": float,
@@ -13,6 +13,13 @@ SSO_KEYS = {
     "maxExtendedness": float,
     "minExtendedness": float,
     "medianExtendedness": float,
+}
+SSO_FILT_KEYS = {
+    "H": float,
+    "G12": float,
+    "HErr": float,
+    "G12Err": float,
+    "Ndata": int,
 }
 
 
@@ -67,6 +74,8 @@ class SSObject:
     minExtendedness: float = 0.0
     medianExtendedness: float = 0.0
 
+    # TODO: can these defaults be used to more efficiently set missing values? See SSObject FilterDependentSSO
+
     @classmethod
     def construct_from_data_table(cls, ssObjectId, filter_list, data_table):
         """Initialises the SSObject object from a table of data.
@@ -90,21 +99,33 @@ class SSObject:
         """
         sso_dict = {"ssObjectId": ssObjectId, "filter_list": filter_list, "filter_dependent_values": []}
 
-        # TODO fitler stuff needs to be populated for this to work
-
         for sso_key, sso_type in SSO_KEYS.items():
-            sso_dict[sso_key] = get_from_table(data_table, sso_key, sso_type, "SSObject")
 
-        for i, filter_name in enumerate(filter_list):
-            filter_dept_object = FilterDependentSSO(
-                filter_name=filter_name,
-                H=get_from_table(data_table, filter_name + "_H", float, "SSObject"),
-                G12=get_from_table(data_table, filter_name + "_G12", float, "SSObject"),
-                Herr=get_from_table(data_table, filter_name + "_HErr", float, "SSObject"),
-                G12err=get_from_table(data_table, filter_name + "_G12Err", float, "SSObject"),
-                nData=get_from_table(data_table, filter_name + "_Ndata", float, "SSObject"),
-            )
+            # add null values if they don't exist
+            if sso_key in data_table.to_table().colnames:
+                sso_dict[sso_key] = get_from_table(data_table, sso_key, sso_type, "SSObject")
+            else:
+                if sso_type == str:
+                    sso_dict[sso_key] = ""  # blank string
+                elif sso_type == int:
+                    sso_dict[sso_key] = 0  # use zero to avoid compatiblity between np.nan and int columns
+                else:
+                    sso_dict[sso_key] = np.nan  # set everything else (floats) to np.nan
 
+        for filter_name in filter_list:
+
+            filt_obj_dict = {"filter_name": filter_name}
+            for sso_key, sso_type in SSO_FILT_KEYS.items():
+
+                # add as a key to the dict if it exists
+                if (filter_name + "_" + sso_key) in data_table.to_table().colnames:
+                    print("get_from_table")
+                    filt_obj_dict[sso_key] = get_from_table(
+                        data_table, filter_name + "_" + sso_key, sso_type, "SSObject"
+                    )
+
+            # create filter object from dict, missing values will go to default
+            filter_dept_object = FilterDependentSSO(**filt_obj_dict)
             sso_dict["filter_dependent_values"].append(filter_dept_object)
 
         return cls(**sso_dict)
@@ -178,8 +199,10 @@ class FilterDependentSSO:
     """
 
     filter_name: str
-    H: float
-    G12: float
-    Herr: float
-    G12err: float
-    nData: int = 0
+    H: float = np.nan
+    G12: float = np.nan
+    HErr: float = np.nan
+    G12Err: float = np.nan
+    Ndata: int = 0
+
+    # TODO: make names here consistent with adler_schema_map.csv?

@@ -3,7 +3,6 @@ from dataclasses import dataclass
 
 from adler.objectdata.objectdata_utilities import get_from_table, get_from_dictionary
 
-# TODO MPCORB_KEYS needs changing for DP1
 MPCORB_KEYS = {
     "mpcDesignation": str,
     "fullDesignation": str,
@@ -91,6 +90,8 @@ class MPCORB:
     q: float = 0.0
     uncertaintyParameter: str = ""
 
+    # TODO: can these defaults be used to more efficiently set missing values? See SSObject FilterDependentSSO
+
     @classmethod
     def construct_from_data_table(cls, ssObjectId, data_table):
         """Initialises the MPCORB object from a table of data.
@@ -114,7 +115,7 @@ class MPCORB:
 
         for mpcorb_key, mpcorb_type in MPCORB_KEYS.items():
             # add null values if they don't exist
-            if mpcorb_key in data_table:
+            if mpcorb_key in data_table.to_table().colnames:
                 mpcorb_dict[mpcorb_key] = get_from_table(data_table, mpcorb_key, mpcorb_type, "MPCORB")
             else:
                 if mpcorb_type == str:
