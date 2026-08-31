@@ -27,23 +27,35 @@ ADLER_SCHEMA = pd.read_csv(schema_file, index_col=0).to_dict()
 SCHEMA_CONFIG_DICT = {
     # None: {None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec")},
     "dp03_catalogs_10yr": {
-        None: dict(fluxmag_column="mag", fluxmag_err_column="magErr", ra_column="ra", dec_column="dec"),
+        None: dict(
+            fluxmag_column="mag",
+            fluxmag_err_column="magErr",
+            fluxunit=u.nJy,
+            ra_column="ra",
+            dec_column="dec",
+        ),
         "mpc_table": "MPCORB",
         "mpc_id": "ssObjectId",
     },
     "dp1": {
         "apFlux": dict(
-            fluxmag_column="apFlux", fluxmag_err_column="apFluxErr", ra_column="ra", dec_column="dec"
+            fluxmag_column="apFlux",
+            fluxmag_err_column="apFluxErr",
+            fluxunit=u.nJy,
+            ra_column="ra",
+            dec_column="dec",
         ),
         "trailFlux": dict(
             fluxmag_column="trailFlux",
             fluxmag_err_column="psfFluxErr",  # TODO: warn that DP1 does not have an uncertainty for trailFlux?
+            fluxunit=u.nJy,
             ra_column="trailRa",
             dec_column="trailDec",
         ),
         "psfFlux": dict(
             fluxmag_column="psfFlux",
             fluxmag_err_column="psfFluxErr",
+            fluxunit=u.nJy,
             ra_column="ra",
             dec_column="dec",
         ),
@@ -52,17 +64,23 @@ SCHEMA_CONFIG_DICT = {
     },
     "dp2": {
         "apFlux": dict(
-            fluxmag_column="apFlux", fluxmag_err_column="apFluxErr", ra_column="ra", dec_column="dec"
+            fluxmag_column="apFlux",
+            fluxmag_err_column="apFluxErr",
+            fluxunit=u.nJy,
+            ra_column="ra",
+            dec_column="dec",
         ),
         "trailFlux": dict(
             fluxmag_column="trailFlux",
             fluxmag_err_column="trailFluxErr",
+            fluxunit=u.nJy,
             ra_column="trailRa",
             dec_column="trailDec",
         ),
         "psfFlux": dict(
             fluxmag_column="psfFlux",
             fluxmag_err_column="psfFluxErr",
+            fluxunit=u.nJy,
             ra_column="ra",
             dec_column="dec",
         ),
@@ -437,6 +455,7 @@ class AdlerPlanetoid:
 
         fluxmag_column = selected_config["fluxmag_column"]
         fluxmag_err_column = selected_config["fluxmag_err_column"]
+        fluxunit = selected_config["fluxunit"]
         ra_column = selected_config["ra_column"]
         dec_column = selected_config["dec_column"]
 
@@ -464,6 +483,7 @@ class AdlerPlanetoid:
             # This function submits the query and gets the results (or pulls from the SQL database)
             data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
 
+            # check for any observations, skip if none available
             if len(data_table) == 0:
                 logger.warning(
                     "No observations found in {} filter for this object. Skipping this filter.".format(
@@ -472,38 +492,50 @@ class AdlerPlanetoid:
                 )
             else:
 
-                if ("mag" not in data_table) & ("magErr" not in data_table):
+                # Convert to astropy table so we can operate on it and add mag,magErr columns
+                # TODO: temporary fix, get_data_table returns two possible objects (DALResultsTable or Pandas dataframe) that need different handling to convert to astropy tables
 
-                    # add the mag and magErr columns if missing
-                    # Convert to astropy table so we can operate on it and add mag,magErr columns
-                    # TODO: temporary fix, get_data_table returns two possible objects (DALResultsTable or Pandas dataframe) that need different handling to convert to astropy tables
+                # if isinstance(data_table, pd.DataFrame):
+                #     # data_table is DataFrame
+                #     data_table_astropy = Table.from_pandas(data_table)
+                # else:
+                #     # data_table is not Dataframe (DALResultsTable/TAPResults?)
+                #     data_table_astropy = data_table.to_table()
 
-                    data_table_astropy = data_table.to_table()
+                # add the mag and magErr columns if missing
+                if ("mag" not in data_table.colnames) & ("magErr" not in data_table.colnames):
 
-                    if isinstance(data_table, pd.DataFrame):
-                        data_table_astropy = Table.from_pandas(data_table)
-                        data_table_astropy[fluxmag_column] = data_table_astropy[fluxmag_column] * u.nJy
-                        data_table_astropy[fluxmag_err_column] = (
-                            data_table_astropy[fluxmag_err_column] * u.nJy
-                        )
+                    # ensure flux columns are correct units
+                    # Only add units if required, use the fluxunit key to SCHEMA_CONFIG_DICT
+                    for x in [fluxmag_column, fluxmag_err_column]:
+                        if hasattr(data_table[x], "unit"):
+                            print(type(data_table[x]))
+                            print(data_table[x].unit, fluxunit)
+                            # if the column has units, make sure they are correct as defined in SCHEMA_CONFIG_DICT
+                            if (data_table[x].unit != fluxunit) & (data_table[x].unit is not None):
+                                data_table[x] = data_table[x].to(fluxunit)
+                            else:
+                                # catch when the table column is dimensionless
+                                data_table[x] = data_table[x].value * fluxunit
+                        else:
+                            # if the column does not have units, add them
+                            data_table[x] *= fluxunit
 
                     # Compute magnitudes
                     mag, mag_err = flux_to_magnitude(
-                        data_table_astropy[fluxmag_column], data_table_astropy[fluxmag_err_column]
+                        data_table[fluxmag_column], data_table[fluxmag_err_column]
                     )
 
                     # Insert the new columns at the same positions
-                    data_table_astropy.add_column(
-                        mag, name="mag", index=data_table_astropy.colnames.index(fluxmag_column)
-                    )
-                    data_table_astropy.add_column(
-                        mag_err, name="magErr", index=data_table_astropy.colnames.index(fluxmag_err_column)
+                    data_table.add_column(mag, name="mag", index=data_table.colnames.index(fluxmag_column))
+                    data_table.add_column(
+                        mag_err, name="magErr", index=data_table.colnames.index(fluxmag_err_column)
                     )
 
                     # Remove the old flux columns
-                    data_table_astropy.remove_columns([fluxmag_column, fluxmag_err_column])
+                    data_table.remove_columns([fluxmag_column, fluxmag_err_column])
 
-                    data_table = data_table_astropy
+                # TODO: If mag columns already exist (dp03) do we need to add mag units?
 
                 observations_by_filter.append(
                     Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
@@ -761,6 +793,7 @@ class AdlerPlanetoid:
         observations_by_filter = []
 
         for filter_name in filter_list:
+            # TODO: update this query using ADLER_SCHEMA!
             observations_sql_query = f"""
                 SELECT
                     provid AS SSObjectId, obsid as diaSourceId, mag, rmsmag AS magErr, band, mjd_tai AS midpointMjdTai, ra, dec,
@@ -789,7 +822,9 @@ class AdlerPlanetoid:
             else:
                 # DP1 discoveries have no magErr values so fill with NaNs
                 # for some reason (TODO: check why) this means that this column has dtype object so we force it to be float64 here
-                data_table["magErr"] = data_table.magErr.astype(np.float64)
+                data_table["magErr"] = data_table["magErr"].astype(
+                    np.float64
+                )  # TODO: add dtype checking somewhere, populate_observations etc?
 
                 observations_by_filter.append(
                     Observations.construct_from_data_table(ssObjectId, filter_name, data_table)
@@ -866,6 +901,7 @@ class AdlerPlanetoid:
             f"Constructing from the MPC obs_sbn table populates the following LSST schema columns as their best case obs_sbn analogs (LSST column name = obs_sbn column name):"
         )
         logger.warning(f"All columns other than numObs/'band'_Ndata are selected as NULL/0.")
+        # TODO: update this query with ADLER_SCHEMA!
         SSObject_sql_query = f"""
             SELECT
                 NULL AS discoverySubmissionDate, NULL AS firstObservationDate, NULL AS arc, count(*) AS numObs, 
@@ -881,7 +917,7 @@ class AdlerPlanetoid:
         data_table = get_data_table(SSObject_sql_query, service=None, sql_filename=sql_filename)
 
         # TODO probably add some warnings for these as there isn't actually any SSObject data for these things in MPC file
-        if len(data_table) == 0 or data_table["numObs"].values == 0:
+        if len(data_table) == 0:  # or data_table["numObs"].values == 0:
             logger.error("No SSObject data for this object could be found for this SSObjectId.")
             raise Exception("No SSObject data for this object could be found for this SSObjectId.")
 

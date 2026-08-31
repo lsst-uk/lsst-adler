@@ -102,7 +102,7 @@ class SSObject:
         for sso_key, sso_type in SSO_KEYS.items():
 
             # add null values if they don't exist
-            if sso_key in data_table.to_table().colnames:
+            if sso_key in data_table.colnames:
                 sso_dict[sso_key] = get_from_table(data_table, sso_key, sso_type, "SSObject")
             else:
                 if sso_type == str:
@@ -118,8 +118,7 @@ class SSObject:
             for sso_key, sso_type in SSO_FILT_KEYS.items():
 
                 # add as a key to the dict if it exists
-                if (filter_name + "_" + sso_key) in data_table.to_table().colnames:
-                    print("get_from_table")
+                if (filter_name + "_" + sso_key) in data_table.colnames:
                     filt_obj_dict[sso_key] = get_from_table(
                         data_table, filter_name + "_" + sso_key, sso_type, "SSObject"
                     )

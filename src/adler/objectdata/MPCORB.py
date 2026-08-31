@@ -115,7 +115,7 @@ class MPCORB:
 
         for mpcorb_key, mpcorb_type in MPCORB_KEYS.items():
             # add null values if they don't exist
-            if mpcorb_key in data_table.to_table().colnames:
+            if mpcorb_key in data_table.colnames:
                 mpcorb_dict[mpcorb_key] = get_from_table(data_table, mpcorb_key, mpcorb_type, "MPCORB")
             else:
                 if mpcorb_type == str:
@@ -127,7 +127,7 @@ class MPCORB:
                 else:
                     mpcorb_dict[mpcorb_key] = np.nan  # set everything else (floats) to np.nan
 
-                # TODO: uncertaintyParameter is ending up as int?
+                # TODO: uncertaintyParameter is ending up as int? nan in docs/notebooks/adler_phasecurve_example.ipynb?
 
         return cls(**mpcorb_dict)
 

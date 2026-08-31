@@ -9,6 +9,7 @@ import astropy.units as u
 import os
 import pyvo
 import requests
+from astropy.table import Table
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ def get_data_table(sql_query, service=None, sql_filename=None):
     Returns
     -----------
 
-    data_table : DALResultsTable or Pandas dataframe
+    data_table : astropy Table
         Data table containing the results of the SQL query.
 
     """
@@ -61,6 +62,14 @@ def get_data_table(sql_query, service=None, sql_filename=None):
             data_table = data_table.fillna(value=np.nan).infer_objects(
                 copy=False
             )  # changes Nones to NaNs because None forces dtype=object: bad.
+
+    # convert to astropy table for compatibility
+    if isinstance(data_table, pd.DataFrame):
+        # data_table is DataFrame
+        data_table = Table.from_pandas(data_table)
+    else:
+        # data_table is not Dataframe (DALResultsTable/TAPResults?)
+        data_table = data_table.to_table()
 
     return data_table
 
