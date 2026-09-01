@@ -48,17 +48,20 @@ def get_data_table(sql_query, service=None, sql_filename=None):
 
     if service:  # pragma: no cover
         # data_table = service.search(sql_query) # sync queries will time out...
-        
+
         # run the query async
-        job = service.submit_job(query)
+        # TODO: chase warnings here, e.g.
+        # WARNING: UnknownElementWarning: None:33:2: UnknownElementWarning: Unknown element jobInfo [pyvo.utils.xml.elements]
+        # astroquery WARNING: UnknownElementWarning: None:33:2: UnknownElementWarning: Unknown element jobInfo
+        job = service.submit_job(sql_query)
         job.run()
-        job.wait(phases=['COMPLETED', 'ERROR'])
-        print('Job phase is', job.phase)
-        if job.phase == 'ERROR':
+        job.wait(phases=["COMPLETED", "ERROR"])
+        print("Job phase is", job.phase)
+        if job.phase == "ERROR":
             job.raise_if_error()
-        assert job.phase == 'COMPLETED'
+        assert job.phase == "COMPLETED"
         data_table = job.fetch_result()
-        
+
     elif sql_filename:
         cnx = sqlite3.connect(sql_filename)
         data_table = pd.read_sql_query(

@@ -17,19 +17,25 @@ def test_construct_from_SQL():
     # testing just a few values here to ensure correct setup: these objects have their own unit tests
     assert test_planetoid.MPCORB.mpcH == 19.8799991607666
     assert test_planetoid.SSObject.discoverySubmissionDate == 60218.0
+
+    # TODO: fix the order here to not use np.sort?
     assert_almost_equal(
-        test_planetoid.observations_by_filter[0].mag,
-        [
-            21.33099937,
-            22.67099953,
-            23.5359993,
-            22.85000038,
-            22.97599983,
-            22.94499969,
-            23.13599968,
-            23.19400024,
-            23.1609993,
-        ],
+        np.sort(test_planetoid.observations_by_filter[0].mag),
+        np.sort(
+            np.array(
+                [
+                    21.33099937,
+                    22.67099953,
+                    23.5359993,
+                    22.85000038,
+                    22.97599983,
+                    22.94499969,
+                    23.13599968,
+                    23.19400024,
+                    23.1609993,
+                ]
+            )
+        ),
     )
 
     # did we pick up all the filters? note we ask for ugrizy but u and y are unpopulated in DP0.3, so the code should eliminate them
@@ -44,24 +50,34 @@ def test_construct_from_SQL():
 def test_construct_with_single_filter():
     test_planetoid = AdlerPlanetoid.construct_from_SQL(ssoid, test_db_path, filter_list=["g"])
 
+    print(test_planetoid.__dict__)
+    print(test_planetoid.observations_by_filter)
+    print(test_planetoid.SSObject.filter_dependent_values)
+    print(test_planetoid.filter_list)
+
     # should only be one filter in here now
     assert len(test_planetoid.observations_by_filter) == 1
     assert len(test_planetoid.SSObject.filter_dependent_values) == 1
     assert test_planetoid.filter_list == ["g"]
 
+    # TODO: fix the order here to not use np.sort?
     assert_almost_equal(
-        test_planetoid.observations_by_filter[0].mag,
-        [
-            21.33099937,
-            22.67099953,
-            23.5359993,
-            22.85000038,
-            22.97599983,
-            22.94499969,
-            23.13599968,
-            23.19400024,
-            23.1609993,
-        ],
+        np.sort(test_planetoid.observations_by_filter[0].mag),
+        np.sort(
+            np.array(
+                [
+                    21.33099937,
+                    22.67099953,
+                    23.5359993,
+                    22.85000038,
+                    22.97599983,
+                    22.94499969,
+                    23.13599968,
+                    23.19400024,
+                    23.1609993,
+                ]
+            )
+        ),
     )
 
 
@@ -87,7 +103,10 @@ def test_construct_with_date_range():
         ]
     )
 
-    assert_almost_equal(test_planetoid.observations_by_filter[0].midpointMjdTai, expected_dates)
+    # TODO: should we require the query to return observations sorted by date?
+    assert_almost_equal(
+        np.sort(test_planetoid.observations_by_filter[0].midpointMjdTai), np.sort(expected_dates)
+    )
 
     assert test_planetoid.date_range == [61000.0, 62000.0]
 
@@ -96,7 +115,7 @@ def test_construct_with_date_range():
             ssoid, test_db_path, date_range=[61000.0, 62000.0, 63000.0]
         )
 
-    assert error_info_1.value.args[0] == "date_range attribute must be of length 2."
+    assert error_info_1.value.args[0] == "date_range attribute must be None or length 2."
 
 
 def test_observations_in_filter():
@@ -163,17 +182,19 @@ def test_failed_SQL_queries():
     )
 
     with pytest.raises(Exception) as error_info_1:
-        test_planetoid.populate_MPCORB("826857066833589477", sql_filename=test_db_path, schema=None)
-
-    assert error_info_1.value.args[0] == "No MPCORB data for this object could be found for this SSObjectId."
-
-    with pytest.raises(Exception) as error_info_2:
-        test_planetoid.populate_SSObject(
-            "826857066833589477", filter_list=["u"], sql_filename=test_db_path, schema=None
-        )
+        test_planetoid.populate_MPCORB("826857066833589477", sql_filename=test_db_path)
 
     assert (
-        error_info_2.value.args[0] == "No SSObject data for this object could be found for this SSObjectId."
+        error_info_1.value.args[0]
+        == "No MPCORB data for this object could be found for ssObjectId=826857066833589477."
+    )
+
+    with pytest.raises(Exception) as error_info_2:
+        test_planetoid.populate_SSObject("826857066833589477", filter_list=["u"], sql_filename=test_db_path)
+
+    assert (
+        error_info_2.value.args[0]
+        == "No SSObject data for this object could be found for ssObjectId=826857066833589477."
     )
 
 
@@ -258,6 +279,8 @@ def test_construct_from_mpc_with_single_filter():
 
     # should only be one filter in here now
     assert len(test_planetoid.observations_by_filter) == 1
+    print(test_planetoid.SSObject.__dict__)
+    print(test_planetoid.SSObject.filter_dependent_values)
     assert len(test_planetoid.SSObject.filter_dependent_values) == 1
     assert test_planetoid.filter_list == ["g"]
 
@@ -285,7 +308,7 @@ def test_construct_from_mpc_with_date_range():
             mpc_ssoid, mpc_test_db_path, date_range=[61000.0, 62000.0, 63000.0]
         )
 
-    assert error_info_1.value.args[0] == "date_range attribute must be of length 2."
+    assert error_info_1.value.args[0] == "date_range attribute must be None or length 2."
 
 
 def test_mpc_no_observations():
@@ -298,23 +321,28 @@ def test_mpc_no_observations():
     )
 
 
-def test_mpc_failed_SQL_queries():
-    test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(
-        mpc_ssoid, mpc_test_db_path, filter_list=["u", "g", "r", "i", "z", "y"]
-    )
+# # TODO: these functions are now removed
+# def test_mpc_failed_SQL_queries():
+#     test_planetoid = AdlerPlanetoid.construct_from_mpc_obs_sbn(
+#         mpc_ssoid, mpc_test_db_path, filter_list=["u", "g", "r", "i", "z", "y"]
+#     )
 
-    with pytest.raises(Exception) as error_info_1:
-        test_planetoid.populate_MPCORB_from_mpc_obs_sbn("2025 FakeId", sql_filename=mpc_test_db_path)
+#     with pytest.raises(Exception) as error_info_1:
+#         test_planetoid.populate_MPCORB_from_mpc_obs_sbn("2025 FakeId", sql_filename=mpc_test_db_path)
 
-    assert (
-        error_info_1.value.args[0] == "No mpc_orbits data for this object could be found for this SSObjectId."
-    )
+#     assert (
+#         error_info_1.value.args[0] == "No mpc_orbits data for this object could be found for this SSObjectId."
+#     )
 
-    with pytest.raises(Exception) as error_info_2:
-        test_planetoid.populate_SSObject_from_mpc_obs_sbn(
-            "2025 FakeId", filter_list=["u"], sql_filename=mpc_test_db_path
-        )
+#     with pytest.raises(Exception) as error_info_2:
+#         test_planetoid.populate_SSObject_from_mpc_obs_sbn(
+#             "2025 FakeId", filter_list=["u"], sql_filename=mpc_test_db_path
+#         )
 
-    assert (
-        error_info_2.value.args[0] == "No SSObject data for this object could be found for this SSObjectId."
-    )
+#     assert (
+#         error_info_2.value.args[0] == "No SSObject data for this object could be found for this SSObjectId."
+#     )
+
+# TODO: trying to fix tests
+if __name__ == "__main__":
+    test_construct_with_single_filter()

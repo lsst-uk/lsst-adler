@@ -316,7 +316,7 @@ def main():
         help="Minimum and maximum MJD(TAI) of required observations. Default is to pull all observations.",
         nargs=2,
         type=float,
-        default=[60000.0, 67300.0],
+        default=[60000.0, 67300.0],  # TODO: default to None?
     )
     optional_group.add_argument(
         "-o",

@@ -1,5 +1,6 @@
-# from lsst.rsp import get_tap_service
-from lsst.rsp import RSPDiscovery
+from lsst.rsp import get_tap_service
+
+# from lsst.rsp import RSPDiscovery # use this when lsst-rsp is upgraded
 import pandas as pd
 import numpy as np
 import logging
@@ -10,7 +11,7 @@ import os
 
 from adler.objectdata.Observations import Observations
 from adler.objectdata.MPCORB import MPCORB
-from adler.objectdata.SSObject import SSObject
+from adler.objectdata.SSObject import SSObject, FilterDependentSSO
 from adler.objectdata.AdlerData import AdlerData
 from adler.objectdata.objectdata_utilities import get_data_table, flux_to_magnitude, get_tap_service_api
 
@@ -189,8 +190,8 @@ class AdlerPlanetoid:
 
         if date_range is not None:
             if len(date_range) != 2:
-                logger.error("ValueError: date_range attribute must be of length 2.")
-                raise ValueError("date_range attribute must be of length 2.")
+                logger.error("ValueError: date_range attribute must be None or length 2.")
+                raise ValueError("date_range attribute must be None or length 2.")
 
         observations_by_filter = cls.populate_observations(
             cls,
@@ -364,8 +365,8 @@ class AdlerPlanetoid:
 
         if date_range is not None:
             if len(date_range) != 2:
-                logger.error("ValueError: date_range attribute must be of length 2.")
-                raise ValueError("date_range attribute must be of length 2.")
+                logger.error("ValueError: date_range attribute must be None or length 2.")
+                raise ValueError("date_range attribute must be None or length 2.")
 
         rsp_tap_path = RSP_TAP_CONFIG_DICT[schema]  # TODO give better name
 
@@ -373,9 +374,11 @@ class AdlerPlanetoid:
         if api_token_path:
             service = get_tap_service_api(rsp_tap_path, api_token_path=api_token_path)
         else:
-            # service = get_tap_service(rsp_tap_path)
-            discovery = RSPDiscovery(rsp_tap_path)
-            service = discovery.get_tap_client()
+            service = get_tap_service(rsp_tap_path)
+
+            # # TODO: use this when lsst-rsp is upgraded
+            # discovery = RSPDiscovery(rsp_tap_path)
+            # service = discovery.get_tap_client()
 
         logger.info("Getting past observations from DIASource/SSSource...")
 
@@ -478,24 +481,27 @@ class AdlerPlanetoid:
         for filter_name in filter_list:
             observations_sql_query = f"""
                 SELECT
-                    SSObject.ssObjectId, SSSource.diaSourceId, {fluxmag_column}, {fluxmag_err_column}, band, {ADLER_SCHEMA[schema]['midpointMjdTai']} AS midpointMjdTai, {ra_column} AS ra, {dec_column} AS dec, {ADLER_SCHEMA[schema]['phaseAngle']} AS phaseAngle,
+                    DiaSource.diaSourceId, {fluxmag_column}, {fluxmag_err_column}, band, {ADLER_SCHEMA[schema]['midpointMjdTai']} AS midpointMjdTai, {ra_column} AS ra, {dec_column} AS dec, {ADLER_SCHEMA[schema]['phaseAngle']} AS phaseAngle,
                     {ADLER_SCHEMA[schema]['topocentricDist']} AS topocentricDist, {ADLER_SCHEMA[schema]['heliocentricDist']} AS heliocentricDist, {ADLER_SCHEMA[schema]['heliocentricX']} AS heliocentricX, {ADLER_SCHEMA[schema]['heliocentricY']} AS heliocentricY, {ADLER_SCHEMA[schema]['heliocentricZ']} AS heliocentricZ,
                     {ADLER_SCHEMA[schema]['topocentricX']} AS topocentricX, {ADLER_SCHEMA[schema]['topocentricY']} AS topocentricY, {ADLER_SCHEMA[schema]['topocentricZ']} AS topocentricZ,
                     {ADLER_SCHEMA[schema]['eclipticLambda']} AS eclipticLambda, {ADLER_SCHEMA[schema]['eclipticBeta']} AS eclipticBeta 
                 FROM
-                    {sql_schema}SSObject
-                    JOIN {sql_schema}DiaSource ON {sql_schema}SSObject.ssObjectId   = {sql_schema}DiaSource.ssObjectId
-                    JOIN {sql_schema}SSSource  ON {sql_schema}DiaSource.diaSourceId = {sql_schema}SSSource.diaSourceId
+                    {sql_schema}DiaSource
+                    INNER JOIN {sql_schema}SSSource
+                    ON DiaSource.diaSourceId = SSSource.diaSourceId
                 WHERE
-                    SSObject.ssObjectId = {ssObjectId} AND band = '{filter_name}'
+                    DiaSource.ssObjectId = {ssObjectId} AND band = '{filter_name}'
                 """
             # TODO: log the query
+            # TODO: This does not always return things in date order?
+            print(observations_sql_query)
 
             if date_range is not None:
                 observations_sql_query += f" AND midPointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}"
 
             # This function submits the query and gets the results (or pulls from the SQL database)
             data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
+            print(data_table)
 
             # check for any observations, skip if none available
             if len(data_table) == 0:
@@ -588,8 +594,8 @@ class AdlerPlanetoid:
             mpc_table = SCHEMA_CONFIG_DICT[schema]["mpc_table"]
 
             # determine the query_id (ssObjectId or designation) and construct the constraint
-            if (mpc_id != "ssObjectId") & (schema!="MPC"):
-                constraint = f"JOIN {schema}.SSObject AS sso ON mpc.{mpc_id} = sso.{mpc_id} WHERE sso.ssObjectId={ssObjectId}"
+            if (mpc_id != "ssObjectId") & (schema != "MPC"):
+                constraint = f"JOIN {schema}.SSObject AS sso ON mpc.{mpc_id} = sso.{mpc_id} WHERE sso.ssObjectId={ssObjectId}"  # TODO: double check full stop in '.SSObject', change schema -> sql_schema?
             else:
                 constraint = f"WHERE mpc.{mpc_id} = '{ssObjectId}'"
 
@@ -619,10 +625,10 @@ class AdlerPlanetoid:
 
         data_table = get_data_table(MPCORB_sql_query, service=service, sql_filename=sql_filename)
         print(data_table)
-        
+
         if len(data_table) == 0:
             err_message = "No {} data for this object could be found for {}={}.".format(
-                mpc_table, mpc_id, query_id
+                mpc_table, mpc_id, ssObjectId
             )
             logger.error(err_message)
             raise Exception(err_message)
@@ -710,7 +716,7 @@ class AdlerPlanetoid:
         data_table = get_data_table(SSObject_sql_query, service=service, sql_filename=sql_filename)
         print(data_table)
         print(len(data_table))
-        
+
         if len(data_table) == 0:
             err_message = "No SSObject data for this object could be found for ssObjectId={}.".format(
                 ssObjectId
@@ -749,8 +755,8 @@ class AdlerPlanetoid:
 
         if date_range is not None:
             if len(date_range) != 2:
-                logger.error("ValueError: date_range attribute must be of length 2.")
-                raise ValueError("date_range attribute must be of length 2.")
+                logger.error("ValueError: date_range attribute must be None or length 2.")
+                raise ValueError("date_range attribute must be None or length 2.")
 
         observations_by_filter = cls.populate_observations_from_mpc_obs_sbn(
             cls, ssObjectId, filter_list, date_range, sql_filename=sql_filename
@@ -772,13 +778,18 @@ class AdlerPlanetoid:
             logger.info("New filter list is: {}".format(filter_list))
 
         # mpcorb = cls.populate_MPCORB_from_mpc_obs_sbn(cls, ssObjectId, sql_filename=sql_filename)
-        mpcorb = cls.populate_MPCORB(cls, ssObjectId, sql_filename=sql_filename, schema = "MPC")
+        mpcorb = cls.populate_MPCORB(cls, ssObjectId, sql_filename=sql_filename, schema="MPC")
         # ssobject = cls.populate_SSObject_from_mpc_obs_sbn(
         #     cls, ssObjectId, filter_list, sql_filename=sql_filename
         # )
         # TODO: make a blank (default values) SSObject and add the numObs from the planetoid Observations
-        ssobject = SSObject(ssObjectId,filter_list = filter_list, numObs = sum([len(obs.__dict__) for obs in observations_by_filter]))
-        
+        ssobject = SSObject(
+            ssObjectId,
+            filter_list=filter_list,
+            numObs=sum([obs.num_obs for obs in observations_by_filter]),
+            filter_dependent_values=[FilterDependentSSO(filt) for filt in filter_list],
+        )
+
         adler_data = AdlerData(ssObjectId, filter_list)
 
         return cls(
@@ -838,12 +849,17 @@ class AdlerPlanetoid:
                 WHERE
                     provid='{ssObjectId}' AND band = '{filter_name}'
                 """
+            # TODO: log query
+            print(observations_sql_query)
+
             if date_range is not None:
                 observations_sql_query += f" AND mjd_tai BETWEEN '{date_range[0]}' AND '{date_range[1]}'"
 
             # This function submits the query and gets the results from the SQL database supplied
             # Explicitly setting service=None here for clarity as this version does not query from non-local databases
             data_table = get_data_table(observations_sql_query, service=None, sql_filename=sql_filename)
+            print(data_table)
+            print(len(data_table))
 
             if len(data_table) == 0:
                 logger.warning(
@@ -898,7 +914,7 @@ class AdlerPlanetoid:
     #     data_table = get_data_table(mpc_orbits_sql_query, service=None, sql_filename=sql_filename)
     #     print(data_table)
     #     print(len(data_table))
-        
+
     #     if len(data_table) == 0:
     #         logger.error("No mpc_orbits data for this object could be found for this SSObjectId.")
     #         raise Exception("No mpc_orbits data for this object could be found for this SSObjectId.")
@@ -938,7 +954,7 @@ class AdlerPlanetoid:
     #     # TODO: update this query with ADLER_SCHEMA!
     #     SSObject_sql_query = f"""
     #         SELECT
-    #             NULL AS discoverySubmissionDate, NULL AS firstObservationDate, NULL AS arc, count(*) AS numObs, 
+    #             NULL AS discoverySubmissionDate, NULL AS firstObservationDate, NULL AS arc, count(*) AS numObs,
     #             {filter_dependent_columns}
     #             NULL AS maxExtendedness, NULL AS minExtendedness, NULL AS medianExtendedness
     #         FROM
@@ -952,7 +968,7 @@ class AdlerPlanetoid:
     #     data_table = get_data_table(SSObject_sql_query, service=None, sql_filename=sql_filename)
     #     print(data_table)
     #     print(len(data_table))
-        
+
     #     # TODO probably add some warnings for these as there isn't actually any SSObject data for these things in MPC file
     #     if (len(data_table) == 0) or (data_table["numObs"].values == 0):
     #         logger.error("No SSObject data for this object could be found for this SSObjectId.")
