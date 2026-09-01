@@ -87,6 +87,17 @@ SCHEMA_CONFIG_DICT = {
         "mpc_table": "mpc_orbits",
         "mpc_id": "designation",
     },
+    "MPC": {
+        None: dict(
+            fluxmag_column="mag",
+            fluxmag_err_column="magErr",
+            fluxunit=u.nJy,
+            ra_column="ra",
+            dec_column="dec",
+        ),
+        "mpc_table": "mpc_orbits",
+        "mpc_id": "fullDesignation",
+    },
 }
 
 # Define the tap service setup for each schema for queries on the RSP
@@ -574,10 +585,10 @@ class AdlerPlanetoid:
             mpc_table = SCHEMA_CONFIG_DICT[schema]["mpc_table"]
 
             # determine the query_id (ssObjectId or designation) and construct the constraint
-            if mpc_id != "ssObjectId":
+            if (mpc_id != "ssObjectId") & (schema!="MPC"):
                 constraint = f"JOIN {schema}.SSObject AS sso ON mpc.{mpc_id} = sso.{mpc_id} WHERE sso.ssObjectId={ssObjectId}"
             else:
-                constraint = f"WHERE mpc.{mpc_id} = {ssObjectId}"
+                constraint = f"WHERE mpc.{mpc_id} = '{ssObjectId}'"
 
             # get the MPCORB field names from the schema
             query_fields = [
@@ -585,6 +596,7 @@ class AdlerPlanetoid:
                 for x in ADLER_SCHEMA[schema]
                 if (ADLER_SCHEMA[schema + "_table"][x] == mpc_table)
                 & (not pd.isnull(ADLER_SCHEMA[schema][x]))
+                & (x != mpc_id)
             ]
             query_fields = ["mpc.{} AS {}".format(ADLER_SCHEMA[schema][x], x) for x in query_fields]
             query_fields = ["mpc.{}".format(mpc_id)] + query_fields
@@ -597,12 +609,14 @@ class AdlerPlanetoid:
                 {constraint}
             """
             # TODO: log the query
+            print(MPCORB_sql_query)
         else:
             logger.error(f"Schema {schema} not recognised.")
             raise Exception(f"Schema {schema} not recognised.")
 
         data_table = get_data_table(MPCORB_sql_query, service=service, sql_filename=sql_filename)
-
+        print(data_table)
+        
         if len(data_table) == 0:
             err_message = "No {} data for this object could be found for {}={}.".format(
                 mpc_table, mpc_id, query_id
@@ -645,6 +659,15 @@ class AdlerPlanetoid:
 
         if schema in SCHEMA_CONFIG_DICT:
 
+            if schema == "MPC":
+                ssobject_id_col = "provid"
+                ssobject_table = "obs_sbn"
+                constraint = f"{ssobject_id_col} = '{ssObjectId}' LIMIT 1" # TODO: a bit unnecessary but we only need to get one row to check the object is indeed in the table - try replace MPC case with just a blank SSObject!
+            else:
+                ssobject_id_col = "ssObjectId"
+                ssobject_table = "SSObject"
+                constraint = f"{ssobject_id_col} = '{ssObjectId}'
+
             # get the SSObject field names from the schema
             query_fields = [
                 x
@@ -665,23 +688,26 @@ class AdlerPlanetoid:
                 filter_dependent_columns += filter_fields_list
             query_fields += filter_dependent_columns
 
-            query_fields = ["ssObjectId"] + query_fields
+            query_fields = [ssobject_id_col] + query_fields
 
             SSObject_sql_query = f"""
                 SELECT
                     {",".join(query_fields)}
                 FROM
-                    {sql_schema}SSObject
+                    {sql_schema}{ssobject_table}
                 WHERE
-                    ssObjectId = {ssObjectId}
+                    {constraint}
             """
             # TODO: log the query
+            print(SSObject_sql_query)
         else:
             logger.error(f"Schema {schema} not recognised.")
             raise Exception(f"Schema {schema} not recognised.")
 
         data_table = get_data_table(SSObject_sql_query, service=service, sql_filename=sql_filename)
-
+        print(data_table)
+        print(len(data_table))
+        
         if len(data_table) == 0:
             err_message = "No SSObject data for this object could be found for ssObjectId={}.".format(
                 ssObjectId
@@ -742,11 +768,15 @@ class AdlerPlanetoid:
             filter_list = [obs_object.filter_name for obs_object in observations_by_filter]
             logger.info("New filter list is: {}".format(filter_list))
 
-        mpcorb = cls.populate_MPCORB_from_mpc_obs_sbn(cls, ssObjectId, sql_filename=sql_filename)
-        ssobject = cls.populate_SSObject_from_mpc_obs_sbn(
-            cls, ssObjectId, filter_list, sql_filename=sql_filename
+        # mpcorb = cls.populate_MPCORB_from_mpc_obs_sbn(cls, ssObjectId, sql_filename=sql_filename)
+        mpcorb = cls.populate_MPCORB(cls, ssObjectId, sql_filename=sql_filename, schema = "MPC")
+        # ssobject = cls.populate_SSObject_from_mpc_obs_sbn(
+        #     cls, ssObjectId, filter_list, sql_filename=sql_filename
+        # )
+        ssobject = cls.populate_SSObject(
+            cls, ssObjectId, filter_list, sql_filename=sql_filename, schema = "MPC"
         )
-
+        
         adler_data = AdlerData(ssObjectId, filter_list)
 
         return cls(
@@ -864,7 +894,9 @@ class AdlerPlanetoid:
 
         # Explicitly setting service=None here for clarity as this version does not query from non-local databases
         data_table = get_data_table(mpc_orbits_sql_query, service=None, sql_filename=sql_filename)
-
+        print(data_table)
+        print(len(data_table))
+        
         if len(data_table) == 0:
             logger.error("No mpc_orbits data for this object could be found for this SSObjectId.")
             raise Exception("No mpc_orbits data for this object could be found for this SSObjectId.")
@@ -912,12 +944,15 @@ class AdlerPlanetoid:
             WHERE
                 provid = '{ssObjectId}'
         """
+        print(SSObject_sql_query)
 
         # Explicitly setting service=None here for clarity as this version does not query from non-local databases
         data_table = get_data_table(SSObject_sql_query, service=None, sql_filename=sql_filename)
-
+        print(data_table)
+        print(len(data_table))
+        
         # TODO probably add some warnings for these as there isn't actually any SSObject data for these things in MPC file
-        if len(data_table) == 0:  # or data_table["numObs"].values == 0:
+        if (len(data_table) == 0) or (data_table["numObs"].values == 0):
             logger.error("No SSObject data for this object could be found for this SSObjectId.")
             raise Exception("No SSObject data for this object could be found for this SSObjectId.")
 
