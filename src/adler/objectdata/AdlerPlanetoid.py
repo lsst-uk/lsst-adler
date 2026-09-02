@@ -1,6 +1,6 @@
 from lsst.rsp import get_tap_service
 
-# from lsst.rsp import RSPDiscovery # use this when lsst-rsp is upgraded
+# from lsst.rsp import RSPDiscovery # TODO: use this when lsst-rsp is upgraded
 import pandas as pd
 import numpy as np
 import logging
@@ -595,7 +595,7 @@ class AdlerPlanetoid:
 
             # determine the query_id (ssObjectId or designation) and construct the constraint
             if (mpc_id != "ssObjectId") & (schema != "MPC"):
-                constraint = f"JOIN {schema}.SSObject AS sso ON mpc.{mpc_id} = sso.{mpc_id} WHERE sso.ssObjectId={ssObjectId}"  # TODO: double check full stop in '.SSObject', change schema -> sql_schema?
+                constraint = f"JOIN {sql_schema}SSObject AS sso ON mpc.{mpc_id} = sso.{mpc_id} WHERE sso.ssObjectId={ssObjectId}"
             else:
                 constraint = f"WHERE mpc.{mpc_id} = '{ssObjectId}'"
 
@@ -733,6 +733,7 @@ class AdlerPlanetoid:
         sql_filename,
         filter_list=["u", "g", "r", "i", "z", "y"],
         date_range=None,
+        # TODO: add a schema option here? Probably not required...
     ):
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects
         from the MPC obs_sbn database. This is designed specifically for the SSSC Prompt Products Database Bandaid.
