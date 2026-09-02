@@ -39,17 +39,17 @@ def test_construct_SSObject_from_data_table():
     test_values_r = [
         test_SSObject.filter_dependent_values[0].H,
         test_SSObject.filter_dependent_values[0].G12,
-        test_SSObject.filter_dependent_values[0].Herr,
-        test_SSObject.filter_dependent_values[0].G12err,
-        test_SSObject.filter_dependent_values[0].nData,
+        test_SSObject.filter_dependent_values[0].HErr,
+        test_SSObject.filter_dependent_values[0].G12Err,
+        test_SSObject.filter_dependent_values[0].Ndata,
     ]
 
     test_values_g = [
         test_SSObject.filter_dependent_values[1].H,
         test_SSObject.filter_dependent_values[1].G12,
-        test_SSObject.filter_dependent_values[1].Herr,
-        test_SSObject.filter_dependent_values[1].G12err,
-        test_SSObject.filter_dependent_values[1].nData,
+        test_SSObject.filter_dependent_values[1].HErr,
+        test_SSObject.filter_dependent_values[1].G12Err,
+        test_SSObject.filter_dependent_values[1].Ndata,
     ]
 
     expected_values_g = [20.292325973510742, 1.7233933210372925, 0.030210301280021667, 0.0404973067343235, 9]

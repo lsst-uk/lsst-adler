@@ -276,7 +276,7 @@ class AdlerData:
             modelId that the given outliers correspond to. This is used to check the supplied modelId from the user matches that stored in AdlerData.
 
         df : pandas.DataFrame
-            DataFrame of the observations that are identified as outliers. Must contain columns diaSourceId, midPointMjdTai, mag_diff, std_diff.
+            DataFrame of the observations that are identified as outliers. Must contain columns diaSourceId, midpointMjdTai, mag_diff, std_diff.
 
         **kwargs : FilterDependentAdler and AvgMagModelDependentAdler attributes
             The attribute names of the parameters you wish to update. See docs for FilterDependentAdler
@@ -1036,7 +1036,7 @@ class AdlerSourceFlags:
     diaSourceId : array_like of ints or strs
         Unique identifier of the observation.
 
-    midPointMjdTai : array_like of floats
+    midpointMjdTai : array_like of floats
         Observation timestamps.
 
     mag_diff : array_like of floats
@@ -1053,7 +1053,7 @@ class AdlerSourceFlags:
     n_outliers: int
     n_std_outliers: int
     diaSourceId: np.ndarray = field(default_factory=lambda: np.zeros(0))
-    midPointMjdTai: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    midpointMjdTai: np.ndarray = field(default_factory=lambda: np.zeros(0))
     mag_diff: np.ndarray = field(default_factory=lambda: np.zeros(0))
     std_diff: np.ndarray = field(default_factory=lambda: np.zeros(0))
 
@@ -1073,7 +1073,7 @@ class AdlerSourceFlags:
             modelId for the model that the outliers are compared to.
 
         df : pandas.DataFrame
-            DataFrame of the observations that are identified as outliers. Must contain columns diaSourceId, midPointMjdTai, mag_diff, std_diff
+            DataFrame of the observations that are identified as outliers. Must contain columns diaSourceId, midpointMjdTai, mag_diff, std_diff
 
         Returns
         -----------
@@ -1084,7 +1084,7 @@ class AdlerSourceFlags:
         obs_dict = {"ssObjectId": ssObjectId, "filter_name": filter_name, "modelId": modelId}
 
         obs_dict.update(
-            df.loc[:, ["diaSourceId", "midPointMjdTai", "mag_diff", "std_diff"]].to_dict(orient="list")
+            df.loc[:, ["diaSourceId", "midpointMjdTai", "mag_diff", "std_diff"]].to_dict(orient="list")
         )
 
         obs_dict.update({"n_outliers": len(df.loc[df.mag_diff != 0])})
@@ -1118,7 +1118,7 @@ class AdlerSourceFlags:
             con = sqlite3.connect(filepath)
             cur = con.cursor()
             cur.execute(
-                "CREATE TABLE AdlerSourceFlags(ssObjectId, filter_name, modelId, diaSourceId, midPointMjdTai, mag_diff, std_diff)"
+                "CREATE TABLE AdlerSourceFlags(ssObjectId, filter_name, modelId, diaSourceId, midpointMjdTai, mag_diff, std_diff)"
             )
         elif not database_exists and not create_new:
             logger.error("ValueError: Database cannot be found at given filepath.")
@@ -1128,7 +1128,7 @@ class AdlerSourceFlags:
             cur = con.cursor()
             # Create the table if it doesn't exist (in case database was created previously without this table)
             cur.execute(
-                "CREATE TABLE IF NOT EXISTS AdlerSourceFlags(ssObjectId, filter_name, modelId, diaSourceId, midPointMjdTai, mag_diff, std_diff)"
+                "CREATE TABLE IF NOT EXISTS AdlerSourceFlags(ssObjectId, filter_name, modelId, diaSourceId, midpointMjdTai, mag_diff, std_diff)"
             )
 
         return con
@@ -1153,7 +1153,7 @@ class AdlerSourceFlags:
             "filter_name",
             "modelId",
             "diaSourceId",
-            "midPointMjdTai",
+            "midpointMjdTai",
             "mag_diff",
             "std_diff",
         ]
@@ -1171,7 +1171,7 @@ class AdlerSourceFlags:
                 [self.filter_name] * len(self.diaSourceId),
                 [self.modelId] * len(self.diaSourceId),
                 self.diaSourceId,
-                self.midPointMjdTai,
+                self.midpointMjdTai,
                 self.mag_diff,
                 self.std_diff,
             )

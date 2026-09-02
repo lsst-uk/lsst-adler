@@ -7,7 +7,7 @@ OBSERVATIONS_KEYS = {
     "diaSourceId": np.ndarray,
     "mag": np.ndarray,
     "magErr": np.ndarray,
-    "midPointMjdTai": np.ndarray,
+    "midpointMjdTai": np.ndarray,
     "ra": np.ndarray,
     "dec": np.ndarray,
     "phaseAngle": np.ndarray,
@@ -47,7 +47,7 @@ class Observations:
     magErr: array_like of floats
         Magnitude error. This is a placeholder and will be replaced by flux error.
 
-    midPointMjdTai: array_like of floats
+    midpointMjdTai: array_like of floats
         Effective mid-visit time for this diaSource, expressed as Modified Julian Date, International Atomic Time.
 
     ra: array_like of floats
@@ -102,7 +102,7 @@ class Observations:
     diaSourceId: np.ndarray = field(default_factory=lambda: np.zeros(0))
     mag: np.ndarray = field(default_factory=lambda: np.zeros(0))
     magErr: np.ndarray = field(default_factory=lambda: np.zeros(0))
-    midPointMjdTai: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    midpointMjdTai: np.ndarray = field(default_factory=lambda: np.zeros(0))
     ra: np.ndarray = field(default_factory=lambda: np.zeros(0))
     dec: np.ndarray = field(default_factory=lambda: np.zeros(0))
     phaseAngle: np.ndarray = field(default_factory=lambda: np.zeros(0))
@@ -148,7 +148,7 @@ class Observations:
                 obs_dict[obs_key] = get_from_table(data_table, obs_key, obs_type, "SSSource/DIASource")
             except KeyError:  # sometimes we have case issues...
                 # Specific handling for this one as the case of the P was changed between DP0.3 and DP1
-                if obs_key == "midPointMjdTai":
+                if obs_key == "midpointMjdTai":
                     obs_dict[obs_key] = get_from_table(
                         data_table, "midpointMjdTai", obs_type, "SSSource/DIASource"
                     )

@@ -69,7 +69,7 @@ g_df_mpc = pd.DataFrame(
             "LorDdACC0000Gugo010000qHU",
             "LorDdACC0000Gugo010000qHV",
         ],
-        "midPointMjdTai": [
+        "midpointMjdTai": [
             60797.090522,
             60797.095330,
             60797.097267,
@@ -172,7 +172,7 @@ r_df_mpc = pd.DataFrame(
             "LorDdACC0000Gugo010000qHR",
             "LorDdACC0000Gugo010000qHS",
         ],
-        "midPointMjdTai": [
+        "midpointMjdTai": [
             60797.055184,
             60797.060023,
             60797.061476,
@@ -366,7 +366,7 @@ r_df_dp03 = pd.DataFrame(
             6104500740852729128,
             5185229085827158712,
         ],
-        "midPointMjdTai": [
+        "midpointMjdTai": [
             63305.34722,
             63305.34774,
             63308.28513,
@@ -399,7 +399,7 @@ i_df_dp03 = pd.DataFrame(
             -7564747308461840760,
             3495766367455214856,
         ],
-        "midPointMjdTai": [
+        "midpointMjdTai": [
             63316.26713,
             63335.36783,
         ],
@@ -611,7 +611,7 @@ def test_construct_source_flags_from_data_table():
 
     # Test that the arrays are correctly populated from the DataFrame
     assert_array_equal(mpc_source_flags_obj.diaSourceId, g_df_mpc["diaSourceId"].values)
-    assert_array_almost_equal(mpc_source_flags_obj.midPointMjdTai, g_df_mpc["midPointMjdTai"].values)
+    assert_array_almost_equal(mpc_source_flags_obj.midpointMjdTai, g_df_mpc["midpointMjdTai"].values)
     assert_array_almost_equal(mpc_source_flags_obj.mag_diff, g_df_mpc["mag_diff"].values)
     assert_array_almost_equal(mpc_source_flags_obj.std_diff, g_df_mpc["std_diff"].values)
 
@@ -649,7 +649,7 @@ def test_populate_source_flags():
 
     # Test that the arrays are correctly populated from the DataFrame
     assert_array_equal(r_source_flags.diaSourceId, r_df_mpc["diaSourceId"].values)
-    assert_array_almost_equal(r_source_flags.midPointMjdTai, r_df_mpc["midPointMjdTai"].values)
+    assert_array_almost_equal(r_source_flags.midpointMjdTai, r_df_mpc["midpointMjdTai"].values)
     assert_array_almost_equal(r_source_flags.mag_diff, r_df_mpc["mag_diff"].values)
     assert_array_almost_equal(r_source_flags.std_diff, r_df_mpc["std_diff"].values)
 
@@ -1013,7 +1013,7 @@ def test_populate_from_database():
             assert pop_sf.n_outliers == test_sf.n_outliers
             assert pop_sf.n_std_outliers == test_sf.n_std_outliers
             assert_array_equal(pop_sf.diaSourceId, test_sf.diaSourceId)
-            assert_array_almost_equal(pop_sf.midPointMjdTai, test_sf.midPointMjdTai)
+            assert_array_almost_equal(pop_sf.midpointMjdTai, test_sf.midpointMjdTai)
             assert_array_almost_equal(pop_sf.mag_diff, test_sf.mag_diff)
             assert_array_almost_equal(pop_sf.std_diff, test_sf.std_diff)
 
@@ -1075,6 +1075,6 @@ def test_populate_from_database():
             assert pop_sf.n_outliers == test_sf.n_outliers
             assert pop_sf.n_std_outliers == test_sf.n_std_outliers
             assert_array_equal(pop_sf.diaSourceId, test_sf.diaSourceId)
-            assert_array_almost_equal(pop_sf.midPointMjdTai, test_sf.midPointMjdTai)
+            assert_array_almost_equal(pop_sf.midpointMjdTai, test_sf.midpointMjdTai)
             assert_array_almost_equal(pop_sf.mag_diff, test_sf.mag_diff)
             assert_array_almost_equal(pop_sf.std_diff, test_sf.std_diff)
