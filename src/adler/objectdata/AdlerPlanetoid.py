@@ -494,6 +494,7 @@ class AdlerPlanetoid:
                 """
             # TODO: log the query
             # TODO: This does not always return things in date order?
+            # TODO: this could be much faster to query once for all requested bands and then splitting by band after
             print(observations_sql_query)
 
             if date_range is not None:
@@ -733,7 +734,7 @@ class AdlerPlanetoid:
         sql_filename,
         filter_list=["u", "g", "r", "i", "z", "y"],
         date_range=None,
-        # TODO: add a schema option here? Probably not required...
+        # TODO: add a schema option here? Probably not required as it should always be MPC
     ):
         """Custom constructor which builds the AdlerPlanetoid object and the associated Observations, MPCORB and SSObject objects
         from the MPC obs_sbn database. This is designed specifically for the SSSC Prompt Products Database Bandaid.
