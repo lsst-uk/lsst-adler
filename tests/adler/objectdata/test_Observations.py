@@ -14,7 +14,7 @@ def test_construct_observations_from_data_table():
 
     test_query = f"""
                     SELECT
-                        ssObject.ssObjectId, ssSource.diaSourceId, mag, magErr, band, midPointMjdTai, ra, dec, phaseAngle,
+                        ssObject.ssObjectId, ssSource.diaSourceId, mag, magErr, band, midPointMjdTai AS midpointMjdTai, ra, dec, phaseAngle,
                         topocentricDist, heliocentricDist, heliocentricX, heliocentricY, heliocentricZ,
                         topocentricX, topocentricY, topocentricZ,
                         eclipticLambda, eclipticBeta
@@ -23,7 +23,7 @@ def test_construct_observations_from_data_table():
                         JOIN diaSource ON ssObject.ssObjectId   = diaSource.ssObjectId
                         JOIN ssSource  ON diaSource.diaSourceId = ssSource.diaSourceId
                     WHERE
-                        ssObject.ssObjectId = {ssoid} AND band = '{filter_name}' AND midPointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
+                        ssObject.ssObjectId = {ssoid} AND band = '{filter_name}' AND midpointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}
                     """
 
     data_table = get_data_table(test_query, sql_filename=test_db_path)
@@ -163,7 +163,7 @@ def test_construct_observations_from_data_table():
 
     assert_almost_equal(test_observations.mag, expected_mag)
     assert_almost_equal(test_observations.magErr, expected_magerr)
-    assert_almost_equal(test_observations.midPointMjdTai, expected_mjd)
+    assert_almost_equal(test_observations.midpointMjdTai, expected_mjd)
     assert_almost_equal(test_observations.ra, expected_ra)
     assert_almost_equal(test_observations.dec, expected_dec)
     assert_almost_equal(test_observations.phaseAngle, expected_phaseangle)

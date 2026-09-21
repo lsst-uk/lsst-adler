@@ -120,7 +120,7 @@ def run_outliers(
         obj_df = pd.read_sql_query(q, conn)
         unique_obj_ids = obj_df.provid.to_numpy()
     else:
-        q = f"SELECT DISTINCT ssObjectId FROM diaSource WHERE midPointMjdTai BETWEEN '{start_of_night_mjd}' AND '{process_mjd}'"
+        q = f"SELECT DISTINCT ssObjectId FROM diaSource WHERE midpointMjdTai BETWEEN '{start_of_night_mjd}' AND '{process_mjd}'"
         obj_df = pd.read_sql_query(q, conn)
         unique_obj_ids = obj_df.ssObjectId.to_numpy()
 
@@ -216,8 +216,8 @@ def run_outliers(
                     ad_params = {}
                     ad_params["phaseAngle_min"] = np.amin(df_obs_old["phaseAngle"])
                     ad_params["phaseAngle_range"] = np.ptp(df_obs_old["phaseAngle"])
-                    ad_params["observationTime_max"] = np.amax(df_obs_old["midPointMjdTai"])
-                    ad_params["arc"] = np.ptp(df_obs_old["midPointMjdTai"])
+                    ad_params["observationTime_max"] = np.amax(df_obs_old["midpointMjdTai"])
+                    ad_params["arc"] = np.ptp(df_obs_old["midpointMjdTai"])
                     ad_params["nobs"] = len(df_obs_old)
 
                     # Fit model
@@ -278,8 +278,8 @@ def run_outliers(
                     ####
 
                     # Identify timegaps in case there's only one night of new data (in the case where we are using n_new_nights>1)
-                    df_obs_new.sort_values(by="midPointMjdTai", inplace=True)
-                    time_gaps = sci_utils.apparition_gap_finder(df_obs_new.midPointMjdTai.to_numpy(), dx=0.5)
+                    df_obs_new.sort_values(by="midpointMjdTai", inplace=True)
+                    time_gaps = sci_utils.apparition_gap_finder(df_obs_new.midpointMjdTai.to_numpy(), dx=0.5)
                     if len(time_gaps) == 0:
                         # If there is only one night of new data, we continue to the next band/object
                         logger.info(
@@ -329,7 +329,7 @@ def run_outliers(
                         # FIXME sigclip sometimes removes values that shouldn't be plotted/should be marked different for the new obs?
                         fig, ax = plt.subplots()
                         if model_name in VALID_AVG_MAG_MODELS:
-                            x_param = "midPointMjdTai"
+                            x_param = "midpointMjdTai"
                             ax.axhline(model.avg_mag, c="k", ls="-")
                             ax.axhline(new_obs_model.avg_mag, c="c", ls="--")
                         elif model_name in VALID_PHASE_MODELS:

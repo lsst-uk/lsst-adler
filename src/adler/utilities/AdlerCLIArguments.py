@@ -2,6 +2,8 @@ import os
 import logging
 import numpy as np
 
+from adler.objectdata.AdlerPlanetoid import SCHEMA_CONFIG_DICT
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,7 +27,8 @@ class AdlerCLIArguments:
         self.outpath = args.outpath
         self.db_name = args.db_name
         self.sql_filename = args.sql_filename
-        self.MPC = args.MPC
+        self.schema = args.schema
+        self.flux_flag = args.flux_flag
         self.phase_model = args.phase_model
         self.plot_show = args.plot_show
         self.no_plot = args.no_plot
@@ -48,8 +51,11 @@ class AdlerCLIArguments:
         if self.sql_filename:
             self._validate_sql_filename()
 
-        if self.MPC:
-            self._validate_MPC()
+        if self.schema:
+            self._validate_schema()
+
+        if self.flux_flag:
+            self._validate_flux_flag()
 
         if self.colour_list:
             self._validate_colour_list()
@@ -97,7 +103,7 @@ class AdlerCLIArguments:
         """
         Validation checks for the ssObjectId command-line argument.
         """
-        if not self.MPC:
+        if self.schema != "MPC":
             try:
                 int(self.ssObjectId)
             except ValueError:
@@ -110,24 +116,31 @@ class AdlerCLIArguments:
         """
         Validation checks for the date_range command-line argument.
         """
-        for d in self.date_range:
-            try:
-                float(d)
-            except ValueError:
+        if self.date_range:
+
+            for d in self.date_range:
+                try:
+                    float(d)
+                except ValueError:
+                    logging.error(
+                        "One or both of the values for the --date_range command-line argument do not seem to be valid numbers."
+                    )
+                    raise ValueError(
+                        "One or both of the values for the --date_range command-line argument do not seem to be valid numbers."
+                    )
+
+            if any(d > 250000 for d in self.date_range):
                 logging.error(
-                    "One or both of the values for the --date_range command-line argument do not seem to be valid numbers."
+                    "Dates for --date_range command-line argument seem rather large. Did you input JD instead of MJD?"
                 )
                 raise ValueError(
-                    "One or both of the values for the --date_range command-line argument do not seem to be valid numbers."
+                    "Dates for --date_range command-line argument seem rather large. Did you input JD instead of MJD?"
                 )
 
-        if any(d > 250000 for d in self.date_range):
-            logging.error(
-                "Dates for --date_range command-line argument seem rather large. Did you input JD instead of MJD?"
-            )
-            raise ValueError(
-                "Dates for --date_range command-line argument seem rather large. Did you input JD instead of MJD?"
-            )
+            if len(self.date_range) != 2 or (self.date_range[0] > self.date_range[1]):
+                err_msg = "date_range should be None (default) or a lower and upper MJD"
+                logging.error(err_msg)
+                raise ValueError(err_msg)
 
     def _validate_outpath(self):
         """
@@ -166,14 +179,41 @@ class AdlerCLIArguments:
                 "The file supplied for the command-line argument --sql_filename cannot be found."
             )
 
-    def _validate_MPC(self):
+    # def _validate_MPC(self):
+    #     """
+    #     Validation checks for the MPC command-line argument. If set check that sql_filename is also set.
+    #     """
+
+    #     if self.MPC:
+    #         logger.info("MPC flag is set, --sql_filename should also be set and of MPC format")
+    #         self._validate_sql_filename()
+
+    def _validate_schema(self):
         """
-        Validation checks for the MPC command-line argument. If set check that sql_filename is also set.
+        Validation checks for the schema command-line argument.
         """
 
-        if self.MPC:
-            logger.info("MPC flag is set, --sql_filename should also be set and of MPC format")
+        if self.schema not in SCHEMA_CONFIG_DICT:
+            err_msg = f"Schema {self.schema} not recognised."
+            logging.error(err_msg)
+            raise ValueError(err_msg)
+
+        if self.schema == "MPC":
+            logger.info("schema = MPC, --sql_filename should also be set and of MPC format")
             self._validate_sql_filename()
+
+    def _validate_flux_flag(self):
+
+        if self.schema == "MPC":
+            if self.flux_flag is not None:
+                err_msg = "When --schema = MPC --flux_flag does not need to be set."
+                logging.error(err_msg)
+                raise ValueError(err_msg)
+        else:
+            if self.flux_flag not in np.array(list(SCHEMA_CONFIG_DICT[self.schema].keys())):
+                err_msg = f"Flux column {self.flux_flag} not recognised for schema {self.schema}."
+                logging.error(err_msg)
+                raise ValueError(err_msg)
 
     def _validate_phase_model(self):
         """Validation checks for the phase_model command-line argument."""

@@ -35,7 +35,9 @@ def test_get_data_table():
     data_table = get_data_table(test_query, sql_filename=test_db_path)
 
     expected_table = pd.read_csv(get_test_data_filepath("test_dataclass_utilities_table.csv"))
-    assert_frame_equal(data_table, expected_table)
+    assert_frame_equal(
+        data_table.to_pandas(), expected_table
+    )  # convert data_table to pandas to compare to example data
 
 
 def test_get_from_table():
