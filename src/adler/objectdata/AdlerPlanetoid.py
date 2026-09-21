@@ -513,16 +513,6 @@ class AdlerPlanetoid:
                 )
             else:
 
-                # Convert to astropy table so we can operate on it and add mag,magErr columns
-                # TODO: temporary fix, get_data_table returns two possible objects (DALResultsTable or Pandas dataframe) that need different handling to convert to astropy tables
-
-                # if isinstance(data_table, pd.DataFrame):
-                #     # data_table is DataFrame
-                #     data_table_astropy = Table.from_pandas(data_table)
-                # else:
-                #     # data_table is not Dataframe (DALResultsTable/TAPResults?)
-                #     data_table_astropy = data_table.to_table()
-
                 # add the mag and magErr columns if missing
                 if ("mag" not in data_table.colnames) & ("magErr" not in data_table.colnames):
 
@@ -669,15 +659,6 @@ class AdlerPlanetoid:
 
         if schema in SCHEMA_CONFIG_DICT:
 
-            # if schema == "MPC":
-            #     ssobject_id_col = "provid"
-            #     ssobject_table = "obs_sbn"
-            #     constraint = f"{ssobject_id_col} = '{ssObjectId}' LIMIT 1" # TODO: a bit unnecessary but we only need to get one row to check the object is indeed in the table - try replace MPC case with just a blank SSObject!
-            # else:
-            #     ssobject_id_col = "ssObjectId"
-            #     ssobject_table = "SSObject"
-            #     constraint = f"{ssobject_id_col} = '{ssObjectId}'
-
             # get the SSObject field names from the schema
             query_fields = [
                 x
@@ -779,11 +760,8 @@ class AdlerPlanetoid:
             filter_list = [obs_object.filter_name for obs_object in observations_by_filter]
             logger.info("New filter list is: {}".format(filter_list))
 
-        # mpcorb = cls.populate_MPCORB_from_mpc_obs_sbn(cls, ssObjectId, sql_filename=sql_filename)
         mpcorb = cls.populate_MPCORB(cls, ssObjectId, sql_filename=sql_filename, schema="MPC")
-        # ssobject = cls.populate_SSObject_from_mpc_obs_sbn(
-        #     cls, ssObjectId, filter_list, sql_filename=sql_filename
-        # )
+
         # TODO: make a blank (default values) SSObject and add the numObs from the planetoid Observations
         ssobject = SSObject(
             ssObjectId,
@@ -881,102 +859,6 @@ class AdlerPlanetoid:
                 )
 
         return observations_by_filter
-
-    # def populate_MPCORB_from_mpc_obs_sbn(self, ssObjectId, sql_filename):
-    #     """Populates the MPCORB object class attribute. This version is specific to the construct_from_mpc_obs_sbn function.
-
-    #     Parameters
-    #     -----------
-    #     ssObjectId : str
-    #         ssObjectId of the object of interest.
-
-    #     sql_filename : str or None
-    #         Filepath to an SQL database.
-
-    #     """
-
-    #     logger.warning(
-    #         f"Constructing from the MPC obs_sbn table populates the following LSST schema columns as their best case obs_sbn analogs (LSST column name = obs_sbn column name):"
-    #     )
-    #     logger.warning(f"ssObjectId = fullDesignation; fullDesignation = fullDesignation; tperi = t_p")
-    #     logger.warning(
-    #         f"mpcDesignation, mpcNumber, mpcG, n, uncertaintyParameter, flags are unpopulated and selected as NULL/0."
-    #     )
-    #     mpc_orbits_sql_query = f"""
-    #         SELECT
-    #             fullDesignation AS ssObjectId, NULL AS mpcDesignation, fullDesignation AS fullDesignation, 0 AS mpcNumber,
-    #             mpcH, NULL AS mpcG, epoch, t_p AS tperi, peri, node, incl, e, NULL AS n, q, NULL AS uncertaintyParameter, NULL AS flags
-    #         FROM
-    #             mpc_orbits
-    #         WHERE
-    #             fullDesignation = '{ssObjectId}'
-    #     """
-
-    #     # Explicitly setting service=None here for clarity as this version does not query from non-local databases
-    #     data_table = get_data_table(mpc_orbits_sql_query, service=None, sql_filename=sql_filename)
-    #     print(data_table)
-    #     print(len(data_table))
-
-    #     if len(data_table) == 0:
-    #         logger.error("No mpc_orbits data for this object could be found for this SSObjectId.")
-    #         raise Exception("No mpc_orbits data for this object could be found for this SSObjectId.")
-
-    #     return MPCORB.construct_from_data_table(ssObjectId, data_table)
-
-    # def populate_SSObject_from_mpc_obs_sbn(self, ssObjectId, filter_list, sql_filename):
-    #     """Populates the SSObject class attribute. This version is specific to the construct_from_mpc_obs_sbn function.
-
-    #     Parameters
-    #     -----------
-    #     ssObjectId : str
-    #         ssObjectId of the object of interest.
-
-    #     filter_list : list of str
-    #         A comma-separated list of the filters of interest.
-
-    #     sql_filename : str or None
-    #         Filepath to an SQL database.
-
-    #     """
-
-    #     filter_dependent_columns = ""
-
-    #     for filter_name in filter_list:
-    #         # Counting number of observations in given filter in the query here
-    #         filter_string = "NULL AS {}_H, NULL AS {}_G12, NULL AS {}_HErr, NULL AS {}_G12Err, (SELECT COUNT(*) FROM obs_sbn WHERE band='{}' and provid='{}') AS {}_Ndata, ".format(
-    #             filter_name, filter_name, filter_name, filter_name, filter_name, ssObjectId, filter_name
-    #         )
-
-    #         filter_dependent_columns += filter_string
-
-    #     logger.warning(
-    #         f"Constructing from the MPC obs_sbn table populates the following LSST schema columns as their best case obs_sbn analogs (LSST column name = obs_sbn column name):"
-    #     )
-    #     logger.warning(f"All columns other than numObs/'band'_Ndata are selected as NULL/0.")
-    #     # TODO: update this query with ADLER_SCHEMA!
-    #     SSObject_sql_query = f"""
-    #         SELECT
-    #             NULL AS discoverySubmissionDate, NULL AS firstObservationDate, NULL AS arc, count(*) AS numObs,
-    #             {filter_dependent_columns}
-    #             NULL AS maxExtendedness, NULL AS minExtendedness, NULL AS medianExtendedness
-    #         FROM
-    #             obs_sbn
-    #         WHERE
-    #             provid = '{ssObjectId}'
-    #     """
-    #     print(SSObject_sql_query)
-
-    #     # Explicitly setting service=None here for clarity as this version does not query from non-local databases
-    #     data_table = get_data_table(SSObject_sql_query, service=None, sql_filename=sql_filename)
-    #     print(data_table)
-    #     print(len(data_table))
-
-    #     # TODO probably add some warnings for these as there isn't actually any SSObject data for these things in MPC file
-    #     if (len(data_table) == 0) or (data_table["numObs"].values == 0):
-    #         logger.error("No SSObject data for this object could be found for this SSObjectId.")
-    #         raise Exception("No SSObject data for this object could be found for this SSObjectId.")
-
-    #     return SSObject.construct_from_data_table(ssObjectId, filter_list, data_table)
 
     def observations_in_filter(self, filter_name):
         """User-friendly helper function. Returns the Observations object for a given filter.
