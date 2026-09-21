@@ -476,32 +476,45 @@ class AdlerPlanetoid:
         ra_column = selected_config["ra_column"]
         dec_column = selected_config["dec_column"]
 
+        # query all observations in selected filter_list
+        observations_sql_query = f"""
+            SELECT
+                DiaSource.diaSourceId, {fluxmag_column}, {fluxmag_err_column}, band, {ADLER_SCHEMA[schema]['midpointMjdTai']} AS midpointMjdTai, {ra_column} AS ra, {dec_column} AS dec, {ADLER_SCHEMA[schema]['phaseAngle']} AS phaseAngle,
+                {ADLER_SCHEMA[schema]['topocentricDist']} AS topocentricDist, {ADLER_SCHEMA[schema]['heliocentricDist']} AS heliocentricDist, {ADLER_SCHEMA[schema]['heliocentricX']} AS heliocentricX, {ADLER_SCHEMA[schema]['heliocentricY']} AS heliocentricY, {ADLER_SCHEMA[schema]['heliocentricZ']} AS heliocentricZ,
+                {ADLER_SCHEMA[schema]['topocentricX']} AS topocentricX, {ADLER_SCHEMA[schema]['topocentricY']} AS topocentricY, {ADLER_SCHEMA[schema]['topocentricZ']} AS topocentricZ,
+                {ADLER_SCHEMA[schema]['eclipticLambda']} AS eclipticLambda, {ADLER_SCHEMA[schema]['eclipticBeta']} AS eclipticBeta 
+            FROM
+                {sql_schema}DiaSource
+                INNER JOIN {sql_schema}SSSource
+                ON DiaSource.diaSourceId = SSSource.diaSourceId
+            WHERE
+                DiaSource.ssObjectId = {ssObjectId}
+            """
+        # TODO: log the query
+        # TODO: This does not always return things in date order?
+        # TODO: add option for photometry flags?
+        if date_range is not None:
+            observations_sql_query += f" AND midpointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}"
+        if len(filter_list) == 1:
+            observations_sql_query += f" AND band = '{filter_list[0]}'"
+        else:
+            observations_sql_query += f" AND band IN {tuple(filter_list)}"
+        print(observations_sql_query)
+
+        # This function submits the query and gets the results (or pulls from the SQL database)
+        data_table_all = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
+        print(data_table_all["midpointMjdTai"])
+        print(data_table_all.colnames)
+        data_table_all.sort(["midpointMjdTai"])
+        print(data_table_all["midpointMjdTai"])
+
+        # deal with observations in each filter
         observations_by_filter = []
 
         for filter_name in filter_list:
-            observations_sql_query = f"""
-                SELECT
-                    DiaSource.diaSourceId, {fluxmag_column}, {fluxmag_err_column}, band, {ADLER_SCHEMA[schema]['midpointMjdTai']} AS midpointMjdTai, {ra_column} AS ra, {dec_column} AS dec, {ADLER_SCHEMA[schema]['phaseAngle']} AS phaseAngle,
-                    {ADLER_SCHEMA[schema]['topocentricDist']} AS topocentricDist, {ADLER_SCHEMA[schema]['heliocentricDist']} AS heliocentricDist, {ADLER_SCHEMA[schema]['heliocentricX']} AS heliocentricX, {ADLER_SCHEMA[schema]['heliocentricY']} AS heliocentricY, {ADLER_SCHEMA[schema]['heliocentricZ']} AS heliocentricZ,
-                    {ADLER_SCHEMA[schema]['topocentricX']} AS topocentricX, {ADLER_SCHEMA[schema]['topocentricY']} AS topocentricY, {ADLER_SCHEMA[schema]['topocentricZ']} AS topocentricZ,
-                    {ADLER_SCHEMA[schema]['eclipticLambda']} AS eclipticLambda, {ADLER_SCHEMA[schema]['eclipticBeta']} AS eclipticBeta 
-                FROM
-                    {sql_schema}DiaSource
-                    INNER JOIN {sql_schema}SSSource
-                    ON DiaSource.diaSourceId = SSSource.diaSourceId
-                WHERE
-                    DiaSource.ssObjectId = {ssObjectId} AND band = '{filter_name}'
-                """
-            # TODO: log the query
-            # TODO: This does not always return things in date order?
-            print(observations_sql_query)
 
-            if date_range is not None:
-                observations_sql_query += f" AND midPointMjdTai BETWEEN {date_range[0]} AND {date_range[1]}"
-
-            # This function submits the query and gets the results (or pulls from the SQL database)
-            data_table = get_data_table(observations_sql_query, service=service, sql_filename=sql_filename)
-            print(data_table)
+            # extract just the data in the selected filter
+            data_table = data_table_all[data_table_all["band"] == filter_name]
 
             # check for any observations, skip if none available
             if len(data_table) == 0:
