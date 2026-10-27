@@ -89,6 +89,31 @@ SCHEMA_CONFIG_DICT = {
         "mpc_table": "mpc_orbits",
         "mpc_id": "designation",
     },
+    "ppdb": {
+        "apFlux": dict(
+            fluxmag_column="apFlux",
+            fluxmag_err_column="apFluxErr",
+            fluxunit=u.nJy,
+            ra_column="ra",
+            dec_column="dec",
+        ),
+        "trailFlux": dict(
+            fluxmag_column="trailFlux",
+            fluxmag_err_column="trailFluxErr",
+            fluxunit=u.nJy,
+            ra_column="trailRa",
+            dec_column="trailDec",
+        ),
+        "psfFlux": dict(
+            fluxmag_column="psfFlux",
+            fluxmag_err_column="psfFluxErr",
+            fluxunit=u.nJy,
+            ra_column="ra",
+            dec_column="dec",
+        ),
+        "mpc_table": "mpc_orbits",
+        "mpc_id": "designation",
+    },
     "MPC": {
         None: dict(
             fluxmag_column="mag",
@@ -103,7 +128,7 @@ SCHEMA_CONFIG_DICT = {
 }
 
 # Define the tap service setup for each schema for queries on the RSP
-RSP_TAP_CONFIG_DICT = {"dp03_catalogs_10yr": "ssotap", "dp1": "tap", "dp2": "tap"}
+RSP_TAP_CONFIG_DICT = {"dp03_catalogs_10yr": "ssotap", "dp1": "tap", "dp2": "tap", "ppdb": "ppdbtap"}
 
 
 class AdlerPlanetoid:
@@ -479,19 +504,33 @@ class AdlerPlanetoid:
         observations_by_filter = []
 
         for filter_name in filter_list:
-            observations_sql_query = f"""
-                SELECT
-                    DiaSource.diaSourceId, {fluxmag_column}, {fluxmag_err_column}, band, {ADLER_SCHEMA[schema]['midpointMjdTai']} AS midpointMjdTai, {ra_column} AS ra, {dec_column} AS dec, {ADLER_SCHEMA[schema]['phaseAngle']} AS phaseAngle,
-                    {ADLER_SCHEMA[schema]['topocentricDist']} AS topocentricDist, {ADLER_SCHEMA[schema]['heliocentricDist']} AS heliocentricDist, {ADLER_SCHEMA[schema]['heliocentricX']} AS heliocentricX, {ADLER_SCHEMA[schema]['heliocentricY']} AS heliocentricY, {ADLER_SCHEMA[schema]['heliocentricZ']} AS heliocentricZ,
-                    {ADLER_SCHEMA[schema]['topocentricX']} AS topocentricX, {ADLER_SCHEMA[schema]['topocentricY']} AS topocentricY, {ADLER_SCHEMA[schema]['topocentricZ']} AS topocentricZ,
-                    {ADLER_SCHEMA[schema]['eclipticLambda']} AS eclipticLambda, {ADLER_SCHEMA[schema]['eclipticBeta']} AS eclipticBeta 
-                FROM
-                    {sql_schema}DiaSource
-                    INNER JOIN {sql_schema}SSSource
-                    ON DiaSource.diaSourceId = SSSource.diaSourceId
-                WHERE
-                    DiaSource.ssObjectId = {ssObjectId} AND band = '{filter_name}'
-                """
+
+            if schema == "ppdb":
+                observations_sql_query = f"""
+                    SELECT
+                        diaSourceId, {fluxmag_column}, {fluxmag_err_column}, band, {ADLER_SCHEMA[schema]['midpointMjdTai']} AS midpointMjdTai, {ra_column} AS ra, {dec_column} AS dec, {ADLER_SCHEMA[schema]['phaseAngle']} AS phaseAngle,
+                        {ADLER_SCHEMA[schema]['topocentricDist']} AS topocentricDist, {ADLER_SCHEMA[schema]['heliocentricDist']} AS heliocentricDist, {ADLER_SCHEMA[schema]['heliocentricX']} AS heliocentricX, {ADLER_SCHEMA[schema]['heliocentricY']} AS heliocentricY, {ADLER_SCHEMA[schema]['heliocentricZ']} AS heliocentricZ,
+                        {ADLER_SCHEMA[schema]['topocentricX']} AS topocentricX, {ADLER_SCHEMA[schema]['topocentricY']} AS topocentricY, {ADLER_SCHEMA[schema]['topocentricZ']} AS topocentricZ,
+                        {ADLER_SCHEMA[schema]['eclipticLambda']} AS eclipticLambda, {ADLER_SCHEMA[schema]['eclipticBeta']} AS eclipticBeta 
+                    FROM
+                        {sql_schema}SSObservation
+                    WHERE
+                        ssObjectId = {ssObjectId} AND band = '{filter_name}'
+                    """
+            else:
+                observations_sql_query = f"""
+                    SELECT
+                        DiaSource.diaSourceId, {fluxmag_column}, {fluxmag_err_column}, band, {ADLER_SCHEMA[schema]['midpointMjdTai']} AS midpointMjdTai, {ra_column} AS ra, {dec_column} AS dec, {ADLER_SCHEMA[schema]['phaseAngle']} AS phaseAngle,
+                        {ADLER_SCHEMA[schema]['topocentricDist']} AS topocentricDist, {ADLER_SCHEMA[schema]['heliocentricDist']} AS heliocentricDist, {ADLER_SCHEMA[schema]['heliocentricX']} AS heliocentricX, {ADLER_SCHEMA[schema]['heliocentricY']} AS heliocentricY, {ADLER_SCHEMA[schema]['heliocentricZ']} AS heliocentricZ,
+                        {ADLER_SCHEMA[schema]['topocentricX']} AS topocentricX, {ADLER_SCHEMA[schema]['topocentricY']} AS topocentricY, {ADLER_SCHEMA[schema]['topocentricZ']} AS topocentricZ,
+                        {ADLER_SCHEMA[schema]['eclipticLambda']} AS eclipticLambda, {ADLER_SCHEMA[schema]['eclipticBeta']} AS eclipticBeta 
+                    FROM
+                        {sql_schema}DiaSource
+                        INNER JOIN {sql_schema}SSSource
+                        ON DiaSource.diaSourceId = SSSource.diaSourceId
+                    WHERE
+                        DiaSource.ssObjectId = {ssObjectId} AND band = '{filter_name}'
+                    """
             # TODO: log the query
             # TODO: This does not always return things in date order?
             print(observations_sql_query)
@@ -705,7 +744,7 @@ class AdlerPlanetoid:
                 FROM
                     {sql_schema}SSObject
                 WHERE
-                    ssObjectId = '{ssObjectId}'
+                    ssObjectId = {ssObjectId}
             """
             # TODO: log the query
             print(SSObject_sql_query)
